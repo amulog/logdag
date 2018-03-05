@@ -65,7 +65,7 @@ class ArgumentManager(object):
         return "_".join([area, dt_filename(dt_range)])
 
     @staticmethod
-    def jobname2args(cls, name, conf):
+    def jobname2args(name, conf):
         area, dtstr = name.split("_", 1)
         if "_" in dtstr:
             top_dt = datetime.strptime(dtstr, "%Y%m%d_%H%M%S")
