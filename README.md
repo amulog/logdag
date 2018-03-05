@@ -15,6 +15,7 @@ This project was partially ported from repository LogCausalAnaysis.
 * amulog https://github.com/cpflat/amulog
 * pcalg https://github.com/keiichishima/pcalg
 * gsq https://github.com/keiichishima/gsq
+* citestfz https://github.com/cpflat/citestfz
 * NetworkX https://networkx.github.io
 
 ## Related article

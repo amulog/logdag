@@ -10,27 +10,6 @@ from . import dtutil
 _logger = logging.getLogger(__package__)
 
 
-#def event2input(evts, ci_func, ci_bin):
-#
-#    def input_binarize(ci_func):
-#        return not ci_func == "fisherz"
-#
-#    def binarize(array):
-#        new_array = np.zeros_like(array)
-#        new_array[array != 0] = 1
-#        return new_array
-#
-#    data = {}
-#    for eid, array in evts.items():
-#        if array.sum() == 0:
-#            continue
-#        new_array = dtutil.convert_binsize(array, evts.ev_bin, ci_bin)
-#        if input_binarize(ci_func):
-#            new_array = binarize(new_array)
-#        data[eid] = new_array
-#    return data
-
-
 def pc(data, threshold, mode = "pylib",
         skel_method = "default", pc_depth = None, verbose = False):
     if mode == "gsq_rlib":
@@ -64,7 +43,8 @@ def pc_gsq(data, threshold, skel_method, pc_depth = None, verbose = False):
 
 def pc_fisherz(data, threshold, skel_method, pc_depth = None, verbose = False):
     import pcalg
-    from ci_test.ci_tests import ci_test_gauss
+    #from ci_test.ci_tests import ci_test_gauss
+    from citestfz.ci_tests import ci_test_gauss
 
     dm = np.array([data for nid, data in sorted(data.items())]).transpose()
     cm = np.corrcoef(dm.T)
