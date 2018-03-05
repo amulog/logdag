@@ -70,7 +70,7 @@ def make_input(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
-    am.generate(makedag.all_args)
+    am.generate(arguments.all_args)
     am.dump()
 
     p = ns.parallel
@@ -108,7 +108,7 @@ def make_dag(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
-    am.generate(makedag.all_args)
+    am.generate(arguments.all_args)
     am.dump()
 
     p = ns.parallel
