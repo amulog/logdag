@@ -27,7 +27,7 @@ def test_makedag(ns):
     from . import makedag
     from . import arguments
     am = arguments.ArgumentManager(conf)
-    am.generate(makedag.all_args)
+    am.generate(arguments.all_args)
     am.dump()
     makedag.makedag_main(am[0])
 
@@ -39,7 +39,7 @@ def make_args(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
-    am.generate(makedag.all_args)
+    am.generate(arguments.all_args)
     am.dump()
 
 
