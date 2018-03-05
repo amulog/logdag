@@ -2,7 +2,7 @@
 
 ## Overview
 
-This package analyzes causal DAG among events in log data.
+This package generates causal DAGs among time-series events in syslog data.
 This package works on python3.
 The input log data is loaded with AMULOG (https://github.com/cpflat/amulog).
 The output DAG is recorded in the format of NetworkX DiGraph.
@@ -18,6 +18,7 @@ This project was partially ported from repository LogCausalAnaysis.
 * NetworkX https://networkx.github.io
 
 ## Related article
+
 http://ieeexplore.ieee.org/document/8122062/
 
 ## Author
