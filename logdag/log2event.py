@@ -4,6 +4,8 @@
 import os
 import logging
 import pickle
+import math
+import numpy as np
 from collections import namedtuple
 from collections import UserDict
 
@@ -336,12 +338,12 @@ def filter_linear(conf, l_dt, dt_range):
         return False
 
     # generate time-series cumulative sum
-    length = (end_dt - top_dt).total_seconds()
+    length = (dt_range[1] - dt_range[0]).total_seconds()
     bin_length = binsize.total_seconds()
     bins = math.ceil(1.0 * length / bin_length)
     a_stat = np.array([0] * int(bins))
     for dt in l_dt:
-        cnt = int((dt - top_dt).total_seconds() / bin_length)
+        cnt = int((dt - dt_range[0]).total_seconds() / bin_length)
         assert cnt < len(a_stat)
         a_stat[cnt:] += 1
 

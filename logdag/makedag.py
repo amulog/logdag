@@ -50,7 +50,7 @@ def makedag_main(args):
     ldag = showdag.LogDAG(args, graph)
     ldag.dump()
     _logger.info("makedag job done, output {0}".format(
-        arguments.dag_filepath(args)))
+        arguments.ArgumentManager.dag_filepath(args)))
     return ldag
 
 
