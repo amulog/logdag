@@ -382,7 +382,8 @@ def filter_periodic(conf, ld, l_dt, dt_range, evdef, method):
         elif method == "replace":
             flag, remain_array, interval = period.fourier_replace(conf, a_cnt,
                                                                   binsize)
-            remain_dt = revert_event(remain_array, dt_range, binsize)
+            if remain_array is not None:
+                remain_dt = revert_event(remain_array, dt_range, binsize)
         elif method == "corr":
             flag, interval = period.periodic_corr(conf, a_cnt, binsize) 
         else:
