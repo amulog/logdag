@@ -16,7 +16,7 @@ class ArgumentManager(object):
             self.args_filename = "args_{0}".format(confname)
 
     def __iter__(self):
-        return self.l_args
+        return self.l_args.__iter__()
 
     def __getitem__(self, i):
         return self.l_args[i]

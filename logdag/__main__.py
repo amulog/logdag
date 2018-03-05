@@ -58,7 +58,7 @@ def make_input(ns):
         import multiprocessing
         timer = common.Timer("mkinput task", output = _logger)
         timer.start()
-        l_process = [multiprocessing.Process(name = processname(args),
+        l_process = [multiprocessing.Process(name = am.jobname(args),
                                              target = makedag.make_input,
                                              args = args)
                      for args in am]
@@ -96,7 +96,7 @@ def make_dag(ns):
         import multiprocessing
         timer = common.Timer("makedag task", output = _logger)
         timer.start()
-        l_process = [multiprocessing.Process(name = processname(args),
+        l_process = [multiprocessing.Process(name = am.jobname(args),
                                              target = makedag.makedag_main,
                                              args = args)
                      for args in am]
