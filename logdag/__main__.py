@@ -158,7 +158,7 @@ OPT_CONFIG = [["-c", "--config"],
                "help": "configuration file path for amulog"}]
 OPT_PARALLEL = [["-p", "--parallel"],
                 {"dest": "parallel", "metavar": "PARALLEL",
-                 "default": 1,
+                 "type": int, "default": 1,
                  "help": "number of processes in parallel"}]
 
 # argument settings for each modes
