@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import datetime
+
 from . import dtutil
 from amulog import config
 from amulog import common

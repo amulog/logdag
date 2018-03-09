@@ -120,6 +120,9 @@ def make_dag(ns):
 
 
 def make_dag_stdin(ns):
+    from . import makedag
+    from . import arguments
+
     conf = open_logdag_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
