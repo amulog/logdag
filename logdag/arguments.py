@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import datetime
-
 from . import dtutil
 from amulog import config
 from amulog import common
@@ -55,7 +53,6 @@ class ArgumentManager(object):
 
     @staticmethod
     def jobname(args):
-
         def dt_filename(dt_range):
             top_dt, end_dt = dt_range
             if dtutil.is_intdate(top_dt) and dtutil.is_intdate(end_dt):
@@ -69,10 +66,7 @@ class ArgumentManager(object):
     @staticmethod
     def jobname2args(name, conf):
         area, dtstr = name.split("_", 1)
-        if "_" in dtstr:
-            top_dt = datetime.strptime(dtstr, "%Y%m%d_%H%M%S")
-        else:
-            top_dt = datetime.strptime(dtstr, "%Y%m%d")
+        top_dt = dtutil.shortstr2dt(dtstr)
         term = config.getdur(conf, "dag", "unit_term")
         end_dt = top_dt + term
         return conf, (top_dt, end_dt), area

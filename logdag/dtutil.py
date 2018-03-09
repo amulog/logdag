@@ -340,6 +340,13 @@ def shortstr(dt):
         return dt.strftime("%Y%m%d_%H%M%S")
 
 
+def shortstr2dt(dtstr):
+    if "_" in dtstr:
+        return datetime.datetime.strptime(dtstr, "%Y%m%d_%H%M%S")
+    else:
+        return datetime.datetime.strptime(dtstr, "%Y%m%d")
+
+
 def iter_term(whole_term, term_length, term_diff = None):
     # whole_term : tuple(datetime.datetime, datetime.datetime)
     # term_length : datetime.timedelta
