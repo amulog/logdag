@@ -51,7 +51,7 @@ def make_input(ns):
         timer = common.Timer("mkinput task", output = _logger)
         timer.start()
         for args in am:
-            makedag.make_input(*args)
+            makedag.make_input(args)
         timer.stop()
 
     def mkinput_mprocess(am, pal=1):
@@ -60,9 +60,9 @@ def make_input(ns):
         timer.start()
         l_process = [multiprocessing.Process(name = am.jobname(args),
                                              target = makedag.make_input,
-                                             args = args)
+                                             args = [args,])
                      for args in am]
-        common.mprocess_queueing(l_process, pal)
+        common.mprocess(l_process, pal)
         timer.stop()
 
     conf = open_logdag_config(ns.conf_path)
@@ -76,8 +76,8 @@ def make_input(ns):
     p = ns.parallel
     if p > 1:
         mkinput_mprocess(am, p)
-        pass
     else:
+        #mkinput_mprocess(am, p)
         mkinput_sprocess(am)
 
 
@@ -89,7 +89,7 @@ def make_dag(ns):
         timer = common.Timer("makedag task", output = _logger)
         timer.start()
         for args in am:
-            makedag.makedag_main(*args)
+            makedag.makedag_main(args)
         timer.stop()
 
     def makedag_mprocess(am, pal=1):
@@ -98,9 +98,9 @@ def make_dag(ns):
         timer.start()
         l_process = [multiprocessing.Process(name = am.jobname(args),
                                              target = makedag.makedag_main,
-                                             args = args)
+                                             args = [args,])
                      for args in am]
-        common.mprocess_queueing(l_process, pal)
+        common.mprocess(l_process, pal)
         timer.stop()
 
     conf = open_logdag_config(ns.conf_path)
@@ -114,7 +114,6 @@ def make_dag(ns):
     p = ns.parallel
     if p > 1:
         makedag_mprocess(am, p)
-        pass
     else:
         makedag_sprocess(am)
 
