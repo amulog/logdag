@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
+
 from . import dtutil
 from amulog import config
 from amulog import common
+
+DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
+                           "data/config.conf.default"))
 
 
 class ArgumentManager(object):
@@ -38,17 +43,17 @@ class ArgumentManager(object):
             temp.append("{0} - {1}".format(dt_range[0], dt_range[1]))
             temp.append(area)
             table.append(temp)
-        return common.cli_table(table)
+        return common.cli_table(table, spl = " | ")
 
     def dump(self):
         with open(self.args_filename, 'w') as f:
             f.write("\n".join([self.jobname(args) for args in self.l_args]))
 
     def load(self):
-        l_args = []
+        self.l_args = []
         with open(self.args_filename, 'r') as f:
             for line in f:
-                args = cls.jobname2args(line.rstrip(), self.conf)
+                args = self.jobname2args(line.rstrip(), self.conf)
                 self.l_args.append(args)
 
     @staticmethod
@@ -127,6 +132,18 @@ class ArgumentManager(object):
         common.mkdir(dirname)
         filename = cls.jobname(args)
         return "{0}/{1}".format(dirname, filename)
+
+
+def args2name(args):
+    return ArgumentManager.jobname(args)
+
+
+def name2args(name, conf):
+    return ArgumentManager.jobname2args(name, conf)
+
+
+def open_logdag_config(fp):
+    return config.open_config(fp, ex_defaults = [DEFAULT_CONFIG])
 
 
 def whole_term(conf, ld = None):
