@@ -12,10 +12,10 @@ from amulog import common
 _logger = logging.getLogger(__package__)
 
 def test_makedag(ns):
-    conf = arguments.open_logdag_config(ns.conf_path)
-
     from . import makedag
     from . import arguments
+    conf = arguments.open_logdag_config(ns)
+
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
     am.dump()
@@ -24,7 +24,7 @@ def test_makedag(ns):
 
 def make_args(ns):
     from . import arguments
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -54,7 +54,7 @@ def make_input(ns):
         common.mprocess(l_process, pal)
         timer.stop()
 
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -72,7 +72,7 @@ def make_input_stdin(ns):
     from . import makedag
     from . import arguments
 
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.init_dirs(conf)
@@ -107,7 +107,7 @@ def make_dag(ns):
         common.mprocess(l_process, pal)
         timer.stop()
 
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -125,7 +125,7 @@ def make_dag_stdin(ns):
     from . import makedag
     from . import arguments
 
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.init_dirs(conf)
@@ -140,7 +140,7 @@ def make_dag_stdin(ns):
 
 def show_args(ns):
     from . import arguments
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
     
     am = arguments.ArgumentManager(conf)
     try:
@@ -157,7 +157,7 @@ def show_args(ns):
 def show_list(ns):
     from . import arguments
     from . import showdag
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
     
     print(showdag.list_results(conf))
 
@@ -165,7 +165,7 @@ def show_list(ns):
 def show_results_sum(ns):
     from . import arguments
     from . import showdag
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     print(showdag.show_results_sum(conf))
 
@@ -173,7 +173,7 @@ def show_results_sum(ns):
 def show_netsize(ns):
     from . import arguments
     from . import showdag
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     print(showdag.show_netsize_dist(conf))
 
@@ -181,7 +181,7 @@ def show_netsize(ns):
 def show_netsize_list(ns):
     from . import arguments
     from . import showdag
-    conf = arguments.open_logdag_config(ns.conf_path)
+    conf = arguments.open_logdag_config(ns)
 
     print(showdag.list_netsize(conf))
 

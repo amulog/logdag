@@ -150,13 +150,9 @@ def name2args(name, conf):
     return ArgumentManager.jobname2args(name, conf)
 
 
-def open_logdag_config(fp):
-    """
-    Args:
-        fp (str): filepath
-        logger (List): list of additional loggers
-    """
-    conf = config.open_config(fp, ex_defaults = [DEFAULT_CONFIG])
+def open_logdag_config(ns):
+    fp = ns.conf_path if ns is not None else None
+    conf = config.open_config(ns.conf_path, ex_defaults = [DEFAULT_CONFIG])
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
     config.set_common_logging(conf, logger = [_logger, am_logger], lv = lv)
