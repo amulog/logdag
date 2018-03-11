@@ -133,6 +133,11 @@ class ArgumentManager(object):
         filename = cls.jobname(args)
         return "{0}/{1}".format(dirname, filename)
 
+    def init_dirs(self, conf):
+        self.event_dir(conf)
+        self.evdef_dir(conf)
+        self.dag_dir(conf)
+
 
 def args2name(args):
     return ArgumentManager.jobname(args)

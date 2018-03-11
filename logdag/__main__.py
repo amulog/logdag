@@ -33,6 +33,7 @@ def make_args(ns):
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
+    am.init_dirs(conf)
     am.dump()
 
 
@@ -64,6 +65,7 @@ def make_input(ns):
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
+    am.init_dirs(conf)
     am.dump()
 
     p = ns.parallel
@@ -82,6 +84,7 @@ def make_input_stdin(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
+    am.init_dirs(conf)
     args = am.jobname2args(ns.argname, conf)
 
     timer = common.Timer("mkinput task for {0}".format(ns.argname),
@@ -119,6 +122,7 @@ def make_dag(ns):
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
+    am.init_dirs(conf)
     am.dump()
 
     p = ns.parallel
@@ -137,6 +141,7 @@ def make_dag_stdin(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
+    am.init_dirs(conf)
     args = am.jobname2args(ns.argname, conf)
 
     timer = common.Timer("makedag task for {0}".format(ns.argname),
