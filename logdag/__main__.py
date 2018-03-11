@@ -11,11 +11,8 @@ from amulog import common
 
 _logger = logging.getLogger(__package__)
 
-
 def test_makedag(ns):
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     from . import makedag
     from . import arguments
@@ -28,8 +25,6 @@ def test_makedag(ns):
 def make_args(ns):
     from . import arguments
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -60,8 +55,6 @@ def make_input(ns):
         timer.stop()
 
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -80,8 +73,6 @@ def make_input_stdin(ns):
     from . import arguments
 
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
     am.init_dirs(conf)
@@ -117,8 +108,6 @@ def make_dag(ns):
         timer.stop()
 
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -137,8 +126,6 @@ def make_dag_stdin(ns):
     from . import arguments
 
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     am = arguments.ArgumentManager(conf)
     am.init_dirs(conf)
@@ -154,8 +141,6 @@ def make_dag_stdin(ns):
 def show_args(ns):
     from . import arguments
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
     
     am = arguments.ArgumentManager(conf)
     try:
@@ -173,8 +158,6 @@ def show_list(ns):
     from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
     
     print(showdag.list_results(conf))
 
@@ -183,8 +166,6 @@ def show_results_sum(ns):
     from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     print(showdag.show_results_sum(conf))
 
@@ -193,8 +174,6 @@ def show_netsize(ns):
     from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     print(showdag.show_netsize_dist(conf))
 
@@ -203,8 +182,6 @@ def show_netsize_list(ns):
     from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
 
     print(showdag.list_netsize(conf))
 

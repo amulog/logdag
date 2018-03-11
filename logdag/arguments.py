@@ -9,6 +9,8 @@ from amulog import common
 
 DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
                            "data/config.conf.default"))
+_logger = logging.getLogger(__package__)
+_amulog_logger = logging.getLogger("amulog")
 
 
 class ArgumentManager(object):
@@ -148,7 +150,16 @@ def name2args(name, conf):
 
 
 def open_logdag_config(fp):
-    return config.open_config(fp, ex_defaults = [DEFAULT_CONFIG])
+    """
+    Args:
+        fp (str): filepath
+        logger (List): list of additional loggers
+    """
+    conf = config.open_config(fp, ex_defaults = [DEFAULT_CONFIG])
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf, logger = [_logger, am_logger], lv = lv)
+    return conf
 
 
 def whole_term(conf, ld = None):
