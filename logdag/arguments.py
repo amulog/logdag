@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import logging
 
 from . import dtutil
 from amulog import config
