@@ -70,8 +70,25 @@ def make_input(ns):
     if p > 1:
         mkinput_mprocess(am, p)
     else:
-        #mkinput_mprocess(am, p)
         mkinput_sprocess(am)
+
+
+def make_input_stdin(ns):
+    from . import makedag
+    from . import arguments
+
+    conf = arguments.open_logdag_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+
+    am = arguments.ArgumentManager(conf)
+    args = am.jobname2args(ns.argname, conf)
+
+    timer = common.Timer("mkinput task for {0}".format(ns.argname),
+                         output = _logger)
+    timer.start()
+    makedag.make_input(args)
+    timer.stop()
 
 
 def make_dag(ns):
@@ -167,6 +184,26 @@ def show_results_sum(ns):
     print(showdag.show_results_sum(conf))
 
 
+def show_netsize(ns):
+    from . import arguments
+    from . import showdag
+    conf = arguments.open_logdag_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+
+    print(showdag.show_netsize_dist(conf))
+
+
+def show_netsize_list(ns):
+    from . import arguments
+    from . import showdag
+    conf = arguments.open_logdag_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+
+    print(showdag.list_netsize(conf))
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -193,11 +230,16 @@ DICT_ARGSET = {
     "make-input": ["Generate input time-series for pc algorithm",
                    [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
                    make_input],
+    "make-input-stdin": ["make-input interface for pipeline processing",
+                         [OPT_CONFIG, OPT_DEBUG,
+                          [["argname"],
+                           {"metavar": "TASKNAME", "action": "store",
+                            "help": "argument name"}]],
+                         make_input_stdin],
     "make-dag": ["Generate causal DAGs",
                    [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
                    make_dag],
-    "make-dag-stdin": ["Generate causal DAGs for an argument given in stdin. "
-                       "Use with dag.args_fn and pipeline.",
+    "make-dag-stdin": ["make-dag interface for pipeline processing",
                        [OPT_CONFIG, OPT_DEBUG,
                         [["argname"],
                          {"metavar": "TASKNAME", "action": "store",
@@ -212,12 +254,19 @@ DICT_ARGSET = {
     "show-results-sum": ["Show abstracted results of DAG generation",
                          [OPT_CONFIG, OPT_DEBUG],
                          show_results_sum],
+    "show-netsize": ["Show distribution of connected subgraphs in DAGs",
+                     [OPT_CONFIG, OPT_DEBUG],
+                     show_netsize],
+    "show-netsize-list": ["Show connected subgraphs in every DAG",
+                          [OPT_CONFIG, OPT_DEBUG],
+                          show_netsize_list],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
                             for key, val in DICT_ARGSET.items()])
 USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
-         "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS
+         "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
+    "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0])
 
 if __name__ == "__main__":
     if len(sys.argv) < 1:

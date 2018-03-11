@@ -5,6 +5,7 @@
 import sys
 import pickle
 import networkx as nx
+from collections import defaultdict
 
 from . import arguments
 from amulog import common
@@ -18,6 +19,7 @@ class LogDAG():
 
     def __init__(self, args, graph = None):
         self.args = args
+        self.name = arguments.args2name(self.args)
         self.graph = graph
         self._evts_obj = None
         self._evmap_obj = None
@@ -58,7 +60,8 @@ class LogDAG():
     def number_of_edges(self, graph = None):
         if graph is None:
             graph = self.graph
-        temp_graph = nx.Graph(graph)
+        #temp_graph = nx.Graph(graph)
+        temp_graph = graph.to_undirected()
         return temp_graph.number_of_edges()
 
     def node_info(self, node):
@@ -128,6 +131,12 @@ class LogDAG():
                 g_diff.add_edge(*edge)
         return g_same, g_diff
 
+    def connected_subgraphs(self, graph = None):
+        if graph is None:
+            graoh = self.graph
+        temp_graph = graph.to_undirected()
+        return nx.connected_components(temp_graph)
+
 
 # common functions
 
@@ -146,6 +155,9 @@ def iter_results(conf, src_dir = None, area = None):
             yield r
 
 
+
+
+
 # functions for presentation
 
 def list_results(conf, src_dir = None):
@@ -155,7 +167,7 @@ def list_results(conf, src_dir = None):
         c, dt_range, area = r.args
         table.append([str(dt_range[0]), str(area),
                       str(r.number_of_nodes()), str(r.number_of_edges()),
-                      arguments.args2name(r.args)])
+                      r.name])
     return common.cli_table(table)
 
 
@@ -191,4 +203,32 @@ def show_results_sum(conf, src_dir = None):
                   fmt_ratio(100.0 * nodidiff_num / edge_num)])
     table.append(["number of all edges", fmt_int(edge_num), ""])
     return common.cli_table(table, align = "right")
+
+
+def list_netsize(conf):
+    l_buf = []
+    src_dir = conf.get("dag", "output_dir")
+    for r in iter_results(conf):
+        d_size = defaultdict(int)
+        for net in r.connected_subgraphs():
+            d_size[len(net)] += 1
+        buf = []
+        for size, cnt in sorted(d_size.items(), reverse = True):
+            if cnt == 1:
+                buf.append(str(size))
+            else:
+                buf.append("{0}x{1}".format(size, cnt))
+        l_buf.append("{0} : {1}".format(r.name, ", ".join(buf)))
+    return "\n".join(l_buf)
+
+
+def show_netsize_dist(conf):
+    l_buf = []
+    src_dir = conf.get("dag", "output_dir")
+    d_size = defaultdict(int)
+    for r in iter_results(conf):
+        for net in r.connected_subgraphs():
+            d_size[len(net)] += 1
+    return "\n".join(["{0} {1}".format(size, cnt)
+                      for size, cnt in d_size.items()])
 
