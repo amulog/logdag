@@ -67,20 +67,52 @@ def discretize(l_dt, l_term, dt_range, binarize):
         np.array
     """
 
+    top_dt, end_dt = dt_range
     a_ret = np.zeros(len(l_term), dtype=int)
 
-    # generate l_cp: A list of (change point datetime, list of term indexes)
+#    # generate l_cp: A list of (change point datetime, list of term indexes)
+#    d_cp = defaultdict(list)
+#    keys = set(dt_range)
+#    _logger.debug("discretize term init")
+#    for term in l_term:
+#        keys = keys | set(term)
+#    _logger.debug("discretize term done")
+#    for k in keys:
+#        for idx, term in enumerate(l_term):
+#            if term[0] <= k < term[1]:
+#                d_cp[k].append(idx)
+#    _logger.debug("discretize key setup done")
+#    l_cp = sorted(d_cp.items(), key = lambda x: x[0])
+#    _logger.debug("discretize sort done")
+
+    # extract change points
     d_cp = defaultdict(list)
-    keys = set(dt_range)
-    for term in l_term:
-        if isinstance(term, datetime.datetime):
-            import pdb; pdb.set_trace()
-        keys = keys | set(term)
-    for k in keys:
-        for idx, term in enumerate(l_term):
-            if term[0] <= k < term[1]:
-                d_cp[k].append(idx)
-    l_cp = sorted(d_cp.items(), key = lambda x: x[0])
+    # test top_dt
+    for idx, term in enumerate(l_term):
+        if term[0] <= top_dt < term[1]:
+            d_cp[top_dt].append((idx, True))
+    # test both ends of terms
+    for idx, term in enumerate(l_term):
+        if term[0] > top_dt:
+            d_cp[term[0]].append((idx, True))
+        if end_dt >= term[1]:
+            d_cp[term[1]].append((idx, False))
+    # test top_dt
+    for idx, term in enumerate(l_term):
+        if term[0] <= end_dt < term[1]:
+            d_cp[end_dt].append((idx, False))
+
+    # generate mapped change points
+    l_cp = []
+    temp_idxs = set()
+    for dt, changes in sorted(d_cp.items(), key = lambda x: x[0]):
+        for idx, flag in changes:
+            if flag:
+                temp_idxs.add(idx)
+            else:
+                temp_idxs.remove(idx)
+        l_cp.append((dt, tuple(temp_idxs)))
+    assert len(temp_idxs) == 0
 
     # iteration does not use last component (uniquely used afterward)
     iterobj = zip(l_cp[:-1], l_cp[1:])
