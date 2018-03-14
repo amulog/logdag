@@ -134,6 +134,20 @@ class EventDefinitionMap(object):
             # NotImplemented
             return "({0})".format(string)
 
+    def search_event(self, gid, host):
+        ret = []
+        for eid, evdef in self._emap.items():
+            if evdef.gid == gid and evdef.host == host:
+                ret.append(eid)
+        if len(ret) > 1:
+            _logger.warning("multiple events found for ({0},{1})".format(
+                gid, host))
+            return ret
+        elif len(ret) == 1:
+            return ret[0]
+        else:
+            return None
+
     def search_cond(self):
         return {key : getattr(self, key) for key in [self.gid_name, "host"]}
 
@@ -150,10 +164,10 @@ class EventDefinitionMap(object):
         return self._ermap[info]
 
     def iter_eid(self):
-        return self._emap.iterkeys()
+        return self._emap.keys()
 
     def iter_evdef(self):
-        return self._ermap.iterkeys()
+        return self._ermap.keys()
 
     def dump(self, args):
         fp = arguments.ArgumentManager.evdef_filepath(args)
@@ -428,4 +442,92 @@ def event2input(evts, method, binsize, bin_slide, dt_range, binarize):
                                              bin_slide, bin_radius, binarize)
         data[eid] = array
     return data
+
+
+# visualize functions
+
+def graph_filter(args, gid = None, host = None, binsize = None,
+                 conf_nofilter = None, dirname = "."):
+    conf, dt_range, area = args
+    if binsize is None:
+        binsize = config.getdur(conf, "dag", "ci_bin_size")
+    evts, evmap = get_event(args)
+
+    if conf_nofilter is None:
+        gid_name = conf.get("dag", "event_gid")
+        evmap2 = EventDefinitionMap(gid_name)
+        evts2 = EventTimeSeries(dt_range)
+
+        from amulog import log_db
+        ld = log_db.LogData(conf)
+        if gid_name == "ltid":
+            iterobj = ld.whole_host_lt(dt_range[0], dt_range[1], area)
+        elif gid_name == "ltgid":
+            iterobj = ld.whole_host_ltg(dt_range[0], dt_range[1], area)
+        else:
+            raise NotImplementedError
+        for temp_host, temp_gid in iterobj:
+            d = {gid_name: temp_gid,
+                 "host": temp_host,
+                 "top_dt": dt_range[0],
+                 "end_dt": dt_range[1]}
+            iterobj = ld.iter_lines(**d)
+            l_dt = [line.dt for line in iterobj]
+            eid = evmap2.add_event(temp_gid, temp_host,
+                                   EventDefinitionMap.type_normal, None)
+            evts2.add(eid, l_dt)
+    else:
+        args_nofilter = conf_nofilter, dt_range, area
+        evts2, evmap2 = get_event(args_nofilter)
+
+    for evdef in evmap.iter_evdef():
+        if (gid is None or evdef.gid == gid) and \
+                (host is None or evdef.host == host):
+            eid1 = evmap.get_eid(evdef)
+            data1 = dtutil.discretize_sequential(evts[eid1], dt_range,
+                                                 binsize, False)
+            eid2 = evmap2.search_event(evdef.gid, evdef.host)
+            data2 = dtutil.discretize_sequential(evts2[eid2], dt_range,
+                                                 binsize, False)
+
+            output = "{0}/{1}_{2}_{3}.pdf".format(dirname,
+                                                  arguments.args2name(args),
+                                                  evdef.gid, evdef.host)
+            plot_ts_diff(data2, data1, output)
+
+
+def plot_ts_diff(data1, data2, output):
+    ylim = max(sum(data1), sum(data2))
+
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.dates
+
+    fig = plt.figure()
+    # a big subplot that is turned off axis lines and ticks
+    # only showing common labels
+    ax = fig.add_subplot(111)
+    ax.spines['top'].set_color('none')
+    ax.spines['bottom'].set_color('none')
+    ax.spines['left'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.tick_params(labelcolor='w', top=None, bottom=None,
+                   left=None, right=None)
+    #ax.tick_params(labelcolor='w', top='off', bottom='off',
+    #               left='off', right='off')
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Cumulative sum of time series")
+
+    ax1 = fig.add_subplot(211)
+    ax1.set_xlim(0, len(data1))
+    ax1.plot(range(len(data1)), np.cumsum(data1))
+    ax2 = fig.add_subplot(212)
+    ax2.set_xlim(0, len(data2))
+    ax2.plot(range(len(data2)), np.cumsum(data2))
+
+    plt.savefig(output)
+    plt.close()
+    print(output)
+
 

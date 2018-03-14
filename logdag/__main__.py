@@ -11,6 +11,7 @@ from amulog import common
 
 _logger = logging.getLogger(__package__)
 
+
 def test_makedag(ns):
     from . import makedag
     from . import arguments
@@ -186,6 +187,29 @@ def show_netsize_list(ns):
     print(showdag.list_netsize(conf))
 
 
+def plot_filter(ns):
+    from . import arguments
+    from . import log2event
+    conf = arguments.open_logdag_config(ns)
+    if ns.conf_nofilter is not None:
+        conf_nofilter = config.open_config(
+            ns.conf_nofilter, ex_defaults = [arguments.DEFAULT_CONFIG])
+    else:
+        conf_nofilter = None
+
+    args = arguments.name2args(ns.argname, conf)
+    gid = ns.gid
+    host = ns.host
+    if ns.binsize is None:
+        binsize = None
+    else:
+        binsize = config.str2dur(ns.binsize)
+    dirname = ns.dirname
+    log2event.graph_filter(args, gid = ns.gid, host = ns.host,
+                           binsize = binsize, conf_nofilter = conf_nofilter,
+                           dirname = ns.dirname)
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -198,6 +222,13 @@ OPT_PARALLEL = [["-p", "--parallel"],
                 {"dest": "parallel", "metavar": "PARALLEL",
                  "type": int, "default": 1,
                  "help": "number of processes in parallel"}]
+OPT_DIRNAME = [["-d", "--dirname"],
+               {"dest": "dirname", "metavar": "DIRNAME", "action": "store",
+                "default": ".",
+                "help": "directory name for output"}]
+ARG_ARGNAME = [["argname"],
+               {"metavar": "TASKNAME", "action": "store",
+                "help": "argument name"}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -222,10 +253,7 @@ DICT_ARGSET = {
                    [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
                    make_dag],
     "make-dag-stdin": ["make-dag interface for pipeline processing",
-                       [OPT_CONFIG, OPT_DEBUG,
-                        [["argname"],
-                         {"metavar": "TASKNAME", "action": "store",
-                          "help": "argument name"}]],
+                       [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_stdin],
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
@@ -242,6 +270,26 @@ DICT_ARGSET = {
     "show-netsize-list": ["Show connected subgraphs in every DAG",
                           [OPT_CONFIG, OPT_DEBUG],
                           show_netsize_list],
+    "plot-filter": ["Generate plots to compare filtered time-series",
+                    [OPT_CONFIG, OPT_DEBUG, OPT_DIRNAME, ARG_ARGNAME,
+                     [["-t", "--target", "--conf-nofilter"],
+                      {"dest": "conf_nofilter", "metavar": "NOFILTER_CONF",
+                       "action": "store", "default": None,
+                       "help": "config file without filtering"}],
+                     [["-g", "--gid"],
+                      {"dest": "gid", "metavar": "GID", "action": "store",
+                       "type": int, "default": None,
+                       "help": "log group identifier to search events"},],
+                     [["-n", "--host"],
+                      {"dest": "host", "metavar": "HOST", "action": "store",
+                       "default": None,
+                       "help": "hostname to search events"}],
+                     [["-b", "--binsize"],
+                      {"dest": "binsize", "metavar": "BINSIZE",
+                       "action": "store", "default": None,
+                       "help": "binsize (like 10s)"}],
+                     ],
+                    plot_filter],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
