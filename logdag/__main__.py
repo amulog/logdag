@@ -210,6 +210,24 @@ def plot_filter(ns):
                            dirname = ns.dirname)
 
 
+def plot_discretize(ns):
+    from . import arguments
+    from . import log2event
+    conf = arguments.open_logdag_config(ns)
+
+    args = arguments.name2args(ns.argname, conf)
+    gid = ns.gid
+    host = ns.host
+    if ns.binsize is None:
+        binsize = None
+    else:
+        binsize = config.str2dur(ns.binsize)
+    dirname = ns.dirname
+    log2event.graph_dis(args, gid = ns.gid, host = ns.host,
+                        binsize = binsize,
+                        dirname = ns.dirname)
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -226,6 +244,18 @@ OPT_DIRNAME = [["-d", "--dirname"],
                {"dest": "dirname", "metavar": "DIRNAME", "action": "store",
                 "default": ".",
                 "help": "directory name for output"}]
+OPT_GID = [["-g", "--gid"],
+           {"dest": "gid", "metavar": "GID", "action": "store",
+            "type": int, "default": None,
+            "help": "log group identifier to search events"},]
+OPT_HOSTNAME = [["-n", "--host"],
+                {"dest": "host", "metavar": "HOST", "action": "store",
+                 "default": None,
+                 "help": "hostname to search events"}]
+OPT_BINSIZE = [["-b", "--binsize"],
+               {"dest": "binsize", "metavar": "BINSIZE",
+                "action": "store", "default": None,
+                "help": "binsize (like 10s)"}]
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
@@ -271,25 +301,17 @@ DICT_ARGSET = {
                           [OPT_CONFIG, OPT_DEBUG],
                           show_netsize_list],
     "plot-filter": ["Generate plots to compare filtered time-series",
-                    [OPT_CONFIG, OPT_DEBUG, OPT_DIRNAME, ARG_ARGNAME,
+                    [OPT_CONFIG, OPT_DEBUG, OPT_DIRNAME, OPT_BINSIZE,
+                     OPT_GID, OPT_HOSTNAME, ARG_ARGNAME,
                      [["-t", "--target", "--conf-nofilter"],
                       {"dest": "conf_nofilter", "metavar": "NOFILTER_CONF",
                        "action": "store", "default": None,
-                       "help": "config file without filtering"}],
-                     [["-g", "--gid"],
-                      {"dest": "gid", "metavar": "GID", "action": "store",
-                       "type": int, "default": None,
-                       "help": "log group identifier to search events"},],
-                     [["-n", "--host"],
-                      {"dest": "host", "metavar": "HOST", "action": "store",
-                       "default": None,
-                       "help": "hostname to search events"}],
-                     [["-b", "--binsize"],
-                      {"dest": "binsize", "metavar": "BINSIZE",
-                       "action": "store", "default": None,
-                       "help": "binsize (like 10s)"}],
-                     ],
+                       "help": "config file without filtering"}],],
                     plot_filter],
+    "plot-discretize": ["Generate plots to compare discretizing functions",
+                        [OPT_CONFIG, OPT_DEBUG, OPT_DIRNAME, OPT_BINSIZE,
+                         OPT_GID, OPT_HOSTNAME, ARG_ARGNAME],
+                        plot_discretize],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

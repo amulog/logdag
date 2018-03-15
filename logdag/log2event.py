@@ -496,9 +496,36 @@ def graph_filter(args, gid = None, host = None, binsize = None,
             plot_ts_diff(data2, data1, output)
 
 
-def plot_ts_diff(data1, data2, output):
-    ylim = max(sum(data1), sum(data2))
+def graph_dis(args, gid = None, host = None, binsize = None, dirname = "."):
+    conf, dt_range, area = args
+    if binsize is None:
+        binsize = config.getdur(conf, "dag", "ci_bin_size")
+    evts, evmap = get_event(args)
 
+    ci_bin_method = conf.get("dag", "ci_bin_method")
+    ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
+    ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
+    ci_func = conf.get("dag", "ci_func")
+    from . import makedag
+    binarize = makedag.is_binarize(ci_func)
+    
+    data = {}
+    for eid, l_dt in evts.items():
+        data[eid] = dtutil.discretize_sequential(l_dt, dt_range,
+                                                 binsize, False)
+    data2 = event2input(evts, ci_bin_method, ci_bin_size,
+                        ci_bin_diff, dt_range, binarize)
+
+    for key in evts:
+        evdef = evmap.evdef(key)
+        if (gid is None or evdef.gid == gid) and \
+                (host is None or evdef.host == host):
+            output = "{0}/{1}_{2}_{3}.pdf".format(
+                dirname, arguments.args2name(args), evdef.gid, evdef.host)
+            plot_dis(data[key], data2[key], output)
+
+
+def plot_ts_diff(data1, data2, output):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -525,6 +552,43 @@ def plot_ts_diff(data1, data2, output):
     ax2 = fig.add_subplot(212)
     ax2.set_xlim(0, len(data2))
     ax2.plot(range(len(data2)), np.cumsum(data2))
+
+    plt.savefig(output)
+    plt.close()
+    print(output)
+
+
+def plot_dis(data1, data2, output):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.dates
+
+    fig = plt.figure()
+    # a big subplot that is turned off axis lines and ticks
+    # only showing common labels
+    ax = fig.add_subplot(111)
+    ax.spines['top'].set_color('none')
+    ax.spines['bottom'].set_color('none')
+    ax.spines['left'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.tick_params(labelcolor='w', top=None, bottom=None,
+                   left=None, right=None)
+    #ax.tick_params(labelcolor='w', top='off', bottom='off',
+    #               left='off', right='off')
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Cumulative sum of time series")
+
+    ax1 = fig.add_subplot(211)
+    ax1.set_xlim(0, len(data1))
+    ax1.plot(range(len(data1)), np.cumsum(data1))
+    ax1.set_xlabel("Time")
+    ax1.set_ylabel("Cumulative sum of time series")
+    ax2 = fig.add_subplot(212)
+    ax2.set_xlim(0, len(data2))
+    ax2.plot(range(len(data2)), data2)
+    ax1.set_xlabel("Time")
+    ax1.set_ylabel("Value")
 
     plt.savefig(output)
     plt.close()
