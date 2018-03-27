@@ -139,6 +139,52 @@ def make_dag_stdin(ns):
     timer.stop()
 
 
+def make_dag_large(ns):
+    from . import makedag
+    from . import arguments
+
+    def makedag_large_sprocess(ll_args, am):
+        timer = common.Timer("makedag_large task", output = _logger)
+        timer.start()
+        for l_args in ll_args:
+            makedag.makedag_large(l_args)
+        timer.stop()
+
+    def makedag_large_mprocess(ll_args, am, pal=1):
+        import multiprocessing
+        timer = common.Timer("makedag_large task", output = _logger)
+        timer.start()
+        l_process = [multiprocessing.Process(name = am.jobname(l_args[0]),
+                                             target = makedag.makedag_large,
+                                             args = [l_args,])
+                     for l_args in ll_args]
+        common.mprocess(l_process, pal)
+        timer.stop()
+
+    conf = arguments.open_logdag_config(ns)
+
+    am = arguments.ArgumentManager(conf)
+    am.generate(arguments.all_args)
+    am.init_dirs(conf)
+    am.dump()
+
+    ll_args = []
+    length = ns.length
+    from itertools import zip_longest
+    for area in am.areas():
+        temp_l_args = sorted(am.args_in_area(area), key = lambda x: x[1][0])
+        for l_args in [l for l
+                       in zip_longest(*[iter(temp_l_args[::-1])] * length)]:
+            ll_args.append([a for a in l_args if a is not None][::-1])
+
+    p = ns.parallel
+    if p > 1:
+        makedag_large_mprocess(ll_args, am, p)
+    else:
+        makedag_large_sprocess(ll_args, am)
+
+
+
 def show_args(ns):
     from . import arguments
     conf = arguments.open_logdag_config(ns)
@@ -285,6 +331,13 @@ DICT_ARGSET = {
     "make-dag-stdin": ["make-dag interface for pipeline processing",
                        [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_stdin],
+    "make-dag-large": ["Generate causal DAGs from multiple terms",
+                       [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL,
+                        [["-l", "--length"],
+                         {"dest": "length", "metavar": "LENGTH",
+                          "action": "store", "type": int, "default": 1,
+                          "help": "number of unit terms"}],],
+                       make_dag_large],
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],

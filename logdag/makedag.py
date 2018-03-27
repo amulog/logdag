@@ -24,6 +24,51 @@ def makedag_main(args):
     evts, evmap = log2event.get_event(args)
     _logger.info("{0} nodes for pc input".format(len(evts)))
 
+    graph = estimate_dag(conf, evts, dt_range)
+
+    # record dag
+    ldag = showdag.LogDAG(args, graph)
+    ldag.dump()
+    _logger.info("makedag job done, output {0}".format(
+        arguments.ArgumentManager.dag_filepath(args)))
+    return ldag
+
+
+def make_input(args):
+    conf, dt_range, area = args
+    _logger.info("make_input job start ({0} - {1} in {2})".format(
+        dt_range[0], dt_range[1], area))
+
+    evts, evmap = log2event.get_event(args)
+    _logger.info("{0} nodes for pc input".format(len(evts)))
+    _logger.info("make_input job done")
+
+
+def makedag_large(l_args):
+    conf = l_args[0][0]
+    top_dt = min([args[1][0] for args in l_args])
+    end_dt = max([args[1][1] for args in l_args])
+    dt_range = (top_dt, end_dt)
+    area = l_args[0][2]
+
+    _logger.info("makedag_large job start ({0} - {1} in {2})".format(
+        dt_range[0], dt_range[1], area))
+
+    evts, evmap = log2event.merge_events(l_args, conf, dt_range, area)
+    _logger.info("{0} nodes for pc input".format(len(evts)))
+
+    graph = estimate_dag(conf, evts, dt_range)
+
+    # record dag
+    args = (conf, dt_range, area)
+    ldag = showdag.LogDAG(args, graph)
+    ldag.dump()
+    _logger.info("makedag_large job done, output {0}".format(
+        arguments.ArgumentManager.dag_filepath(args)))
+    return ldag
+
+
+def estimate_dag(conf, evts, dt_range):
     if len(evts) >= 2:
         # convert event set to pc algorithm input
         ci_bin_method = conf.get("dag", "ci_bin_method")
@@ -46,22 +91,7 @@ def makedag_main(args):
             len(evts)))
         graph = showdag.empty_dag()
 
-    # record dag
-    ldag = showdag.LogDAG(args, graph)
-    ldag.dump()
-    _logger.info("makedag job done, output {0}".format(
-        arguments.ArgumentManager.dag_filepath(args)))
-    return ldag
-
-
-def make_input(args):
-    conf, dt_range, area = args
-    _logger.info("make_input job start ({0} - {1} in {2})".format(
-        dt_range[0], dt_range[1], area))
-
-    evts, evmap = log2event.get_event(args)
-    _logger.info("{0} nodes for pc input".format(len(evts)))
-    _logger.info("make_input job done")
+    return graph
 
 
 def is_binarize(ci_func):

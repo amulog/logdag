@@ -52,20 +52,20 @@ class EventDefinitionMap(object):
         type_periodic_top (int): 1.
         type_periodic_end (int): 2.
         type_periodic_remainder (int): 3.
-        event_gid (str): A string to assign classifying criterion
-            of log messages. 1 of [ltgid, ltid].
+        type_mixed (int): 9.
     """
     type_normal = 0
     type_periodic_top = 1
     type_periodic_end = 2
     type_periodic_remainder = 3
+    type_mixed = 9
     l_attr = ["gid", "host"]
 
     def __init__(self, gid_name = "ltgid"):
         """
         Args:
-            event_gid (str): A string to assign classifying criterion
-                             of log messages. 1 of [ltgid, ltid].
+            gid_name (str): A string to assign classifying criterion
+                            of log messages. 1 of [ltgid, ltid].
         """
         assert gid_name in ("ltid", "ltgid")
         self.gid_name = gid_name
@@ -87,7 +87,8 @@ class EventDefinitionMap(object):
         else:
             return eid
 
-    def form_evdef(self, gid, host, type_id = 0, note = None):
+    @staticmethod
+    def form_evdef(gid, host, type_id = 0, note = None):
         d = {"type" : type_id,
              "note" : note,
              "gid" : gid,
@@ -96,17 +97,19 @@ class EventDefinitionMap(object):
 
     def add_event(self, gid, host, type_id = 0, note = None):
         evdef = self.form_evdef(gid, host, type_id, note)
+        return self.add_evdef(evdef)
 
+    def add_evdef(self, evdef):
         eid = self._next_eid()
         self._emap[eid] = evdef
         self._ermap[evdef] = eid
         return eid
 
     def has_eid(self, eid):
-        return self._emap.has_key(eid)
+        return eid in self._emap
 
-    def has_evdef(self, info):
-        return self._ermap.has_key(info)
+    def has_evdef(self, evdef):
+        return evdef in self._ermap
 
     def evdef(self, eid):
         return self._emap[eid]
@@ -192,15 +195,23 @@ class EventTimeSeries(UserDict):
         return self.data.items()
 
     def add(self, eid, l_dt):
-        self.data[eid] = l_dt
+        if eid in self.data:
+            assert isinstance(self.data[eid], list)
+            self.data[eid] += list(l_dt)
+        else:
+            self.data[eid] = list(l_dt)
 
-    def add_array(self, eid, array):
-        self.data[eid] = array
+    #def add_array(self, eid, array):
+    #    self.data[eid] = array
 
     @staticmethod
     def exists(args):
         fp = arguments.ArgumentManager.event_filepath(args)
         return os.path.exists(fp)
+
+    def sort(self):
+        for eid in self.data:
+            self.data[eid] = sorted(self.data[eid])
 
     def dump(self, args):
         fp = arguments.ArgumentManager.event_filepath(args)
@@ -442,6 +453,33 @@ def event2input(evts, method, binsize, bin_slide, dt_range, binarize):
                                              bin_slide, bin_radius, binarize)
         data[eid] = array
     return data
+
+
+def merge_events(l_args, conf, dt_range, area):
+    gid_name = conf.get("dag", "event_gid")
+    usefilter = conf.getboolean("dag", "usefilter")
+    evmap = EventDefinitionMap(gid_name)
+    evts = EventTimeSeries(dt_range)
+
+    for args in l_args:
+        temp_evts, temp_evmap = get_event(args)
+        for temp_eid, l_dt in temp_evts.items():
+            evdef = temp_evmap.evdef(temp_eid)
+            if evmap.has_evdef(evdef):
+                eid = evmap.get_eid(evdef)
+                evts.add(eid, l_dt)
+            elif evmap.search_event(evdef.gid, evdef.host):
+                new_evdef = evmap.form_evdef(evdef.gid, evdef.host,
+                                             type_id = evmap.type_mixed,
+                                             note = None)
+                eid = evmap.add_evdef(new_evdef)
+                evts.add(eid, l_dt)
+            else:
+                eid = evmap.add_evdef(evdef)
+                evts.add(eid, l_dt)
+    evts.sort()
+
+    return evts, evmap
 
 
 # visualize functions

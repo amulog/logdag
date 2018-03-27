@@ -36,6 +36,12 @@ class ArgumentManager(object):
         self.l_args = func(self.conf)
         self.evdef_dir(self.conf)
 
+    def areas(self):
+        return set([args[2] for args in self.l_args])
+
+    def args_in_area(self, area):
+        return [args for args in self.l_args if args[2] == area]
+
     def show(self):
         table = []
         table.append(["name", "datetime", "area"])
