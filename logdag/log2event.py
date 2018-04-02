@@ -460,9 +460,12 @@ def merge_events(l_args, conf, dt_range, area):
     usefilter = conf.getboolean("dag", "usefilter")
     evmap = EventDefinitionMap(gid_name)
     evts = EventTimeSeries(dt_range)
+    from amulog import log_db
+    ld = log_db.LogData(conf)
 
     for args in l_args:
-        temp_evts, temp_evmap = get_event(args)
+        _logger.debug("generating time-series data from db")
+        temp_evts, temp_evmap = log2event(conf, ld, dt_range, area)
         for temp_eid, l_dt in temp_evts.items():
             evdef = temp_evmap.evdef(temp_eid)
             if evmap.has_evdef(evdef):
@@ -478,6 +481,8 @@ def merge_events(l_args, conf, dt_range, area):
                 eid = evmap.add_evdef(evdef)
                 evts.add(eid, l_dt)
     evts.sort()
+    evts.dump(l_args[0])
+    evmap.dump(l_args[0])
 
     return evts, evmap
 
