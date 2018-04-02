@@ -77,7 +77,6 @@ class ArgumentManager(object):
             else:
                 return top_dt.strftime("%Y%m%d_%H%M%S")
 
-        print(args)
         conf, dt_range, area = args
         return "_".join([area, dt_filename(dt_range)])
 
