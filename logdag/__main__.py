@@ -163,26 +163,30 @@ def make_dag_large(ns):
 
     conf = arguments.open_logdag_config(ns)
 
-    am = arguments.ArgumentManager(conf)
-    am.generate(arguments.all_args)
-    am.init_dirs(conf)
-    am.dump()
+    temp_am = arguments.ArgumentManager(conf)
+    temp_am.generate(arguments.all_args)
 
     ll_args = []
     length = ns.length
     from itertools import zip_longest
-    for area in am.areas():
-        temp_l_args = sorted(am.args_in_area(area), key = lambda x: x[1][0])
+    for area in temp_am.areas():
+        temp_l_args = sorted(temp_am.args_in_area(area),
+                             key = lambda x: x[1][0])
         for l_args in [l for l
                        in zip_longest(*[iter(temp_l_args[::-1])] * length)]:
             ll_args.append([a for a in l_args if a is not None][::-1])
+
+    am = arguments.ArgumentManager(conf)
+    for l_args in ll_args:
+        am.add(l_args[0])
+    am.init_dirs(conf)
+    am.dump()
 
     p = ns.parallel
     if p > 1:
         makedag_large_mprocess(ll_args, am, p)
     else:
         makedag_large_sprocess(ll_args, am)
-
 
 
 def show_args(ns):

@@ -19,6 +19,7 @@ class ArgumentManager(object):
     def __init__(self, conf):
         self.conf = conf
         self.args_filename = conf.get("dag", "args_fn")
+        self.l_args = []
         if self.args_filename.strip() == "":
             confname = conf.get("general", "base_filename").split("/")[-1]
             self.args_filename = "args_{0}".format(confname)
@@ -34,7 +35,9 @@ class ArgumentManager(object):
 
     def generate(self, func):
         self.l_args = func(self.conf)
-        self.evdef_dir(self.conf)
+
+    def add(self, args):
+        self.l_args.append(args)
 
     def areas(self):
         return set([args[2] for args in self.l_args])
@@ -74,6 +77,7 @@ class ArgumentManager(object):
             else:
                 return top_dt.strftime("%Y%m%d_%H%M%S")
 
+        print(args)
         conf, dt_range, area = args
         return "_".join([area, dt_filename(dt_range)])
 
