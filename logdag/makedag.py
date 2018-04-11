@@ -68,6 +68,27 @@ def makedag_large(l_args):
     return ldag
 
 
+def makedag_small(l_args):
+    args, ext_dt_range = l_args
+    conf, dt_range, area = args
+
+    _logger.info("makedag_small job start ({0} - {1} in {2})".format(
+        ext_dt_range[0], ext_dt_range[1], area))
+
+    evts, evmap = log2event.extract_events(args, ext_dt_range)
+    _logger.info("{0} nodes for pc input".format(len(evts)))
+
+    graph = estimate_dag(conf, evts, ext_dt_range)
+
+    # record dag
+    args = (conf, dt_range, area)
+    ldag = showdag.LogDAG(args, graph)
+    ldag.dump()
+    _logger.info("makedag_small job done, output {0}".format(
+        arguments.ArgumentManager.dag_filepath(args)))
+    return ldag
+
+
 def estimate_dag(conf, evts, dt_range):
     if len(evts) >= 2:
         # convert event set to pc algorithm input

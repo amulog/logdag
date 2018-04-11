@@ -172,14 +172,14 @@ class EventDefinitionMap(object):
     def iter_evdef(self):
         return self._ermap.keys()
 
-    def dump(self, args):
-        fp = arguments.ArgumentManager.evdef_filepath(args)
+    def dump(self, args, load_org = False):
+        fp = arguments.ArgumentManager.evdef_filepath(args, load_org)
         obj = (self.gid_name, self._emap, self._ermap)
         with open(fp, "wb") as f:
             pickle.dump(obj, f)
 
-    def load(self, args):
-        fp = arguments.ArgumentManager.evdef_filepath(args)
+    def load(self, args, load_org = False):
+        fp = arguments.ArgumentManager.evdef_filepath(args, load_org)
         with open(fp, "rb") as f:
             obj = pickle.load(f)
         self.gid_name, self._emap, self._ermap = obj
@@ -213,35 +213,35 @@ class EventTimeSeries(UserDict):
         for eid in self.data:
             self.data[eid] = sorted(self.data[eid])
 
-    def dump(self, args):
-        fp = arguments.ArgumentManager.event_filepath(args)
+    def dump(self, args, load_org = False):
+        fp = arguments.ArgumentManager.event_filepath(args, load_org)
         obj = (self.data, self.dt_range)
         with open(fp, "wb") as f:
             pickle.dump(obj, f)
 
-    def load(self, args):
-        fp = arguments.ArgumentManager.event_filepath(args)
+    def load(self, args, load_org = False):
+        fp = arguments.ArgumentManager.event_filepath(args, load_org)
         with open(fp, "rb") as f:
             obj = pickle.load(f)
         self.data, self.dt_range = obj
 
 
-def get_event(args):
+def get_event(args, load_org = False):
     conf, dt_range, area = args
     if EventTimeSeries.exists(args):
         _logger.debug("using recorded time-series data")
         gid_name = conf.get("dag", "event_gid")
         evts = EventTimeSeries(dt_range)
         evmap = EventDefinitionMap(gid_name)
-        evts.load(args)
-        evmap.load(args)
+        evts.load(args, load_org)
+        evmap.load(args, load_org)
     else:
         _logger.debug("generating time-series data from db")
         from amulog import log_db
         ld = log_db.LogData(conf)
         evts, evmap = log2event(conf, ld, dt_range, area)
-        evts.dump(args)
-        evmap.dump(args)
+        evts.dump(args, load_org)
+        evmap.dump(args, load_org)
 
     return evts, evmap
 
@@ -460,12 +460,10 @@ def merge_events(l_args, conf, dt_range, area):
     usefilter = conf.getboolean("dag", "usefilter")
     evmap = EventDefinitionMap(gid_name)
     evts = EventTimeSeries(dt_range)
-    from amulog import log_db
-    ld = log_db.LogData(conf)
 
     for args in l_args:
         _logger.debug("generating time-series data from db")
-        temp_evts, temp_evmap = log2event(conf, ld, dt_range, area)
+        temp_evts, temp_evmap = get_event(args, load_org = True)
         for temp_eid, l_dt in temp_evts.items():
             evdef = temp_evmap.evdef(temp_eid)
             if evmap.has_evdef(evdef):
@@ -481,10 +479,32 @@ def merge_events(l_args, conf, dt_range, area):
                 eid = evmap.add_evdef(evdef)
                 evts.add(eid, l_dt)
     evts.sort()
-    evts.dump(l_args[0])
-    evmap.dump(l_args[0])
+    evts.dump(l_args[0], load_org = False)
+    evmap.dump(l_args[0], load_org = False)
 
     return evts, evmap
+
+
+def extract_events(args, ext_dt_range):
+    gid_name = conf.get("dag", "event_gid")
+    usefilter = conf.getboolean("dag", "usefilter")
+    evmap = EventDefinitionMap(gid_name)
+    evts = EventTimeSeries(dt_range)
+
+    temp_evts, temp_evmap = get_event(args, load_org = True)
+    for temp_eid, l_dt in temp_evts.items():
+        ext_l_dt = [dt for dt in l_dt
+                    if ext_dt_range[0] <= dt < ext_dt_range[1]]
+        if len(ext_l_dt) > 0:
+            evdef = temp_evmap.evdef(temp_edi)
+            eid = evmap.add_evdef(evdef)
+            evts.add(eid, ext_l_dt)
+
+    evts.dump(l_args[0], load_org = False)
+    evmap.dump(l_args[0], load_org = False)
+
+    return evts, evmap
+
 
 
 # visualize functions

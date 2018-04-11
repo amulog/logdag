@@ -189,6 +189,57 @@ def make_dag_large(ns):
         makedag_large_sprocess(ll_args, am)
 
 
+def make_dag_small(ns):
+    from . import makedag
+    from . import arguments
+    
+    def makedag_small_sprocess(l_args, am):
+        timer = common.Timer("makedag_small task", output = _logger)
+        timer.start()
+        for xargs in l_args:
+            makedag.makedag_small(xargs)
+        timer.stop()
+
+    def makedag_small_mprocess(l_args, am, pal=1):
+        import multiprocessing
+        timer = common.Timer("makedag_small task", output = _logger)
+        timer.start()
+        l_process = [multiprocessing.Process(name = am.jobname((xargs[0],
+                                                                xargs[1],
+                                                                xargs[3])),
+                                             target = makedag.makedag_small,
+                                             args = [xargs,])
+                     for xargs in l_args]
+        common.mprocess(l_process, pal)
+        timer.stop()
+
+    conf = arguments.open_logdag_config(ns)
+
+    temp_am = arguments.ArgumentManager(conf)
+    temp_am.generate(arguments.all_args)
+
+    am = arguments.ArgumentManager(conf)
+    l_args = []
+    diff = config.getdur(conf, "dag", "unit_diff")
+    spl = ns.spl
+    for args in temp_am:
+        top_dt = args[1][0]
+        ext_diff = diff / spl
+        l_dt_range = [(top_dt + i * diff, top_dt + (i + 1) * diff)
+                      for i in range(spl)]
+        for ext_dt_range in l_dt_range:
+            l_args.append((conf, ext_dt_range, dt_range, area))
+            am.add((conf, ext_dt_range, area))
+    am.init_dirs(conf)
+    am.dump()
+
+    p = ns.parallel
+    if p > 1:
+        makedag_small_mprocess(l_args, am, p)
+    else:
+        makedag_small_sprocess(l_args, am)
+
+
 def show_args(ns):
     from . import arguments
     conf = arguments.open_logdag_config(ns)
@@ -342,6 +393,14 @@ DICT_ARGSET = {
                           "action": "store", "type": int, "default": 1,
                           "help": "number of unit terms"}],],
                        make_dag_large],
+    "make-dag-small": ["Generate causal DAGs by dividing terms",
+                       [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL,
+                        [["-s", "--split"],
+                         {"dest": "spl", "metavar": "SPLIT",
+                          "action": "store", "type": int, "default": 1,
+                          "help": ("split unit terms "
+                                   "into times of given number")}],],
+                       make_dag_small],
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],

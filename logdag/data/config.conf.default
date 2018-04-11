@@ -78,6 +78,12 @@ evts_dir =
 # If empty, dag.output_dir is used with filename extended
 evmap_dir =
 
+# Event appearance / definition data for preprocessing
+# usually specify existing evts set
+# use for makedag-large or makedag-small
+evts_org_dir =
+evmap_org_dir = 
+
 # Found DAG object data
 output_dir = pc_output
 
