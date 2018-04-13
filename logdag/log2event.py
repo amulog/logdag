@@ -205,8 +205,8 @@ class EventTimeSeries(UserDict):
     #    self.data[eid] = array
 
     @staticmethod
-    def exists(args):
-        fp = arguments.ArgumentManager.event_filepath(args)
+    def exists(args, load_org = False):
+        fp = arguments.ArgumentManager.event_filepath(args, load_org)
         return os.path.exists(fp)
 
     def sort(self):
@@ -228,7 +228,7 @@ class EventTimeSeries(UserDict):
 
 def get_event(args, load_org = False):
     conf, dt_range, area = args
-    if EventTimeSeries.exists(args):
+    if EventTimeSeries.exists(args, load_org):
         _logger.debug("using recorded time-series data")
         gid_name = conf.get("dag", "event_gid")
         evts = EventTimeSeries(dt_range)
@@ -486,25 +486,25 @@ def merge_events(l_args, conf, dt_range, area):
 
 
 def extract_events(args, ext_dt_range):
+    conf, dt_range, area = args
     gid_name = conf.get("dag", "event_gid")
     usefilter = conf.getboolean("dag", "usefilter")
     evmap = EventDefinitionMap(gid_name)
-    evts = EventTimeSeries(dt_range)
+    evts = EventTimeSeries(ext_dt_range)
 
     temp_evts, temp_evmap = get_event(args, load_org = True)
     for temp_eid, l_dt in temp_evts.items():
         ext_l_dt = [dt for dt in l_dt
                     if ext_dt_range[0] <= dt < ext_dt_range[1]]
         if len(ext_l_dt) > 0:
-            evdef = temp_evmap.evdef(temp_edi)
+            evdef = temp_evmap.evdef(temp_eid)
             eid = evmap.add_evdef(evdef)
             evts.add(eid, ext_l_dt)
 
-    evts.dump(l_args[0], load_org = False)
-    evmap.dump(l_args[0], load_org = False)
+    evts.dump((args[0], ext_dt_range, args[2]), load_org = False)
+    evmap.dump((args[0], ext_dt_range, args[2]), load_org = False)
 
     return evts, evmap
-
 
 
 # visualize functions

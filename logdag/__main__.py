@@ -204,9 +204,7 @@ def make_dag_small(ns):
         import multiprocessing
         timer = common.Timer("makedag_small task", output = _logger)
         timer.start()
-        l_process = [multiprocessing.Process(name = am.jobname((xargs[0],
-                                                                xargs[1],
-                                                                xargs[3])),
+        l_process = [multiprocessing.Process(name = am.jobname((xargs[0])),
                                              target = makedag.makedag_small,
                                              args = [xargs,])
                      for xargs in l_args]
@@ -228,8 +226,8 @@ def make_dag_small(ns):
         l_dt_range = [(top_dt + i * diff, top_dt + (i + 1) * diff)
                       for i in range(spl)]
         for ext_dt_range in l_dt_range:
-            l_args.append((conf, ext_dt_range, dt_range, area))
-            am.add((conf, ext_dt_range, area))
+            l_args.append((args, ext_dt_range))
+            am.add((args[0], ext_dt_range, args[2]))
     am.init_dirs(conf)
     am.dump()
 
