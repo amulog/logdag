@@ -15,7 +15,7 @@ from . import period
 from amulog import config
 
 _logger = logging.getLogger(__package__)
-EvDef = namedtuple("EvDef", ["type", "note", "gid", "host"])
+EvDef = namedtuple("EvDef", ["gid", "host"])
 
 
 class EventDefinitionMap(object):
@@ -88,15 +88,13 @@ class EventDefinitionMap(object):
             return eid
 
     @staticmethod
-    def form_evdef(gid, host, type_id = 0, note = None):
-        d = {"type" : type_id,
-             "note" : note,
-             "gid" : gid,
+    def form_evdef(gid, host):
+        d = {"gid" : gid,
              "host" : host}
         return EvDef(**d)
 
-    def add_event(self, gid, host, type_id = 0, note = None):
-        evdef = self.form_evdef(gid, host, type_id, note)
+    def add_event(self, gid, host):
+        evdef = self.form_evdef(gid, host)
         return self.add_evdef(evdef)
 
     def add_evdef(self, evdef):
@@ -124,18 +122,7 @@ class EventDefinitionMap(object):
     def get_str(cls, evdef):
         string = ", ".join(["{0}={1}".format(key, getattr(evdef, key))
                 for key in cls.l_attr])
-        
-        if evdef.type == cls.type_normal:
-            return "[{0}]".format(string)
-        elif evdef.type == cls.type_periodic_top:
-            return "start[{0}]({1}sec)".format(string, evdef.note)
-        elif evdef.type == cls.type_periodic_end:
-            return "end[{0}]({1}sec)".format(string, evdef.note)
-        elif evdef.type == cls.type_periodic_remainder:
-            return "remain[{0}]({1}sec)".format(string, evdef.note)
-        else:
-            # NotImplemented
-            return "({0})".format(string)
+        return "[{0}]".format(string)
 
     def search_event(self, gid, host):
         ret = []
@@ -143,7 +130,7 @@ class EventDefinitionMap(object):
             if evdef.gid == gid and evdef.host == host:
                 ret.append(eid)
         if len(ret) > 1:
-            _logger.warning("multiple events found for ({0},{1})".format(
+            _logger.error("multiple events found for ({0},{1})".format(
                 gid, host))
             return ret
         elif len(ret) == 1:

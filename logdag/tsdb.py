@@ -280,6 +280,8 @@ class FilterLog():
 
 
 def log2ts(conf, dt_range):
+    _logger.info("make-tsdb job start ({0[0]} - {0[1]})".format(dt_range))
+    
     gid_name = conf.get("dag", "event_gid")
     usefilter = conf.getboolean("database_ts", "usefilter")
     top_dt, end_dt = dt_range
@@ -320,6 +322,8 @@ def log2ts(conf, dt_range):
 
         fl = FilterLog(dt_range, gid, host, stat, val)
         _logger.debug(str(fl))
+    
+    _logger.info("make-tsdb job done".format(dt_range))
 
 
 def apply_filter(conf, ld, l_dt, dt_range, evdef):
