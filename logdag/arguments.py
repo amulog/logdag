@@ -222,7 +222,7 @@ def all_terms(conf, term, diff):
     top_dt = w_top_dt
     while top_dt < w_end_dt:
         end_dt = top_dt + term
-        l_args.append(conf, (top_dt, end_dt))
+        l_args.append((conf, (top_dt, end_dt)))
         top_dt = top_dt + diff
     return l_args
 

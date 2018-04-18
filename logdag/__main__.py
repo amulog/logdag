@@ -54,7 +54,7 @@ def make_tsdb(ns):
     conf = arguments.open_logdag_config(ns)
     term = config.getdur(conf, "database_ts", "unit_term")
     diff = config.getdur(conf, "database_ts", "unit_diff")
-    l_args = all_terms(conf, term, diff)
+    l_args = arguments.all_terms(conf, term, diff)
 
     p = ns.parallel
     if p > 1:

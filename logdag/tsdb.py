@@ -15,7 +15,7 @@ _logger = logging.getLogger(__package__)
 
 class TimeSeriesDB():
 
-    def __init__(self, conf, edit, reset_db):
+    def __init__(self, conf, edit = False, reset_db = False):
         self.areafn = conf.get("database", "area_filename")
 
         db_type = conf.get("database_ts", "database")
