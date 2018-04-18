@@ -26,6 +26,7 @@ def make_tsdb(ns):
     from . import tsdb
 
     def processname(args):
+        from . import dtutil
         conf, dt_range = args
         top_dt, end_dt = dt_range
         if dtutil.is_intdate(top_dt) and dtutil.is_intdate(end_dt):
