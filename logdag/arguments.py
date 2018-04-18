@@ -213,3 +213,17 @@ def all_args(conf):
     return l_args
 
 
+def all_terms(conf, term, diff):
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    w_top_dt, w_end_dt = whole_term(conf, ld)
+
+    l_args = []
+    top_dt = w_top_dt
+    while top_dt < w_end_dt:
+        end_dt = top_dt + term
+        l_args.append(conf, (top_dt, end_dt))
+        top_dt = top_dt + diff
+    return l_args
+
+

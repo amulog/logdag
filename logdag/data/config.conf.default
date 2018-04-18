@@ -10,6 +10,40 @@ logging = auto.log
 import = 
 
 
+[database_ts]
+# you can use same db as that of amulog classified log database
+
+# Database management system to use
+# [sqlite3, mysql] is available
+# mysql : Require MySQL for PYTHON (MySQLdb) package
+database = sqlite3
+
+# timeseries database for sqlite3
+sqlite3_filename = log.db
+
+# Database hostname for mysql
+mysql_host = localhost
+
+# Database name for mysql
+mysql_dbname = logcausality
+
+# Mysql username
+mysql_user = test
+
+# Mysql user password
+mysql_passwd = test
+
+# Filtering redundant events with periodicity test before generating causality graph
+usefilter = false
+
+# Length of unit terms to generate tsdb
+unit_term = 24h
+
+# Length of time difference to generate tsdb
+unit_diff = 24h
+
+
+
 [dag]
 # IDs for grouping criterion of log messages to define DAG node
 # [ltgid, ltid] is available
@@ -86,9 +120,6 @@ evmap_org_dir =
 
 # Found DAG object data
 output_dir = pc_output
-
-# Filtering redundant events with periodicity test before generating causality graph
-usefilter = false
 
 
 [filter]

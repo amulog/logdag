@@ -14,7 +14,6 @@ _logger = logging.getLogger(__package__)
 
 def test_makedag(ns):
     from . import makedag
-    from . import arguments
     conf = arguments.open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
@@ -23,8 +22,48 @@ def test_makedag(ns):
     makedag.makedag_main(am[0])
 
 
+def make_tsdb(ns):
+    from . import tsdb
+
+    def processname(args):
+        conf, dt_range = args
+        top_dt, end_dt = dt_range
+        if dtutil.is_intdate(top_dt) and dtutil.is_intdate(end_dt):
+            return top_dt.strftime("%Y%m%d")
+        else:
+            return top_dt.strftime("%Y%m%d_%H%M%S")
+
+    def mk_tsdb_sprocess(l_args):
+        timer = common.Timer("mk-tsdb task", output = _logger)
+        timer.start()
+        for args in l_args:
+            tsdb.log2ts(*args)
+        timer.stop()
+
+    def mk_tsdb_mprocess(l_args, pal=1):
+        import multiprocessing
+        timer = common.Timer("mk-tsdb task", output = _logger)
+        timer.start()
+        l_process = [multiprocessing.Process(name = processname(args),
+                                             target = tsdb.log2ts,
+                                             args = args)
+                     for args in l_args]
+        common.mprocess(l_process, pal)
+        timer.stop()
+
+    conf = arguments.open_logdag_config(ns)
+    term = config.getdur(conf, "database_ts", "unit_term")
+    diff = config.getdur(conf, "database_ts", "unit_diff")
+    l_args = all_terms(conf, term, diff)
+
+    p = ns.parallel
+    if p > 1:
+        mk_tsdb_mprocess(l_args, p)
+    else:
+        mk_tsdb_sprocess(l_args)
+
+
 def make_args(ns):
-    from . import arguments
     conf = arguments.open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
@@ -35,7 +74,6 @@ def make_args(ns):
 
 def make_input(ns):
     from . import makedag
-    from . import arguments
 
     def mkinput_sprocess(am):
         timer = common.Timer("mkinput task", output = _logger)
@@ -71,7 +109,6 @@ def make_input(ns):
 
 def make_input_stdin(ns):
     from . import makedag
-    from . import arguments
 
     conf = arguments.open_logdag_config(ns)
 
@@ -88,7 +125,6 @@ def make_input_stdin(ns):
 
 def make_dag(ns):
     from . import makedag
-    from . import arguments
 
     def makedag_sprocess(am):
         timer = common.Timer("makedag task", output = _logger)
@@ -124,7 +160,6 @@ def make_dag(ns):
 
 def make_dag_stdin(ns):
     from . import makedag
-    from . import arguments
 
     conf = arguments.open_logdag_config(ns)
 
@@ -141,7 +176,6 @@ def make_dag_stdin(ns):
 
 def make_dag_large(ns):
     from . import makedag
-    from . import arguments
 
     def makedag_large_sprocess(ll_args, am):
         timer = common.Timer("makedag_large task", output = _logger)
@@ -191,7 +225,6 @@ def make_dag_large(ns):
 
 def make_dag_small(ns):
     from . import makedag
-    from . import arguments
     
     def makedag_small_sprocess(l_args, am):
         timer = common.Timer("makedag_small task", output = _logger)
@@ -241,7 +274,6 @@ def make_dag_small(ns):
 
 
 def show_args(ns):
-    from . import arguments
     conf = arguments.open_logdag_config(ns)
     
     am = arguments.ArgumentManager(conf)
@@ -257,7 +289,6 @@ def show_args(ns):
 
 
 def show_list(ns):
-    from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns)
     
@@ -265,7 +296,6 @@ def show_list(ns):
 
 
 def show_results_sum(ns):
-    from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns)
 
@@ -273,7 +303,6 @@ def show_results_sum(ns):
 
 
 def show_netsize(ns):
-    from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns)
 
@@ -281,7 +310,6 @@ def show_netsize(ns):
 
 
 def show_netsize_list(ns):
-    from . import arguments
     from . import showdag
     conf = arguments.open_logdag_config(ns)
 
@@ -289,7 +317,6 @@ def show_netsize_list(ns):
 
 
 def plot_filter(ns):
-    from . import arguments
     from . import log2event
     conf = arguments.open_logdag_config(ns)
     if ns.conf_nofilter is not None:
@@ -312,7 +339,6 @@ def plot_filter(ns):
 
 
 def plot_discretize(ns):
-    from . import arguments
     from . import log2event
     conf = arguments.open_logdag_config(ns)
 
@@ -368,6 +394,9 @@ DICT_ARGSET = {
     "test": ["Generate DAG",
              [OPT_CONFIG, OPT_DEBUG],
              test_makedag],
+    "make-tsdb": ["Generate time-series DB for make-dag input",
+                   [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
+                   make_tsdb],
     "make-args": ["Initialize arguments for pc algorithm",
                   [OPT_CONFIG, OPT_DEBUG],
                   make_args],
