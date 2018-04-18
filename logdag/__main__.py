@@ -73,55 +73,55 @@ def make_args(ns):
     am.dump()
 
 
-def make_input(ns):
-    from . import makedag
-
-    def mkinput_sprocess(am):
-        timer = common.Timer("mkinput task", output = _logger)
-        timer.start()
-        for args in am:
-            makedag.make_input(args)
-        timer.stop()
-
-    def mkinput_mprocess(am, pal=1):
-        import multiprocessing
-        timer = common.Timer("mkinput task", output = _logger)
-        timer.start()
-        l_process = [multiprocessing.Process(name = am.jobname(args),
-                                             target = makedag.make_input,
-                                             args = [args,])
-                     for args in am]
-        common.mprocess(l_process, pal)
-        timer.stop()
-
-    conf = arguments.open_logdag_config(ns)
-
-    am = arguments.ArgumentManager(conf)
-    am.generate(arguments.all_args)
-    am.init_dirs(conf)
-    am.dump()
-
-    p = ns.parallel
-    if p > 1:
-        mkinput_mprocess(am, p)
-    else:
-        mkinput_sprocess(am)
-
-
-def make_input_stdin(ns):
-    from . import makedag
-
-    conf = arguments.open_logdag_config(ns)
-
-    am = arguments.ArgumentManager(conf)
-    am.init_dirs(conf)
-    args = am.jobname2args(ns.argname, conf)
-
-    timer = common.Timer("mkinput task for {0}".format(ns.argname),
-                         output = _logger)
-    timer.start()
-    makedag.make_input(args)
-    timer.stop()
+#def make_input(ns):
+#    from . import makedag
+#
+#    def mkinput_sprocess(am):
+#        timer = common.Timer("mkinput task", output = _logger)
+#        timer.start()
+#        for args in am:
+#            makedag.make_input(args)
+#        timer.stop()
+#
+#    def mkinput_mprocess(am, pal=1):
+#        import multiprocessing
+#        timer = common.Timer("mkinput task", output = _logger)
+#        timer.start()
+#        l_process = [multiprocessing.Process(name = am.jobname(args),
+#                                             target = makedag.make_input,
+#                                             args = [args,])
+#                     for args in am]
+#        common.mprocess(l_process, pal)
+#        timer.stop()
+#
+#    conf = arguments.open_logdag_config(ns)
+#
+#    am = arguments.ArgumentManager(conf)
+#    am.generate(arguments.all_args)
+#    am.init_dirs(conf)
+#    am.dump()
+#
+#    p = ns.parallel
+#    if p > 1:
+#        mkinput_mprocess(am, p)
+#    else:
+#        mkinput_sprocess(am)
+#
+#
+#def make_input_stdin(ns):
+#    from . import makedag
+#
+#    conf = arguments.open_logdag_config(ns)
+#
+#    am = arguments.ArgumentManager(conf)
+#    am.init_dirs(conf)
+#    args = am.jobname2args(ns.argname, conf)
+#
+#    timer = common.Timer("mkinput task for {0}".format(ns.argname),
+#                         output = _logger)
+#    timer.start()
+#    makedag.make_input(args)
+#    timer.stop()
 
 
 def make_dag(ns):
@@ -158,120 +158,120 @@ def make_dag(ns):
     else:
         makedag_sprocess(am)
 
-
-def make_dag_stdin(ns):
-    from . import makedag
-
-    conf = arguments.open_logdag_config(ns)
-
-    am = arguments.ArgumentManager(conf)
-    am.init_dirs(conf)
-    args = am.jobname2args(ns.argname, conf)
-
-    timer = common.Timer("makedag task for {0}".format(ns.argname),
-                         output = _logger)
-    timer.start()
-    makedag.makedag_main(args)
-    timer.stop()
-
-
-def make_dag_large(ns):
-    from . import makedag
-
-    def makedag_large_sprocess(ll_args, am):
-        timer = common.Timer("makedag_large task", output = _logger)
-        timer.start()
-        for l_args in ll_args:
-            makedag.makedag_large(l_args)
-        timer.stop()
-
-    def makedag_large_mprocess(ll_args, am, pal=1):
-        import multiprocessing
-        timer = common.Timer("makedag_large task", output = _logger)
-        timer.start()
-        l_process = [multiprocessing.Process(name = am.jobname(l_args[0]),
-                                             target = makedag.makedag_large,
-                                             args = [l_args,])
-                     for l_args in ll_args]
-        common.mprocess(l_process, pal)
-        timer.stop()
-
-    conf = arguments.open_logdag_config(ns)
-
-    temp_am = arguments.ArgumentManager(conf)
-    temp_am.generate(arguments.all_args)
-
-    ll_args = []
-    length = ns.length
-    from itertools import zip_longest
-    for area in temp_am.areas():
-        temp_l_args = sorted(temp_am.args_in_area(area),
-                             key = lambda x: x[1][0])
-        for l_args in [l for l
-                       in zip_longest(*[iter(temp_l_args[::-1])] * length)]:
-            ll_args.append([a for a in l_args if a is not None][::-1])
-
-    am = arguments.ArgumentManager(conf)
-    for l_args in ll_args:
-        am.add(l_args[0])
-    am.init_dirs(conf)
-    am.dump()
-
-    p = ns.parallel
-    if p > 1:
-        makedag_large_mprocess(ll_args, am, p)
-    else:
-        makedag_large_sprocess(ll_args, am)
-
-
-def make_dag_small(ns):
-    from . import makedag
-    
-    def makedag_small_sprocess(l_args, am):
-        timer = common.Timer("makedag_small task", output = _logger)
-        timer.start()
-        for xargs in l_args:
-            makedag.makedag_small(xargs)
-        timer.stop()
-
-    def makedag_small_mprocess(l_args, am, pal=1):
-        import multiprocessing
-        timer = common.Timer("makedag_small task", output = _logger)
-        timer.start()
-        l_process = [multiprocessing.Process(name = am.jobname((xargs[0],
-                                                                xargs[1],
-                                                                xargs[3])),
-                                             target = makedag.makedag_small,
-                                             args = [xargs,])
-                     for xargs in l_args]
-        common.mprocess(l_process, pal)
-        timer.stop()
-
-    conf = arguments.open_logdag_config(ns)
-
-    temp_am = arguments.ArgumentManager(conf)
-    temp_am.generate(arguments.all_args)
-
-    am = arguments.ArgumentManager(conf)
-    l_args = []
-    diff = config.getdur(conf, "dag", "unit_diff")
-    spl = ns.spl
-    for args in temp_am:
-        top_dt = args[1][0]
-        ext_diff = diff / spl
-        l_dt_range = [(top_dt + i * diff, top_dt + (i + 1) * diff)
-                      for i in range(spl)]
-        for ext_dt_range in l_dt_range:
-            l_args.append((conf, ext_dt_range, dt_range, area))
-            am.add((conf, ext_dt_range, area))
-    am.init_dirs(conf)
-    am.dump()
-
-    p = ns.parallel
-    if p > 1:
-        makedag_small_mprocess(l_args, am, p)
-    else:
-        makedag_small_sprocess(l_args, am)
+#
+#def make_dag_stdin(ns):
+#    from . import makedag
+#
+#    conf = arguments.open_logdag_config(ns)
+#
+#    am = arguments.ArgumentManager(conf)
+#    am.init_dirs(conf)
+#    args = am.jobname2args(ns.argname, conf)
+#
+#    timer = common.Timer("makedag task for {0}".format(ns.argname),
+#                         output = _logger)
+#    timer.start()
+#    makedag.makedag_main(args)
+#    timer.stop()
+#
+#
+#def make_dag_large(ns):
+#    from . import makedag
+#
+#    def makedag_large_sprocess(ll_args, am):
+#        timer = common.Timer("makedag_large task", output = _logger)
+#        timer.start()
+#        for l_args in ll_args:
+#            makedag.makedag_large(l_args)
+#        timer.stop()
+#
+#    def makedag_large_mprocess(ll_args, am, pal=1):
+#        import multiprocessing
+#        timer = common.Timer("makedag_large task", output = _logger)
+#        timer.start()
+#        l_process = [multiprocessing.Process(name = am.jobname(l_args[0]),
+#                                             target = makedag.makedag_large,
+#                                             args = [l_args,])
+#                     for l_args in ll_args]
+#        common.mprocess(l_process, pal)
+#        timer.stop()
+#
+#    conf = arguments.open_logdag_config(ns)
+#
+#    temp_am = arguments.ArgumentManager(conf)
+#    temp_am.generate(arguments.all_args)
+#
+#    ll_args = []
+#    length = ns.length
+#    from itertools import zip_longest
+#    for area in temp_am.areas():
+#        temp_l_args = sorted(temp_am.args_in_area(area),
+#                             key = lambda x: x[1][0])
+#        for l_args in [l for l
+#                       in zip_longest(*[iter(temp_l_args[::-1])] * length)]:
+#            ll_args.append([a for a in l_args if a is not None][::-1])
+#
+#    am = arguments.ArgumentManager(conf)
+#    for l_args in ll_args:
+#        am.add(l_args[0])
+#    am.init_dirs(conf)
+#    am.dump()
+#
+#    p = ns.parallel
+#    if p > 1:
+#        makedag_large_mprocess(ll_args, am, p)
+#    else:
+#        makedag_large_sprocess(ll_args, am)
+#
+#
+#def make_dag_small(ns):
+#    from . import makedag
+#    
+#    def makedag_small_sprocess(l_args, am):
+#        timer = common.Timer("makedag_small task", output = _logger)
+#        timer.start()
+#        for xargs in l_args:
+#            makedag.makedag_small(xargs)
+#        timer.stop()
+#
+#    def makedag_small_mprocess(l_args, am, pal=1):
+#        import multiprocessing
+#        timer = common.Timer("makedag_small task", output = _logger)
+#        timer.start()
+#        l_process = [multiprocessing.Process(name = am.jobname((xargs[0],
+#                                                                xargs[1],
+#                                                                xargs[3])),
+#                                             target = makedag.makedag_small,
+#                                             args = [xargs,])
+#                     for xargs in l_args]
+#        common.mprocess(l_process, pal)
+#        timer.stop()
+#
+#    conf = arguments.open_logdag_config(ns)
+#
+#    temp_am = arguments.ArgumentManager(conf)
+#    temp_am.generate(arguments.all_args)
+#
+#    am = arguments.ArgumentManager(conf)
+#    l_args = []
+#    diff = config.getdur(conf, "dag", "unit_diff")
+#    spl = ns.spl
+#    for args in temp_am:
+#        top_dt = args[1][0]
+#        ext_diff = diff / spl
+#        l_dt_range = [(top_dt + i * diff, top_dt + (i + 1) * diff)
+#                      for i in range(spl)]
+#        for ext_dt_range in l_dt_range:
+#            l_args.append((conf, ext_dt_range, dt_range, area))
+#            am.add((conf, ext_dt_range, area))
+#    am.init_dirs(conf)
+#    am.dump()
+#
+#    p = ns.parallel
+#    if p > 1:
+#        makedag_small_mprocess(l_args, am, p)
+#    else:
+#        makedag_small_sprocess(l_args, am)
 
 
 def show_args(ns):

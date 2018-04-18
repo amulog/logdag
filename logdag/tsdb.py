@@ -193,10 +193,10 @@ class TimeSeriesDB():
         l_key = ["tid", "dt", "gid", "host"]
         l_cond = []
         for c in kwargs.keys():
-            if c == "top_dt":
+            if c == "dts":
                 l_cond.append(db_common.cond("dt", ">=", c))
                 args[c] = self.db.strftime(d_cond[c])
-            elif c == "end_dt":
+            elif c == "dte":
                 l_cond.append(db_common.cond("dt", "<", c))
                 args[c] = self.db.strftime(d_cond[c])
             elif c == "area":
@@ -261,6 +261,34 @@ class TimeSeriesDB():
         if None in (top_dtstr, end_dtstr):
             raise ValueError("No data found in DB")
         return self.db.datetime(top_dtstr), self.db.datetime(end_dtstr)
+
+    def whole_gid_host(self, **kwargs):
+        table_name = "ts"
+        l_key = ["gid", "host"]
+        l_cond = kwargs.keys()
+        args = {}
+        if "dts" in kwargs:
+            l_cond.append(db_common.cond("dt", ">=", "dts"))
+            args["dts"] = self.db.strftime(kwargs["dts"])
+        if "dte" in kwargs:
+            l_cond.append(db_common.cond("dt", "<", "dte"))
+            args["dte"] = self.db.strftime(kwargs["dte"])
+
+        area = kwargs["area"] if "area" in kwargs else None
+        if area is None or area == "all":
+            pass
+        elif area[:5] == "host_":
+            l_cond.append(db_common.cond("host", "=", "host"))
+            args["host"] = area[5:]
+        else:
+            temp_sql = self.db.select_sql(
+                "area", ["host"], [db_common.cond("area", "=", "area")])
+            l_cond.append(db_common.cond("host", "in", temp_sql, False))
+            args["area"] = area
+
+        sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
+        cursor = self.db.execute(sql, args)
+        return [(row[0], row[1]) for row in cursor]
 
 
 class FilterLog():
