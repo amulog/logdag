@@ -34,7 +34,7 @@ def make_tsdb(ns):
     p = ns.parallel
     if p > 1:
         for args in l_args:
-            tsdb.log2ts_pal(*args, pal = pal)
+            tsdb.log2ts_pal(*args, pal = p)
     else:
         for args in l_args:
             tsdb.log2ts(*args)
@@ -135,22 +135,22 @@ def make_dag(ns):
     else:
         makedag_sprocess(am)
 
-#
-#def make_dag_stdin(ns):
-#    from . import makedag
-#
-#    conf = arguments.open_logdag_config(ns)
-#
-#    am = arguments.ArgumentManager(conf)
-#    am.init_dirs(conf)
-#    args = am.jobname2args(ns.argname, conf)
-#
-#    timer = common.Timer("makedag task for {0}".format(ns.argname),
-#                         output = _logger)
-#    timer.start()
-#    makedag.makedag_main(args)
-#    timer.stop()
-#
+
+def make_dag_stdin(ns):
+    from . import makedag
+
+    conf = arguments.open_logdag_config(ns)
+
+    am = arguments.ArgumentManager(conf)
+    am.init_dirs(conf)
+    args = am.jobname2args(ns.argname, conf)
+
+    timer = common.Timer("makedag task for {0}".format(ns.argname),
+                         output = _logger)
+    timer.start()
+    makedag.makedag_main(args)
+    timer.stop()
+
 #
 #def make_dag_large(ns):
 #    from . import makedag
@@ -251,6 +251,13 @@ def make_dag(ns):
 #        makedag_small_sprocess(l_args, am)
 
 
+def show_filterlog(ns):
+    from . import tsdb
+    conf = arguments.open_logdag_config(ns)
+    d = parse_condition(ns.conditions)
+    print(tsdb.show_filterlog(conf, **d))
+
+
 def show_args(ns):
     conf = arguments.open_logdag_config(ns)
     
@@ -333,6 +340,35 @@ def plot_discretize(ns):
                         dirname = ns.dirname)
 
 
+def parse_condition(conditions):
+    """
+    Args:
+        conditions (list)
+    """
+    d = {}
+    for arg in conditions:
+        if not "=" in arg:
+            raise SyntaxError
+        key = arg.partition("=")[0]
+        if key == "gid":
+            d["gid"] = int(arg.partition("=")[-1])
+        elif key == "top_date":
+            date_string = arg.partition("=")[-1]
+            d["dts"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+        elif key == "end_date":
+            date_string = arg.partition("=")[-1]
+            d["dte"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+        elif key == "date":
+            date_string = arg.partition("=")[-1]
+            d["dts"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+            d["dte"] = d["dts"] + datetime.timedelta(days = 1)
+        elif key == "host":
+            d["host"] = arg.partition("=")[-1]
+        elif key == "area":
+            d["area"] = arg.partition("=")[-1]
+    return d
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -364,6 +400,12 @@ OPT_BINSIZE = [["-b", "--binsize"],
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
+ARG_DBSEARCH = [["conditions"],
+                {"metavar": "CONDITION", "nargs": "+",
+                 "help": ("Conditions to search log messages. "
+                          "Example: command gid=24 date=2012-10-10 ..., "
+                          "Keys: gid, date, top_date, end_date, "
+                          "host, area")}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -378,36 +420,39 @@ DICT_ARGSET = {
     "make-args": ["Initialize arguments for pc algorithm",
                   [OPT_CONFIG, OPT_DEBUG],
                   make_args],
-    "make-input": ["Generate input time-series for pc algorithm",
-                   [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
-                   make_input],
-    "make-input-stdin": ["make-input interface for pipeline processing",
-                         [OPT_CONFIG, OPT_DEBUG,
-                          [["argname"],
-                           {"metavar": "TASKNAME", "action": "store",
-                            "help": "argument name"}]],
-                         make_input_stdin],
+    #"make-input": ["Generate input time-series for pc algorithm",
+    #               [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
+    #               make_input],
+    #"make-input-stdin": ["make-input interface for pipeline processing",
+    #                     [OPT_CONFIG, OPT_DEBUG,
+    #                      [["argname"],
+    #                       {"metavar": "TASKNAME", "action": "store",
+    #                        "help": "argument name"}]],
+    #                     make_input_stdin],
     "make-dag": ["Generate causal DAGs",
                    [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
                    make_dag],
     "make-dag-stdin": ["make-dag interface for pipeline processing",
                        [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_stdin],
-    "make-dag-large": ["Generate causal DAGs from multiple terms",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL,
-                        [["-l", "--length"],
-                         {"dest": "length", "metavar": "LENGTH",
-                          "action": "store", "type": int, "default": 1,
-                          "help": "number of unit terms"}],],
-                       make_dag_large],
-    "make-dag-small": ["Generate causal DAGs by dividing terms",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL,
-                        [["-s", "--split"],
-                         {"dest": "spl", "metavar": "SPLIT",
-                          "action": "store", "type": int, "default": 1,
-                          "help": ("split unit terms "
-                                   "into times of given number")}],],
-                       make_dag_small],
+    #"make-dag-large": ["Generate causal DAGs from multiple terms",
+    #                   [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL,
+    #                    [["-l", "--length"],
+    #                     {"dest": "length", "metavar": "LENGTH",
+    #                      "action": "store", "type": int, "default": 1,
+    #                      "help": "number of unit terms"}],],
+    #                   make_dag_large],
+    #"make-dag-small": ["Generate causal DAGs by dividing terms",
+    #                   [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL,
+    #                    [["-s", "--split"],
+    #                     {"dest": "spl", "metavar": "SPLIT",
+    #                      "action": "store", "type": int, "default": 1,
+    #                      "help": ("split unit terms "
+    #                               "into times of given number")}],],
+    #                   make_dag_small],
+    "show-filterlog": ["Show preprocessing log",
+                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
+                       show_filterlog],
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],

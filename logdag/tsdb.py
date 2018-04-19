@@ -566,4 +566,22 @@ def revert_event(a_cnt, dt_range, binsize):
     return [top_dt + i * binsize for i, val in enumerate(a_cnt) if val > 0]
 
 
+# visualize functions
+
+def show_filterlog(conf, **kwargs):
+    td = TimeSeriesDB(conf)
+    buf = []
+    for fl in td.iter_filter(**kwargs):
+        buf.append(str(fl))
+    return "\n".join(buf)
+
+
+
+
+
+
+
+
+
+
 
