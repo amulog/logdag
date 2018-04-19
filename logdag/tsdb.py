@@ -336,7 +336,6 @@ def log2ts(conf, dt_range):
              "end_dt": end_dt}
         iterobj = ld.iter_lines(**d)
         l_dt = [line.dt for line in iterobj]
-        del iterobj
         _logger.debug("gid {0}, host {1}: {2} counts".format(gid, host,
                                                              len(l_dt)))
         assert len(l_dt) > 0
@@ -352,7 +351,6 @@ def log2ts(conf, dt_range):
                 td.add_line(dt, gid, host)
         td.add_filterlog(dt_range, gid, host, stat, val)
         td.commit()
-        del td
 
         fl = FilterLog(dt_range, gid, host, stat, val)
         _logger.debug(str(fl))
@@ -361,33 +359,6 @@ def log2ts(conf, dt_range):
 
 
 def log2ts_pal(conf, dt_range, pal = 1):
-
-    def log2ts_elem(conf, dt_range, gid, host):
-        name = "{0}_{1}_{2}".format(dtutil.shortstr(dt_range[0]), gid, host)
-        _logger.info("make-tsdb job start ({0})".format(name))
-        temp_ld = log_db.LogData(conf)
-        d = {gid_name: gid,
-             "host": host,
-             "top_dt": dt_range[0],
-             "end_dt": dt_range[1]}
-        iterobj = temp_ld.iter_lines(**d)
-        l_dt = [line.dt for line in iterobj]
-        del iterobj
-        _logger.debug("gid {0}, host {1}: {2} counts".format(gid, host,
-                                                             len(l_dt)))
-        assert len(l_dt) > 0
-
-        evdef = (gid, host)
-        stat, new_l_dt, val = apply_filter(conf, temp_ld, l_dt,
-                                           dt_range, evdef)
-        del temp_ld
-
-        fl = FilterLog(dt_range, gid, host, stat, val)
-        _logger.debug(str(fl))
-        _logger.info("make-tsdb job done ({0})".format(name))
-
-        return (gid, host, stat, new_l_dt, val)
-
     from amulog import common
     timer = common.Timer(
         "make-tsdb subtask ({0[0]} - {0[1]})".format(dt_range),
@@ -441,6 +412,32 @@ def log2ts_pal(conf, dt_range, pal = 1):
     #del td
     #timer.stop()
     #return
+
+
+def log2ts_elem(conf, dt_range, gid, host):
+    name = "{0}_{1}_{2}".format(dtutil.shortstr(dt_range[0]), gid, host)
+    _logger.info("make-tsdb job start ({0})".format(name))
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    d = {gid_name: gid,
+         "host": host,
+         "top_dt": dt_range[0],
+         "end_dt": dt_range[1]}
+    iterobj = ld.iter_lines(**d)
+    l_dt = [line.dt for line in iterobj]
+    del iterobj
+    _logger.debug("gid {0}, host {1}: {2} counts".format(gid, host,
+                                                         len(l_dt)))
+    assert len(l_dt) > 0
+
+    evdef = (gid, host)
+    stat, new_l_dt, val = apply_filter(conf, ld, l_dt, dt_range, evdef)
+
+    fl = FilterLog(dt_range, gid, host, stat, val)
+    _logger.debug(str(fl))
+    _logger.info("make-tsdb job done ({0})".format(name))
+
+    return (gid, host, stat, new_l_dt, val)
 
 
 def apply_filter(conf, ld, l_dt, dt_range, evdef):
