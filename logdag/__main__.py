@@ -24,44 +24,21 @@ def test_makedag(ns):
 
 def make_tsdb(ns):
     from . import tsdb
-
-    def processname(args):
-        from . import dtutil
-        conf, dt_range = args
-        top_dt, end_dt = dt_range
-        if dtutil.is_intdate(top_dt) and dtutil.is_intdate(end_dt):
-            return top_dt.strftime("%Y%m%d")
-        else:
-            return top_dt.strftime("%Y%m%d_%H%M%S")
-
-    def mk_tsdb_sprocess(l_args):
-        timer = common.Timer("mk-tsdb task", output = _logger)
-        timer.start()
-        for args in l_args:
-            tsdb.log2ts(*args)
-        timer.stop()
-
-    def mk_tsdb_mprocess(l_args, pal=1):
-        import multiprocessing
-        timer = common.Timer("mk-tsdb task", output = _logger)
-        timer.start()
-        l_process = [multiprocessing.Process(name = processname(args),
-                                             target = tsdb.log2ts,
-                                             args = args)
-                     for args in l_args]
-        common.mprocess(l_process, pal)
-        timer.stop()
-
     conf = arguments.open_logdag_config(ns)
     term = config.getdur(conf, "database_ts", "unit_term")
     diff = config.getdur(conf, "database_ts", "unit_diff")
     l_args = arguments.all_terms(conf, term, diff)
 
+    timer = common.Timer("mk-tsdb task", output = _logger)
+    timer.start()
     p = ns.parallel
     if p > 1:
-        mk_tsdb_mprocess(l_args, p)
+        for args in l_args:
+            tsdb.log2ts_pal(*args, pal = pal)
     else:
-        mk_tsdb_sprocess(l_args)
+        for args in l_args:
+            tsdb.log2ts(*args)
+    timer.stop()
 
 
 def make_args(ns):

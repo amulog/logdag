@@ -354,6 +354,69 @@ def log2ts(conf, dt_range):
     _logger.info("make-tsdb job done".format(dt_range))
 
 
+def log2ts_pal(conf, dt_range, pal = 1):
+
+    def processname(conf, dt_range, gid, host):
+        return "{0}_{1}_{2}".format(dtutil.shortstr(dt_range[0]), gid, host)
+
+    def log2ts_elem(queue, conf, dt_range, gid, host):
+        _logger.info("make-tsdb job start".format(dt_range))
+        temp_ld = log_db.LogData(conf)
+        d = {gid_name: gid,
+             "host": host,
+             "top_dt": dt_range[0],
+             "end_dt": dt_range[1]}
+        iterobj = temp_ld.iter_lines(**d)
+        l_dt = [line.dt for line in iterobj]
+        del iterobj
+        _logger.debug("gid {0}, host {1}: {2} counts".format(gid, host,
+                                                             len(l_dt)))
+        assert len(l_dt) > 0
+
+        evdef = (gid, host)
+        stat, new_l_dt, val = apply_filter(conf, ld, l_dt, dt_range, evdef)
+        queue.put((gid, host, stat, new_l_dt, val))
+
+        fl = FilterLog(dt_range, gid, host, stat, val)
+        _logger.debug(str(fl))
+        _logger.info("make-tsdb job done".format(dt_range))
+
+    timer = common.Timer(
+        "make-tsdb subtask ({0[0]} - {0[1]})".format(dt_range),
+        output = _logger)
+    timer.start()
+    
+    gid_name = conf.get("dag", "event_gid")
+    usefilter = conf.getboolean("database_ts", "usefilter")
+
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    if gid_name == "ltid":
+        iterobj = ld.whole_host_lt(dt_range[0], dt_range[1], "all")
+    elif gid_name == "ltgid":
+        iterobj = ld.whole_host_ltg(dt_range[0], dt_range[1], "all")
+    else:
+        raise NotImplementedError
+
+    import multiprocessing
+    l_args = [(conf, dt_range, gid, host) for host, gid in iterobj]
+    l_queue = [multiprocessing.Queue() for args in l_args]
+    l_process = [multiprocessing.Process(name = processname(*args),
+                                         target = log2ts_elem,
+                                         args = [queue] + args)
+                 for args, queue in zip(l_args, l_queue)]
+    l_pq = list(zip(l_process, l_queue))
+
+    td = TimeSeriesDB(conf, edit = True)
+    for ret in common.mprocess_queueing(l_pq, pal):
+        gid, host, stat, new_l_dt, val = ret
+        for dt in new_l_dt:
+            td.add_line(dt, gid, host)
+        td.add_filterlog(dt_range, gid, host, stat, val)
+    td.commit() 
+    timer.stop()
+
+
 def apply_filter(conf, ld, l_dt, dt_range, evdef):
     """Apply filter fucntions for time-series based on given configuration.
     
