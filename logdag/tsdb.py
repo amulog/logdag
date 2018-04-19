@@ -420,6 +420,7 @@ def log2ts_elem(args):
     _logger.info("make-tsdb job start ({0})".format(name))
     from amulog import log_db
     ld = log_db.LogData(conf)
+    gid_name = conf.get("dag", "event_gid")
     d = {gid_name: gid,
          "host": host,
          "top_dt": dt_range[0],
