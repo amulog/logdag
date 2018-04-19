@@ -379,7 +379,7 @@ def log2ts_pal(conf, dt_range, pal = 1):
 
     import multiprocessing
     td = TimeSeriesDB(conf, edit = True)
-    l_args = [[conf, dt_range, gid, host] for host, gid in iterobj]
+    l_args = [(conf, dt_range, gid, host) for host, gid in iterobj]
     with multiprocessing.Pool(processes = pal) as pool:
         for ret in pool.imap_unordered(log2ts_elem, l_args):
             gid, host, stat, new_l_dt, val = ret
@@ -414,7 +414,8 @@ def log2ts_pal(conf, dt_range, pal = 1):
     #return
 
 
-def log2ts_elem(conf, dt_range, gid, host):
+def log2ts_elem(args):
+    conf, dt_range, gid, host = args
     name = "{0}_{1}_{2}".format(dtutil.shortstr(dt_range[0]), gid, host)
     _logger.info("make-tsdb job start ({0})".format(name))
     from amulog import log_db
