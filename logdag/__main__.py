@@ -345,6 +345,7 @@ def parse_condition(conditions):
     Args:
         conditions (list)
     """
+    import datetime
     d = {}
     for arg in conditions:
         if not "=" in arg:

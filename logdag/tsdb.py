@@ -171,27 +171,28 @@ class TimeSeriesDB():
         self.db.execute(sql, d_val)
 
     def iter_ts(self, **kwargs):
-        if kwargs["area"] is None or kwargs["area"] == "all":
-            del kwargs["area"]
-        elif area[:5] == "host_":
-            assert not "host" in kwargs
-            d_cond["host"] = area[5:]
-            del kwargs["area"]
-        else:
-            d_cond["area"] = area
+        if "area" in kwargs:
+            if kwargs["area"] is None or kwargs["area"] == "all":
+                del kwargs["area"]
+            elif area[:5] == "host_":
+                assert not "host" in kwargs
+                kwargs["host"] = area[5:]
+                del kwargs["area"]
+            else:
+                kwargs["area"] = area
 
         if len(kwargs) == 0:
             raise ValueError("More than 1 argument should NOT be None")
 
-        for row in self._select_ts(["tid", "dt"], **kwargs):
-            tid = int(row[0])
-            dt = self.db.datetime(row[1])
+        for row in self._select_ts(**kwargs):
+            dt = self.db.datetime(row[0])
             yield dt
 
-    def _select_ts(self, l_key, **kwargs):
+    def _select_ts(self, **kwargs):
         table_name = "ts"
-        l_key = ["tid", "dt", "gid", "host"]
+        l_key = ["dt"]
         l_cond = []
+        args = {}
         for c in kwargs.keys():
             if c == "dts":
                 l_cond.append(db_common.cond("dt", ">=", c))
@@ -205,36 +206,38 @@ class TimeSeriesDB():
                 l_cond.append(db_common.cond("host", "in", sql, False))
             else:
                 l_cond.append(db_common.cond(c, "=", c))
+                args[c] = kwargs[c]
         sql = self.db.select_sql(table_name, l_key, l_cond)
         return self.db.execute(sql, args)
     
     def iter_filter(self, **kwargs):
-        if kwargs["area"] is None or kwargs["area"] == "all":
-            del kwargs["area"]
-        elif area[:5] == "host_":
-            assert not "host" in kwargs
-            d_cond["host"] = area[5:]
-            del kwargs["area"]
-        else:
-            d_cond["area"] = area
+        if "area" in kwargs:
+            if kwargs["area"] is None or kwargs["area"] == "all":
+                del kwargs["area"]
+            elif area[:5] == "host_":
+                assert not "host" in kwargs
+                kwargs["host"] = area[5:]
+                del kwargs["area"]
+            else:
+                kwargs["area"] = area
 
         if len(kwargs) == 0:
             raise ValueError("More than 1 argument should NOT be None")
 
-        for row in self._select_filter(["dt"], **kwargs):
-            qid = int(row[0])
-            dts = self.db.datetime(row[1])
-            dte = self.db.datetime(row[2])
-            gid = int(row[3])
-            host = row[4]
-            stat = row[5]
-            val = int(row[6])
+        for row in self._select_filter(**kwargs):
+            dts = self.db.datetime(row[0])
+            dte = self.db.datetime(row[1])
+            gid = int(row[2])
+            host = row[3]
+            stat = row[4]
+            val = int(row[5]) if row[5] is not None else None
             yield FilterLog((dts, dte), gid, host, stat, val)
 
-    def _select_filter(self, l_key, **kwargs):
-        table_name = "ts"
-        l_key = ["qid", "dts", "dte", "gid", "host", "stat", "val"]
+    def _select_filter(self, **kwargs):
+        table_name = "filter"
+        l_key = ["dts", "dte", "gid", "host", "stat", "val"]
         l_cond = []
+        args = {}
         for c in kwargs.keys():
             if c == "area":
                 sql = self.db.select_sql("area", ["host"],
@@ -242,6 +245,8 @@ class TimeSeriesDB():
                 l_cond.append(db_common.cond("host", "in", sql, False))
             else:
                 l_cond.append(db_common.cond(c, "=", c))
+                args[c] = kwargs[c]
+
         sql = self.db.select_sql(table_name, l_key, l_cond)
         return self.db.execute(sql, args)
 
@@ -342,8 +347,9 @@ def log2ts(conf, dt_range):
 
         # update database
         td = TimeSeriesDB(conf, edit = True)
-        for dt in new_l_dt:
-            td.add_line(dt, gid, host)
+        if new_l_dt is not None and len(new_l_dt) > 0:
+            for dt in new_l_dt:
+                td.add_line(dt, gid, host)
         td.add_filterlog(dt_range, gid, host, stat, val)
         td.commit()
         del td
@@ -374,13 +380,17 @@ def log2ts_pal(conf, dt_range, pal = 1):
         assert len(l_dt) > 0
 
         evdef = (gid, host)
-        stat, new_l_dt, val = apply_filter(conf, ld, l_dt, dt_range, evdef)
+        stat, new_l_dt, val = apply_filter(conf, temp_ld, l_dt,
+                                           dt_range, evdef)
+        del temp_ld
         queue.put((gid, host, stat, new_l_dt, val))
 
         fl = FilterLog(dt_range, gid, host, stat, val)
         _logger.debug(str(fl))
         _logger.info("make-tsdb job done".format(dt_range))
+        return
 
+    from amulog import common
     timer = common.Timer(
         "make-tsdb subtask ({0[0]} - {0[1]})".format(dt_range),
         output = _logger)
@@ -399,7 +409,7 @@ def log2ts_pal(conf, dt_range, pal = 1):
         raise NotImplementedError
 
     import multiprocessing
-    l_args = [(conf, dt_range, gid, host) for host, gid in iterobj]
+    l_args = [[conf, dt_range, gid, host] for host, gid in iterobj]
     l_queue = [multiprocessing.Queue() for args in l_args]
     l_process = [multiprocessing.Process(name = processname(*args),
                                          target = log2ts_elem,
@@ -410,11 +420,14 @@ def log2ts_pal(conf, dt_range, pal = 1):
     td = TimeSeriesDB(conf, edit = True)
     for ret in common.mprocess_queueing(l_pq, pal):
         gid, host, stat, new_l_dt, val = ret
-        for dt in new_l_dt:
-            td.add_line(dt, gid, host)
+        if new_l_dt is not None and len(new_l_dt) > 0:
+            for dt in new_l_dt:
+                td.add_line(dt, gid, host)
         td.add_filterlog(dt_range, gid, host, stat, val)
     td.commit() 
+    del td
     timer.stop()
+    return
 
 
 def apply_filter(conf, ld, l_dt, dt_range, evdef):
@@ -441,7 +454,7 @@ def apply_filter(conf, ld, l_dt, dt_range, evdef):
             pflag, remain, interval = filter_periodic(conf, ld, l_dt, dt_range,
                                                       evdef, method = method)
             if pflag:
-                return ("period", remain, int(interval))
+                return ("period", remain, int(interval.total_seconds()))
             else:
                 return ("none", l_dt, None)
         elif act == "linear":
@@ -456,7 +469,7 @@ def apply_filter(conf, ld, l_dt, dt_range, evdef):
             pflag, remain, interval = filter_periodic(conf, ld, l_dt, dt_range,
                                                       evdef, method = method)
             if pflag:
-                return ("period", remain, int(interval))
+                return ("period", remain, int(interval.total_seconds()))
             # linear
             lflag = filter_linear(conf, l_dt, dt_range)
             if lflag:
@@ -474,7 +487,7 @@ def apply_filter(conf, ld, l_dt, dt_range, evdef):
                                                       dt_range, evdef,
                                                       method = method)
             if pflag:
-                return ("period", remain, int(interval))
+                return ("period", remain, int(interval.total_seconds()))
             else:
                 return ("none", l_dt, None)
         else:
