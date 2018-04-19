@@ -362,11 +362,9 @@ def log2ts(conf, dt_range):
 
 def log2ts_pal(conf, dt_range, pal = 1):
 
-    def processname(conf, dt_range, gid, host):
-        return "{0}_{1}_{2}".format(dtutil.shortstr(dt_range[0]), gid, host)
-
-    def log2ts_elem(queue, conf, dt_range, gid, host):
-        _logger.info("make-tsdb job start".format(dt_range))
+    def log2ts_elem(conf, dt_range, gid, host):
+        name = "{0}_{1}_{2}".format(dtutil.shortstr(dt_range[0]), gid, host)
+        _logger.info("make-tsdb job start ({0})".format(name))
         temp_ld = log_db.LogData(conf)
         d = {gid_name: gid,
              "host": host,
@@ -383,12 +381,12 @@ def log2ts_pal(conf, dt_range, pal = 1):
         stat, new_l_dt, val = apply_filter(conf, temp_ld, l_dt,
                                            dt_range, evdef)
         del temp_ld
-        queue.put((gid, host, stat, new_l_dt, val))
 
         fl = FilterLog(dt_range, gid, host, stat, val)
         _logger.debug(str(fl))
-        _logger.info("make-tsdb job done".format(dt_range))
-        return
+        _logger.info("make-tsdb job done ({0})".format(name))
+
+        return (gid, host, stat, new_l_dt, val)
 
     from amulog import common
     timer = common.Timer(
@@ -409,25 +407,40 @@ def log2ts_pal(conf, dt_range, pal = 1):
         raise NotImplementedError
 
     import multiprocessing
-    l_args = [[conf, dt_range, gid, host] for host, gid in iterobj]
-    l_queue = [multiprocessing.Queue() for args in l_args]
-    l_process = [multiprocessing.Process(name = processname(*args),
-                                         target = log2ts_elem,
-                                         args = [queue] + args)
-                 for args, queue in zip(l_args, l_queue)]
-    l_pq = list(zip(l_process, l_queue))
-
     td = TimeSeriesDB(conf, edit = True)
-    for ret in common.mprocess_queueing(l_pq, pal):
-        gid, host, stat, new_l_dt, val = ret
-        if new_l_dt is not None and len(new_l_dt) > 0:
-            for dt in new_l_dt:
-                td.add_line(dt, gid, host)
-        td.add_filterlog(dt_range, gid, host, stat, val)
+    l_args = [[conf, dt_range, gid, host] for host, gid in iterobj]
+    with multiprocessing.Pool(processes = pal) as pool:
+        for ret in pool.imap_unordered(log2ts_elem, l_args):
+            gid, host, stat, new_l_dt, val = ret
+            if new_l_dt is not None and len(new_l_dt) > 0:
+                for dt in new_l_dt:
+                    td.add_line(dt, gid, host)
+            td.add_filterlog(dt_range, gid, host, stat, val)
+        pool.close()
+        pool.join()
     td.commit() 
-    del td
     timer.stop()
     return
+
+    #l_args = [[conf, dt_range, gid, host] for host, gid in iterobj]
+    #l_queue = [multiprocessing.Queue() for args in l_args]
+    #l_process = [multiprocessing.Process(name = processname(*args),
+    #                                     target = log2ts_elem,
+    #                                     args = [queue] + args)
+    #             for args, queue in zip(l_args, l_queue)]
+    #l_pq = list(zip(l_process, l_queue))
+
+    #td = TimeSeriesDB(conf, edit = True)
+    #for ret in common.mprocess_queueing(l_pq, pal):
+    #    gid, host, stat, new_l_dt, val = ret
+    #    if new_l_dt is not None and len(new_l_dt) > 0:
+    #        for dt in new_l_dt:
+    #            td.add_line(dt, gid, host)
+    #    td.add_filterlog(dt_range, gid, host, stat, val)
+    #td.commit() 
+    #del td
+    #timer.stop()
+    #return
 
 
 def apply_filter(conf, ld, l_dt, dt_range, evdef):
