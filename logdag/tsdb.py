@@ -308,7 +308,7 @@ class FilterLog():
         self.val = val
 
     def __str__(self):
-        return "{0}, gid={1}, host={2}: {3}[4]".format(
+        return "{0}, gid={1}, host={2}: {3}[{4}]".format(
             self.dt_range[0].date(), self.gid, self.host, self.stat, self.val)
 
 
