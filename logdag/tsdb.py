@@ -463,6 +463,7 @@ def apply_filter(conf, ld, l_dt, dt_range, evdef):
     if usefilter:
         act = conf.get("filter", "action")
         if act in ("remove", "replace"):
+            method = act
             pflag, remain, interval = filter_periodic(conf, ld, l_dt, dt_range,
                                                       evdef, method = method)
             if pflag:
@@ -539,7 +540,7 @@ def filter_periodic(conf, ld, l_dt, dt_range, evdef, method):
     gid_name = conf.get("dag", "event_gid")
     p_cnt = conf.getint("filter", "pre_count")
     p_term = config.getdur(conf, "filter", "pre_term")
-    
+
     # preliminary test
     if len(l_dt) < p_cnt:
         _logger.debug("time-series count too small, skip")
