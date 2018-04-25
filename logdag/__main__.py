@@ -115,11 +115,8 @@ def make_dag(ns):
         import multiprocessing
         timer = common.Timer("makedag task", output = _logger)
         timer.start()
-        l_process = [multiprocessing.Process(name = am.jobname(args),
-                                             target = makedag.makedag_main,
-                                             args = [args,])
-                     for args in am]
-        common.mprocess(l_process, pal)
+        with multiprocessing.Pool(processes = pal) as pool:
+            pool.map(makedag.makedag_main, am)
         timer.stop()
 
     conf = arguments.open_logdag_config(ns)
