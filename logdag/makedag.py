@@ -27,7 +27,7 @@ def makedag_main(args):
     _logger.info("{0} nodes for pc input".format(len(d_input)))
     evmap.dump(args)
 
-    graph = estimate_dag(conf, d_input)
+    graph = estimate_dag(conf, d_input, ci_func)
 
     # record dag
     ldag = showdag.LogDAG(args, graph)
