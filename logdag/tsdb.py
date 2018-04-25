@@ -83,6 +83,7 @@ class TimeSeriesDB():
         self.db.execute(sql)
 
         self._init_index()
+        self._init_area()
 
     def _init_index(self):
         l_table_name = self.db.get_table_names()
@@ -141,6 +142,11 @@ class TimeSeriesDB():
             }
             self.db.execute(sql, args)
         self.commit()
+
+    def _remove_area(self):
+        table_name = "area"
+        sql = self.db.delete_sql(table_name)
+        self.db.execute(sql)
 
     def commit(self):
         self.db.commit()
@@ -313,9 +319,12 @@ class FilterLog():
         self.val = val
 
     def __str__(self):
-        return "{0}: {1}[{2}]".format(
-            TimeSeriesDB.str_event(self.dt_range, self.gid, self.host),
-            self.stat, self.val)
+        ev_name = TimeSeriesDB.str_event(self.dt_range, self.gid, self.host)
+        if self.stat == "none":
+            stat_name = self.stat
+        else:
+            stat_name = "{0}[{1}]".format(self.stat, self.val)
+        return "{0}: {1}".format(ev_name, stat_name)
 
 
 def log2ts(conf, dt_range):
@@ -598,6 +607,12 @@ def revert_event(a_cnt, dt_range, binsize):
     return [top_dt + i * binsize for i, val in enumerate(a_cnt) if val > 0]
 
 
+def reload_area(conf):
+    td = TimeSeriesDB(conf, edit = True)
+    td._remove_area()
+    td._init_area()
+
+
 # visualize functions
 
 def show_event(conf, **kwargs):
@@ -608,8 +623,8 @@ def show_event(conf, **kwargs):
     td = TimeSeriesDB(conf)
 
     l_buf = []
-    for gid, host in td.whole_gid_host(**kwargs):
-        l_buf.append(td.str_event(self.dt_range, self.gid, self.host))
+    for gid, host in sorted(td.whole_gid_host(**kwargs), key = lambda x: x[0]):
+        l_buf.append(td.str_event(dt_range, gid, host))
     return "\n".join(l_buf)
 
 
