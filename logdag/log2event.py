@@ -439,6 +439,7 @@ def ts2input(conf, dt_range, area):
               "dte" : dt_range[1],
               "area" : area}
     for gid, host in td.whole_gid_host(**kwargs):
+        _logger.debug("load event {0}".format((gid, host)))
         ev_kwargs = {"dts" : dt_range[0],
                      "dte" : dt_range[1],
                      "gid" : gid,

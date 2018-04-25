@@ -270,7 +270,7 @@ class TimeSeriesDB():
     def whole_gid_host(self, **kwargs):
         table_name = "ts"
         l_key = ["gid", "host"]
-        l_cond = kwargs.keys()
+        l_cond = []
         args = {}
         if "dts" in kwargs:
             l_cond.append(db_common.cond("dt", ">=", "dts"))

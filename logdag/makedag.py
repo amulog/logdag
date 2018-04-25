@@ -22,7 +22,7 @@ def makedag_main(args):
 
     # generate event set and evmap, and apply preprocessing
     d_input, evmap = log2event.ts2input(conf, dt_range, area)
-    _logger.info("{0} nodes for pc input".format(len(evts)))
+    _logger.info("{0} nodes for pc input".format(len(d_input)))
     evmap.dump(args)
 
     graph = estimate_dag(conf, d_input)
