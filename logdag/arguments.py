@@ -112,32 +112,6 @@ class ArgumentManager(object):
             common.mkdir(dirname)
         return "{0}/{1}".format(dirname, filename)
 
-    #@staticmethod
-    #def event_dir(conf, load_org = False):
-    #    if load_org:
-    #        dirname = conf.get("dag", "evts_org_dir")
-    #    else:
-    #        dirname = conf.get("dag", "evts_dir")
-    #    if dirname == "":
-    #        dirname = conf.get("dag", "output_dir")
-    #    else:
-    #        common.mkdir(dirname)
-
-    #@classmethod
-    #def event_filepath(cls, args, load_org = False):
-    #    conf, dt_range, area = args
-    #    if load_org:
-    #        dirname = conf.get("dag", "evts_org_dir")
-    #    else:
-    #        dirname = conf.get("dag", "evts_dir")
-    #    filename = cls.jobname(args)
-    #    if dirname == "":
-    #        dirname = conf.get("dag", "output_dir")
-    #        filename = filename + "_ev"
-    #    else:
-    #        common.mkdir(dirname)
-    #    return "{0}/{1}".format(dirname, filename)
-
     @staticmethod
     def dag_dir(conf):
         dirname = conf.get("dag", "output_dir")
@@ -152,7 +126,6 @@ class ArgumentManager(object):
         return "{0}/{1}".format(dirname, filename)
 
     def init_dirs(self, conf):
-        #self.event_dir(conf)
         self.evdef_dir(conf)
         self.dag_dir(conf)
 
