@@ -424,7 +424,6 @@ class EventDefinitionMap(object):
 
 
 def ts2input(conf, dt_range, area):
-    import copy
     from . import tsdb
     gid_name = conf.get("dag", "event_gid")
     method = conf.get("dag", "ci_bin_method")
