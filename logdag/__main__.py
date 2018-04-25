@@ -41,6 +41,12 @@ def make_tsdb(ns):
     timer.stop()
 
 
+def reload_area(ns):
+    from . import tsdb
+    conf = arguments.open_logdag_config(ns)
+    tsdb.reload_area(conf)
+
+
 def make_args(ns):
     conf = arguments.open_logdag_config(ns)
 
@@ -371,6 +377,8 @@ def parse_condition(conditions):
             d["host"] = arg.partition("=")[-1]
         elif key == "area":
             d["area"] = arg.partition("=")[-1]
+        else:
+            d[key] = arg.partition("=")[-1]
     return d
 
 
@@ -440,6 +448,9 @@ DICT_ARGSET = {
     "make-dag-stdin": ["make-dag interface for pipeline processing",
                        [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_stdin],
+    "reload-area": ["Reload area definition for time-series DB",
+                    [OPT_CONFIG, OPT_DEBUG],
+                    reload_area],
     #"make-dag-large": ["Generate causal DAGs from multiple terms",
     #                   [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL,
     #                    [["-l", "--length"],
