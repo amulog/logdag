@@ -202,10 +202,10 @@ class TimeSeriesDB():
         for c in kwargs.keys():
             if c == "dts":
                 l_cond.append(db_common.cond("dt", ">=", c))
-                args[c] = self.db.strftime(d_cond[c])
+                args[c] = self.db.strftime(kwargs[c])
             elif c == "dte":
                 l_cond.append(db_common.cond("dt", "<", c))
-                args[c] = self.db.strftime(d_cond[c])
+                args[c] = self.db.strftime(kwargs[c])
             elif c == "area":
                 sql = self.db.select_sql("area", ["host"],
                         [db_common.cond(c, "=", c)])
