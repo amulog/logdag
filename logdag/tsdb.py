@@ -295,6 +295,11 @@ class TimeSeriesDB():
         cursor = self.db.execute(sql, args)
         return [(row[0], row[1]) for row in cursor]
 
+    @staticmethod
+    def str_event(dt_range, gid, host):
+        return "[{0}, gid={1}, host = {2}]".format(dt_range[0].date(),
+                                                   gid, host)
+
 
 class FilterLog():
 
@@ -308,8 +313,9 @@ class FilterLog():
         self.val = val
 
     def __str__(self):
-        return "{0}, gid={1}, host={2}: {3}[{4}]".format(
-            self.dt_range[0].date(), self.gid, self.host, self.stat, self.val)
+        return "{0}: {1}[{2}]".format(
+            TimeSeriesDB.str_event(self.dt_range, self.gid, self.host),
+            self.stat, self.val)
 
 
 def log2ts(conf, dt_range):
@@ -593,6 +599,19 @@ def revert_event(a_cnt, dt_range, binsize):
 
 
 # visualize functions
+
+def show_event(conf, **kwargs):
+    try:
+        dt_range = (kwargs["dts"], kwargs["dte"])
+    except KeyError:
+        sys.exit("An argument for datetime conditons is required")
+    td = TimeSeriesDB(conf)
+
+    l_buf = []
+    for gid, host in td.whole_gid_host(**kwargs):
+        l_buf.append(td.str_event(self.dt_range, self.gid, self.host))
+    return "\n".join(l_buf)
+
 
 def show_filterlog(conf, **kwargs):
     td = TimeSeriesDB(conf)

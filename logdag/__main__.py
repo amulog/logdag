@@ -248,6 +248,13 @@ def make_dag_stdin(ns):
 #        makedag_small_sprocess(l_args, am)
 
 
+def show_event(ns):
+    from . import tsdb
+    conf = arguments.open_logdag_config(ns)
+    d = parse_condition(ns.conditions)
+    print(tsdb.show_event(conf, **d))
+
+
 def show_filterlog(ns):
     from . import tsdb
     conf = arguments.open_logdag_config(ns)
@@ -448,6 +455,9 @@ DICT_ARGSET = {
     #                      "help": ("split unit terms "
     #                               "into times of given number")}],],
     #                   make_dag_small],
+    "show-event": ["Show events (list of gid and host)",
+                   [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
+                   show_event],
     "show-filterlog": ["Show preprocessing log",
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                        show_filterlog],
