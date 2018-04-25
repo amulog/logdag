@@ -209,7 +209,6 @@ def is_binarize(ci_func):
     else:
         raise NotImplementedError
 
-
 # visualize functions
 # should be moved to tsdb
 

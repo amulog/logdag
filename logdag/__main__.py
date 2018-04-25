@@ -118,6 +118,56 @@ def show_filterlog(ns):
     print(tsdb.show_filterlog(conf, **d))
 
 
+def make_dag_small(ns):
+    from . import makedag
+    from . import arguments
+    
+    def makedag_small_sprocess(l_args, am):
+        timer = common.Timer("makedag_small task", output = _logger)
+        timer.start()
+        for xargs in l_args:
+            makedag.makedag_small(xargs)
+        timer.stop()
+
+    def makedag_small_mprocess(l_args, am, pal=1):
+        import multiprocessing
+        timer = common.Timer("makedag_small task", output = _logger)
+        timer.start()
+        l_process = [multiprocessing.Process(name = am.jobname((xargs[0])),
+                                             target = makedag.makedag_small,
+                                             args = [xargs,])
+                     for xargs in l_args]
+        common.mprocess(l_process, pal)
+        timer.stop()
+
+    conf = arguments.open_logdag_config(ns)
+
+    temp_am = arguments.ArgumentManager(conf)
+    temp_am.generate(arguments.all_args)
+
+    am = arguments.ArgumentManager(conf)
+    l_args = []
+    diff = config.getdur(conf, "dag", "unit_diff")
+    spl = ns.spl
+    for args in temp_am:
+        top_dt = args[1][0]
+        ext_diff = diff / spl
+        l_dt_range = [(top_dt + i * diff, top_dt + (i + 1) * diff)
+                      for i in range(spl)]
+        for ext_dt_range in l_dt_range:
+            l_args.append((args, ext_dt_range))
+            am.add((args[0], ext_dt_range, args[2]))
+    am.init_dirs(conf)
+    am.dump()
+
+    p = ns.parallel
+    if p > 1:
+        makedag_small_mprocess(l_args, am, p)
+    else:
+        makedag_small_sprocess(l_args, am)
+>>>>>>> 79d3b5ea4220f5a51a4fbb5362afbe033ce2a378
+
+
 def show_args(ns):
     conf = arguments.open_logdag_config(ns)
     
