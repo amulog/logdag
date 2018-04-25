@@ -154,14 +154,12 @@ class EventDefinitionMap(object):
         self.gid_name, self._emap, self._ermap = obj
 
 
-def ts2input(conf, dt_range, area):
+def ts2input(conf, dt_range, area, binarize):
     from . import tsdb
     gid_name = conf.get("dag", "event_gid")
     method = conf.get("dag", "ci_bin_method")
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
-    ci_func = conf.get("dag", "ci_func")
-    binarize = is_binarize(ci_func)
     td = tsdb.TimeSeriesDB(conf)
     evmap = EventDefinitionMap(gid_name)
 
@@ -196,18 +194,6 @@ def ts2input(conf, dt_range, area):
 
     return d_input, evmap
 
-
-def is_binarize(ci_func):
-    if ci_func == "fisherz":
-        return False
-    elif ci_func == "fisherz_bin":
-        return True
-    elif ci_func == "gsq":
-        return True
-    elif ci_func == "gsq_rlib":
-        return True
-    else:
-        raise NotImplementedError
 
 # visualize functions
 # should be moved to tsdb

@@ -20,8 +20,10 @@ def makedag_main(args):
     _logger.info("makedag job start ({0} - {1} in {2})".format(
         dt_range[0], dt_range[1], area))
 
+    ci_func = conf.get("dag", "ci_func")
+    binarize = is_binarize(ci_func)
     # generate event set and evmap, and apply preprocessing
-    d_input, evmap = log2event.ts2input(conf, dt_range, area)
+    d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
     _logger.info("{0} nodes for pc input".format(len(d_input)))
     evmap.dump(args)
 
@@ -35,7 +37,7 @@ def makedag_main(args):
     return ldag
 
 
-def estimate_dag(conf, d_input):
+def estimate_dag(conf, d_input, ci_func):
     if len(d_input) >= 2:
         # apply pc algorithm to estimate dag
         skel_method = conf.get("dag", "skeleton_method")
@@ -50,5 +52,18 @@ def estimate_dag(conf, d_input):
         graph = showdag.empty_dag()
 
     return graph
+
+
+def is_binarize(ci_func):
+    if ci_func == "fisherz":
+        return False
+    elif ci_func == "fisherz_bin":
+        return True
+    elif ci_func == "gsq":
+        return True
+    elif ci_func == "gsq_rlib":
+        return True
+    else:
+        raise NotImplementedError
 
 
