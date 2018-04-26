@@ -616,11 +616,13 @@ def reload_area(conf):
 # visualize functions
 
 def show_event(conf, **kwargs):
+    td = TimeSeriesDB(conf)
     try:
         dt_range = (kwargs["dts"], kwargs["dte"])
     except KeyError:
-        sys.exit("An argument for datetime conditons is required")
-    td = TimeSeriesDB(conf)
+        dt_range = td.dt_term()
+        pass
+        #sys.exit("An argument for datetime conditons is required")
 
     l_buf = []
     for gid, host in sorted(td.whole_gid_host(**kwargs), key = lambda x: x[0]):
