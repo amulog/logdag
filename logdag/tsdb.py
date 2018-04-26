@@ -625,9 +625,10 @@ def show_event(conf, **kwargs):
     l_buf = []
     for gid, host in sorted(td.whole_gid_host(**kwargs), key = lambda x: x[0]):
         event_str = td.str_event(dt_range, gid, host)
-        num = sum(1 for i in td.iter_ts(dts = dt_range[0], dte = dt_range[1],
-                                        gid = gid, host = host))
-        l_buf.append("{0}: {1}".format(event_str, num))
+        #num = sum(1 for i in td.iter_ts(dts = dt_range[0], dte = dt_range[1],
+        #                                gid = gid, host = host))
+        #l_buf.append("{0}: {1}".format(event_str, num))
+        l_buf.append(event_str)
     return "\n".join(l_buf)
 
 
