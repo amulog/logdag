@@ -102,7 +102,7 @@ skeleton_verbose = false
 
 # Argument manager file
 # default: args_<config_filename>
-args_fn = 
+args_fn = args
 
 ## Event appearance data
 ## If empty, dag.output_dir is used with filename extended

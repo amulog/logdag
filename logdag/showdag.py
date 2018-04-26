@@ -19,24 +19,15 @@ class LogDAG():
 
     def __init__(self, args, graph = None):
         self.args = args
+        self.conf, self.dt_range, self.area = self.args
         self.name = arguments.args2name(self.args)
         self.graph = graph
-        self._evts_obj = None
         self._evmap_obj = None
-
-    def _evts(self):
-        if self._evts_obj is None:
-            from . import log2event
-            evts = log2event.EventTimeSeries(self.args[1])
-            evts.load(self.args)
-            self._evts_obj = evts
-        return self._evts_obj
 
     def _evmap(self):
         if self._evmap_obj is None:
             from . import log2event
-            conf = self.args[0]
-            gid_name = conf.get("dag", "event_gid")
+            gid_name = self.conf.get("dag", "event_gid")
             evmap = log2event.EventDefinitionMap(gid_name)
             evmap.load(self.args)
             self._evmap_obj = evmap
@@ -107,6 +98,21 @@ class LogDAG():
         g_di.add_edges_from(l_temp_edge)
         return g_di, g_nodi
 
+    def edge_isdirected(self, edge, graph = None):
+        if graph is None:
+            graph = self.graph
+        rev_edge = (edge[1], edge[0])
+        if edge in graph.edges():
+            if rev_edge in graph.edges():
+                return False
+            else:
+                return True
+        else:
+            if rev_edge in graph.edges():
+                raise ValueError("Edge not found, Reversed edge exists")
+            else:
+                raise ValueError("Edge not found")
+
     def edges_across_host(self, graph = None):
         """Returns subgraphs of input graph its edges by the consistency
         of the hosts of adjacent nodes.
@@ -133,9 +139,24 @@ class LogDAG():
 
     def connected_subgraphs(self, graph = None):
         if graph is None:
-            graoh = self.graph
+            graph = self.graph
         temp_graph = graph.to_undirected()
         return nx.connected_components(temp_graph)
+
+    def edge_str(self, edge, graph = None):
+        if graph is None:
+            graph = self.graph
+        src_node, dst_node = edge
+        src_str = self.node_str(src_node)
+        dst_str = self.node_str(dst_node)
+        if edge_isdirected(edge, graph):
+            return "{0} -> {1}".format(src_str, dst_str)
+        else:
+            return "{0} <-> {1}".format(src_str, dst_str)
+
+    def node_str(self, node):
+        info = self.node_info(node)
+        return "[gid={0[0]}, host = {0[1]}]".format(info)
 
 
 # common functions
@@ -155,10 +176,15 @@ def iter_results(conf, src_dir = None, area = None):
             yield r
 
 
-
-
-
 # functions for presentation
+
+def show_edge_list(args):
+    l_buf = []
+    r = LogDAG(args)
+    for edge in r.edges():
+        l_buf.append(r.edge_str(edge))
+    return "\n".join(l_buf)
+
 
 def list_results(conf, src_dir = None):
     table = []

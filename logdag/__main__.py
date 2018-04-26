@@ -133,6 +133,14 @@ def show_args(ns):
     print(am.show())
 
 
+def show_edge_list(ns):
+    from . import showdag
+    conf = arguments.open_logdag_config(ns)
+    args = arguments.jobname2args(ns.argname, conf)
+
+    print(showdag.show_edge_list)
+
+
 def show_list(ns):
     from . import showdag
     conf = arguments.open_logdag_config(ns)
@@ -301,6 +309,9 @@ DICT_ARGSET = {
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],
+    "show-dag-edge": ["Show edges in a DAG",
+                      [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
+                      show_edge_list],
     "show-list": ["Show abstracted results of DAG generation",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_list],
