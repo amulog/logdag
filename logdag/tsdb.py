@@ -613,7 +613,30 @@ def reload_area(conf):
     td._init_area()
 
 
+def ts_filtered(conf, **kwargs):
+    assert "dts" in kwargs
+    assert "dte" in kwargs
+    assert "gid" in kwargs
+    assert "host" in kwargs
+    
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    gid_name = conf.get("dag", "event_gid")
+    d = {"dte": kwargs["dte"],
+         "dts": kwargs["dts"],
+         gid_name: kwargs["gid"],
+         "host": kwargs["host"]}
+    l_dt = [line.dt for line in ld.iter_lines(**d)]
+
+    td = TimeSeriesDB(conf)
+    l_ts = [dt for dt in td.iter_ts(**kwargs)]
+    l_filtered = [dt for dt in l_dt if not dt in l_ts]
+
+    return l_filtered, l_ts
+
+
 # visualize functions
+
 
 def show_event(conf, **kwargs):
     td = TimeSeriesDB(conf)
@@ -643,6 +666,17 @@ def show_ts(conf, **kwargs):
     for dt in td.iter_ts(**kwargs):
         l_buf.append(str(dt))
     return "\n".join(l_buf)
+
+
+def show_ts_compare(conf, **kwargs):
+    l_fts, l_ts = ts_filtered(conf, **kwargs)
+    print("# filtered #")
+    for dt in l_fts:
+        print(dt)
+    print()
+    print("# remaining #")
+    for dt in l_ts:
+        print(dt)
 
 
 def show_filterlog(conf, **kwargs):

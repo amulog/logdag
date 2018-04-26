@@ -118,6 +118,13 @@ def show_ts(ns):
     print(tsdb.show_ts(conf, **d))
 
 
+def show_ts_compare(ns):
+    from . import tsdb
+    conf = arguments.open_logdag_config(ns)
+    d = parse_condition(ns.conditions)
+    print(tsdb.show_ts_compare(conf, **d))
+
+
 def show_filterlog(ns):
     from . import tsdb
     conf = arguments.open_logdag_config(ns)
@@ -313,6 +320,9 @@ DICT_ARGSET = {
     "show-ts": ["Show time series of given conditions",
                    [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                    show_ts],
+    "show-ts-compare": ["Show filtered/remaining time series",
+                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
+                        show_ts_compare],
     "show-filterlog": ["Show preprocessing log",
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                        show_filterlog],
