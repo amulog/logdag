@@ -622,8 +622,8 @@ def ts_filtered(conf, **kwargs):
     from amulog import log_db
     ld = log_db.LogData(conf)
     gid_name = conf.get("dag", "event_gid")
-    d = {"dte": kwargs["dte"],
-         "dts": kwargs["dts"],
+    d = {"top_dt": kwargs["dts"],
+         "end_dt": kwargs["dte"],
          gid_name: kwargs["gid"],
          "host": kwargs["host"]}
     l_dt = [line.dt for line in ld.iter_lines(**d)]
@@ -669,14 +669,16 @@ def show_ts(conf, **kwargs):
 
 
 def show_ts_compare(conf, **kwargs):
+    l_buf = []
     l_fts, l_ts = ts_filtered(conf, **kwargs)
-    print("# filtered #")
+    l_buf.append("# filtered ({0}) #".format(len(l_fts)))
     for dt in l_fts:
-        print(dt)
-    print()
-    print("# remaining #")
+        l_buf.append(str(dt))
+    l_buf.append("")
+    l_buf.append("# remaining ({0}) #".format(len(l_ts)))
     for dt in l_ts:
-        print(dt)
+        l_buf.append(str(dt))
+    return "\n".join(l_buf)
 
 
 def show_filterlog(conf, **kwargs):
