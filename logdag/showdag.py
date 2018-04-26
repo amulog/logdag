@@ -149,7 +149,7 @@ class LogDAG():
         src_node, dst_node = edge
         src_str = self.node_str(src_node)
         dst_str = self.node_str(dst_node)
-        if edge_isdirected(edge, graph):
+        if self.edge_isdirected(edge, graph):
             return "{0} -> {1}".format(src_str, dst_str)
         else:
             return "{0} <-> {1}".format(src_str, dst_str)
@@ -181,7 +181,8 @@ def iter_results(conf, src_dir = None, area = None):
 def show_edge_list(args):
     l_buf = []
     r = LogDAG(args)
-    for edge in r.edges():
+    r.load()
+    for edge in r.graph.edges():
         l_buf.append(r.edge_str(edge))
     return "\n".join(l_buf)
 

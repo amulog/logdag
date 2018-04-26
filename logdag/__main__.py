@@ -136,9 +136,9 @@ def show_args(ns):
 def show_edge_list(ns):
     from . import showdag
     conf = arguments.open_logdag_config(ns)
-    args = arguments.jobname2args(ns.argname, conf)
+    args = arguments.name2args(ns.argname, conf)
 
-    print(showdag.show_edge_list)
+    print(showdag.show_edge_list(args))
 
 
 def show_list(ns):
