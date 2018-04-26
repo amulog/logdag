@@ -621,8 +621,6 @@ def show_event(conf, **kwargs):
         dt_range = (kwargs["dts"], kwargs["dte"])
     except KeyError:
         dt_range = td.dt_term()
-        pass
-        #sys.exit("An argument for datetime conditons is required")
 
     l_buf = []
     for gid, host in sorted(td.whole_gid_host(**kwargs), key = lambda x: x[0]):
@@ -630,6 +628,19 @@ def show_event(conf, **kwargs):
         num = len(td.iter_ts(dts = dt_range[0], dte = dt_range[1],
                              gid = gid, host = host))
         l_buf.append("{0}: {1}".format(event_str, num))
+    return "\n".join(l_buf)
+
+
+def show_ts(conf, **kwargs):
+    assert "dts" in kwargs
+    assert "dte" in kwargs
+    assert "gid" in kwargs
+    assert "host" in kwargs
+    td = TimeSeriesDB(conf)
+
+    l_buf = []
+    for dt in td.iter_ts(**kwargs):
+        l_buf.append(str(dt))
     return "\n".join(l_buf)
 
 

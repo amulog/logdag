@@ -111,6 +111,13 @@ def show_event(ns):
     print(tsdb.show_event(conf, **d))
 
 
+def show_ts(ns):
+    from . import tsdb
+    conf = arguments.open_logdag_config(ns)
+    d = parse_condition(ns.conditions)
+    print(tsdb.show_ts(conf, **d))
+
+
 def show_filterlog(ns):
     from . import tsdb
     conf = arguments.open_logdag_config(ns)
@@ -303,6 +310,9 @@ DICT_ARGSET = {
     "show-event": ["Show events (list of gid and host)",
                    [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                    show_event],
+    "show-ts": ["Show time series of given conditions",
+                   [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
+                   show_ts],
     "show-filterlog": ["Show preprocessing log",
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                        show_filterlog],
