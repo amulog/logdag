@@ -689,12 +689,3 @@ def show_filterlog(conf, **kwargs):
     return "\n".join(buf)
 
 
-
-
-
-
-
-
-
-
-

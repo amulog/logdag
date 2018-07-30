@@ -85,6 +85,10 @@ ci_bin_diff = 1m
 # [fisherz, fisherz_bin, gsq, gsq_rlib] is available
 ci_func = gsq
 
+# Method to estimate causal DAG
+# pc in default, and lingam (LiNGAM-fast) is also available
+cause_algorithm = pc
+
 # Method to estimate skeleton in PC algorithm
 # default : original-PC algorithm, fast but not accurate in sparse data
 # stable : stable-PC algorithm, result is order-independent of input data

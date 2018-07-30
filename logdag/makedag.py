@@ -39,13 +39,18 @@ def makedag_main(args):
 
 def estimate_dag(conf, d_input, ci_func):
     if len(d_input) >= 2:
-        # apply pc algorithm to estimate dag
-        skel_method = conf.get("dag", "skeleton_method")
-        skel_th = conf.getfloat("dag", "skeleton_threshold")
-        skel_depth = conf.getint("dag", "skeleton_depth")
-        skel_verbose = conf.getboolean("dag", "skeleton_verbose")
-        graph = pc_input.pc(d_input, skel_th, ci_func, skel_method,
-                skel_depth, skel_verbose)
+        cause_algorithm = conf.get("dag", "cause_algorithm")
+        if cause_algorithm == "pc":
+            # apply pc algorithm to estimate dag
+            skel_method = conf.get("dag", "skeleton_method")
+            skel_th = conf.getfloat("dag", "skeleton_threshold")
+            skel_depth = conf.getint("dag", "skeleton_depth")
+            skel_verbose = conf.getboolean("dag", "skeleton_verbose")
+            graph = pc_input.pc(d_input, skel_th, ci_func, skel_method,
+                    skel_depth, skel_verbose)
+        elif cause_algorithm == "lingam":
+            import lingam_input
+            graph = lingam_input.estimate(d_input)
     else:
         _logger.info("input too small({0} nodes), return empty dag".format(
             len(d_input)))
