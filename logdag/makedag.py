@@ -49,7 +49,7 @@ def estimate_dag(conf, d_input, ci_func):
             graph = pc_input.pc(d_input, skel_th, ci_func, skel_method,
                     skel_depth, skel_verbose)
         elif cause_algorithm == "lingam":
-            import lingam_input
+            from . import lingam_input
             graph = lingam_input.estimate(d_input)
     else:
         _logger.info("input too small({0} nodes), return empty dag".format(
