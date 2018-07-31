@@ -222,6 +222,16 @@ def plot_discretize(ns):
                         dirname = ns.dirname)
 
 
+def plot_dag(ns):
+    from . import log2event
+    conf = arguments.open_logdag_config(ns)
+
+    args = arguments.name2args(ns.argname, conf)
+    output = ns.filename
+    fp = fp.showdag.show_graph(args, output)
+    print(fp)
+
+
 def parse_condition(conditions):
     """
     Args:
@@ -266,6 +276,10 @@ OPT_PARALLEL = [["-p", "--parallel"],
                 {"dest": "parallel", "metavar": "PARALLEL",
                  "type": int, "default": 1,
                  "help": "number of processes in parallel"}]
+OPT_FILENAME = [["-f", "--filename"],
+                {"dest": "filename", "metavar": "FILENAME", "action": "store",
+                 "default": "output",
+                 "help": "output filename"}]
 OPT_DIRNAME = [["-d", "--dirname"],
                {"dest": "dirname", "metavar": "DIRNAME", "action": "store",
                 "default": ".",
@@ -356,6 +370,9 @@ DICT_ARGSET = {
                         [OPT_CONFIG, OPT_DEBUG, OPT_DIRNAME, OPT_BINSIZE,
                          OPT_GID, OPT_HOSTNAME, ARG_ARGNAME],
                         plot_discretize],
+    "plot-dag": ["Generate causal DAG view",
+                 [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME, ARG_ARGNAME],
+                 plot_dag],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

@@ -13,6 +13,10 @@ from lingam_fast import lingam_fast
 
 
 def estimate(data):
+    # avoid recursion depth error
+    import sys
+    sys.setrecursionlimit(10000)
+
     matrix = pd.DataFrame(data)
     lingam = lingam_fast.LiNGAM()
     ret = lingam.fit(matrix, use_sklearn = True, algorithm="fast",

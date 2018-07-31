@@ -158,6 +158,37 @@ class LogDAG():
         info = self.node_info(node)
         return "[gid={0[0]}, host = {0[1]}]".format(info)
 
+    def graph_nx(self, output, graph = None):
+        if graph is None:
+            graph = self.graph
+
+        import matplotlib.pyplot as plt
+        plt.figure()
+        plt.axis('off')
+        pos=nx.spring_layout(g)
+
+        node_color = [d.get("color", "black")
+                      for (n, d) in g.nodes(data = True)]
+        edge_color = [d.get("color", "black")
+                      for (u, v, d) in g.edges(data = True)]
+        nx.draw_networkx_nodes(g, pos, node_size = 600,
+                               node_color = "w", edgecolors = node_color)
+        nx.draw_networkx_edges(g, pos, width = 3.0, arrowsize = 30,
+                               edge_color = edge_color)
+        nx.draw_networkx_labels(g, pos, fontsize = 18, font_color = "k",
+                                font_family = "Arial Black",
+                                font_weight = "bold")
+        try:
+            edge_label = {(u, v): d["label"]
+                          for (u, v, d) in g.edges(data = True)}
+            nx.draw_networkx_edge_labels(g, pos, edge_labels = edge_label,
+                                         fontsize = 18, font_color = "k",
+                                         font_family = "Arial Black")
+        except KeyError:
+            pass
+        plt.savefig(output)
+        return output
+
 
 # common functions
 
@@ -185,6 +216,17 @@ def show_edge_list(args):
     for edge in r.graph.edges():
         l_buf.append(r.edge_str(edge))
     return "\n".join(l_buf)
+
+
+def show_graph(args, output, lib = "networkx"):
+    if lib == "networkx":
+        r = LogDAG(args)
+        r.load()
+        fp = r.graph_nx(output)
+        return fp
+    else:
+        raise NotImplementedError
+
 
 
 def list_results(conf, src_dir = None):
