@@ -223,12 +223,18 @@ def plot_discretize(ns):
 
 
 def plot_dag(ns):
-    from . import log2event
+    from . import showdag
     conf = arguments.open_logdag_config(ns)
 
     args = arguments.name2args(ns.argname, conf)
     output = ns.filename
-    fp = fp.showdag.show_graph(args, output)
+    ignore_orphan = ns.ignore_orphan
+    try:
+        th = float(ns.threshold)
+    except:
+        th = None
+    fp = showdag.show_graph(conf, args, output,
+                            threshold = th, ignore_orphan = ignore_orphan)
     print(fp)
 
 
@@ -371,7 +377,16 @@ DICT_ARGSET = {
                          OPT_GID, OPT_HOSTNAME, ARG_ARGNAME],
                         plot_discretize],
     "plot-dag": ["Generate causal DAG view",
-                 [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME, ARG_ARGNAME],
+                 [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME,
+                  [["-t", "--threshold"],
+                   {"dest": "threshold", "metavar": "THRESHOLD",
+                    "action": "store", "default": None,
+                    "help": "threshold for ATE to remove edges"}],
+                  [["-i", "--ignore-orphan"],
+                   {"dest": "ignore_orphan",
+                    "action": "store_true", "default": False,
+                    "help": "ignore orphan nodes (without any adjacents)"}],
+                  ARG_ARGNAME],
                  plot_dag],
 }
 

@@ -14,11 +14,12 @@ round_int = lambda x: int(x + 0.5)
 def fourier_remove(conf, array, binsize):
     th_spec = conf.getfloat("filter", "fourier_th_spec")
     th_std = conf.getfloat("filter", "fourier_th_eval")
+    peak_order = conf.getfloat("filter", "fourier_peak_order")
     data = array
     #data = array[-power2(len(array)):]
     fdata = scipy.fftpack.fft(data)
     flag, interval = fourier_test_periodic(data, fdata, binsize,
-                                           th_spec, th_std)
+                                           th_spec, th_std, peak_order)
 
     return flag, interval
 
@@ -27,11 +28,12 @@ def fourier_replace(conf, array, binsize):
     th_spec = conf.getfloat("filter", "fourier_th_spec")
     th_std = conf.getfloat("filter", "fourier_th_eval")
     th_restore = conf.getfloat("filter", "fourier_th_restore")
+    peak_order = conf.getfloat("filter", "fourier_peak_order")
     #data = array[-power2(len(array)):]
     data = array
     fdata = scipy.fftpack.fft(data)
     flag, interval = fourier_test_periodic(data, fdata, binsize,
-                                           th_spec, th_std)
+                                           th_spec, th_std, peak_order)
     if flag:
         data_filtered = part_filtered(data, fdata, binsize, th_spec)
         data_remain = restore_data(data, data_filtered, th_restore)
@@ -40,8 +42,8 @@ def fourier_replace(conf, array, binsize):
         return False, None, None
 
 
-def fourier_test_periodic(data, fdata, binsize, th_spec, th_std):
-    peak_order = 1
+def fourier_test_periodic(data, fdata, binsize, th_spec, th_std, peak_order):
+    #peak_order = 1
     peaks = 101
 
     dt = binsize.total_seconds()

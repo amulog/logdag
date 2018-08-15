@@ -147,6 +147,7 @@ pre_term = 6h
 fourier_th_spec = 0.4
 fourier_th_eval = 0.1
 fourier_th_restore = 0.5
+fourier_peak_order = 200
 
 # threshold for continuous distribution dt filter
 linear_binsize = 10s

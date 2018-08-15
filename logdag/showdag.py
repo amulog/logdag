@@ -23,6 +23,7 @@ class LogDAG():
         self.name = arguments.args2name(self.args)
         self.graph = graph
         self._evmap_obj = None
+        self._ll = None
 
     def _evmap(self):
         if self._evmap_obj is None:
@@ -42,6 +43,22 @@ class LogDAG():
         fp = arguments.ArgumentManager.dag_filepath(self.args)
         with open(fp, 'rb') as f:
             self.graph = pickle.load(f)
+
+    def load_ltlabel(self, conf):
+        from amulog import log_db
+        from amulog import lt_label
+        self._ld = log_db.LogData(conf)
+        self._ll = lt_label.init_ltlabel(conf)
+        self._default_label = conf.get("visual", "ltlabel_default_label")
+
+    def _label_ltg(self, gid):
+        if self._ll is None:
+            return None
+        else:
+            label = self._ll.get_ltg_label(gid, self._ld.ltg_members(gid))
+            if label is None:
+                label = self._default_label
+            return label
 
     def number_of_nodes(self, graph = None):
         if graph is None:
@@ -158,36 +175,99 @@ class LogDAG():
         info = self.node_info(node)
         return "[gid={0[0]}, host = {0[1]}]".format(info)
 
-    def graph_nx(self, output, graph = None):
+    def ate_prune(self, threshold, graph = None):
+        if graph is None:
+            graph = self.graph
+        ret = graph.copy()
+
+        try:
+            edge_label = {(u, v): d["label"]
+                          for (u, v, d) in graph.edges(data = True)}
+            for (src, dst), val in edge_label.items():
+                if float(val) < threshold:
+                    ret.remove_edge(src, dst)
+            return ret
+        except KeyError:
+            return None
+
+    def graph_no_orphan(self, graph = None):
+        if graph is None:
+            graph = self.graph
+        ret = graph.copy()
+
+        nodes = set(graph.nodes())
+        no_orphan = set()
+        for (u, v) in graph.edges():
+            no_orphan.add(u)
+            no_orphan.add(v)
+        for n in (nodes - no_orphan):
+            ret.remove_node(n)
+
+        return ret
+
+
+    def relabel_graph(self, graph = None):
         if graph is None:
             graph = self.graph
 
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.axis('off')
-        pos=nx.spring_layout(g)
+        mapping = {}
+        for node in graph.nodes():
+            info = self.node_info(node)
+            label = self._label_ltg(info.gid)
+            if label is None:
+                mapping[node] = "{0}, {1}".format(info.gid, info.host)
+            else:
+                mapping[node] = "{0}({1}), {2}".format(info.gid,
+                        label, info.host)
+        return nx.relabel_nodes(graph, mapping, copy = True)
 
-        node_color = [d.get("color", "black")
-                      for (n, d) in g.nodes(data = True)]
-        edge_color = [d.get("color", "black")
-                      for (u, v, d) in g.edges(data = True)]
-        nx.draw_networkx_nodes(g, pos, node_size = 600,
-                               node_color = "w", edgecolors = node_color)
-        nx.draw_networkx_edges(g, pos, width = 3.0, arrowsize = 30,
-                               edge_color = edge_color)
-        nx.draw_networkx_labels(g, pos, fontsize = 18, font_color = "k",
-                                font_family = "Arial Black",
-                                font_weight = "bold")
-        try:
-            edge_label = {(u, v): d["label"]
-                          for (u, v, d) in g.edges(data = True)}
-            nx.draw_networkx_edge_labels(g, pos, edge_labels = edge_label,
-                                         fontsize = 18, font_color = "k",
-                                         font_family = "Arial Black")
-        except KeyError:
-            pass
-        plt.savefig(output)
+    def graph_nx(self, output, graph = None):
+        if graph is None:
+            graph = self.graph
+        rgraph = self.relabel_graph(graph)
+
+        ag = nx.nx_agraph.to_agraph(rgraph)
+        ag.draw(output, prog = 'circo')
         return output
+
+        #import matplotlib.pyplot as plt
+        #plt.figure()
+        #plt.axis('off')
+        #pos = nx.spring_layout(g)
+        #pos = nx.circular_layout(g)
+        #pos = nx.nx_agraph.graphviz_layout(g, prog = 'neato')
+
+        #node_color = [d.get("color", "black")
+        #              for (n, d) in g.nodes(data = True)]
+        #edge_color = [d.get("color", "black")
+        #              for (u, v, d) in g.edges(data = True)]
+        ##nx.draw_networkx_nodes(g, pos, node_size = 600,
+        ##                       node_color = "w", edgecolors = node_color)
+        #nx.draw_networkx_nodes(g, pos,
+        #                       node_color = "w", edgecolors = node_color)
+        ##nx.draw_networkx_edges(g, pos, width = 3.0, arrowsize = 30,
+        ##                       edge_color = edge_color)
+        #nx.draw_networkx_edges(g, pos, width = 3.0, arrowsize = 30,
+        #                       edge_color = edge_color)
+        #nx.draw_networkx_labels(g, pos, fontsize = 12, font_color = "k",
+        #                        font_family = "Arial Black",
+        #                        font_weight = "bold")
+        ##nx.draw_networkx_labels(g, pos, fontsize = 18, font_color = "k",
+        ##                        font_family = "Arial Black",
+        ##                        font_weight = "bold")
+        #try:
+        #    edge_label = {(u, v): d["label"]
+        #                  for (u, v, d) in g.edges(data = True)}
+        #    #nx.draw_networkx_edge_labels(g, pos, edge_labels = edge_label,
+        #    #                             fontsize = 18, font_color = "k",
+        #    #                             font_family = "Arial Black")
+        #    nx.draw_networkx_edge_labels(g, pos, edge_labels = edge_label,
+        #                                 fontsize = 8, font_color = "k",
+        #                                 font_family = "Arial Black")
+        #except KeyError:
+        #    pass
+        #plt.savefig(output)
+        #return output
 
 
 # common functions
@@ -218,11 +298,19 @@ def show_edge_list(args):
     return "\n".join(l_buf)
 
 
-def show_graph(args, output, lib = "networkx"):
+def show_graph(conf, args, output, lib = "networkx",
+               threshold = None, ignore_orphan = False):
     if lib == "networkx":
         r = LogDAG(args)
         r.load()
-        fp = r.graph_nx(output)
+        if threshold is not None:
+            g = r.ate_prune(threshold)
+        else:
+            g = r.graph
+        if ignore_orphan:
+            g = r.graph_no_orphan(graph = g)
+        r.load_ltlabel(conf)
+        fp = r.graph_nx(output, graph = g)
         return fp
     else:
         raise NotImplementedError
