@@ -44,11 +44,17 @@ class LogDAG():
         with open(fp, 'rb') as f:
             self.graph = pickle.load(f)
 
-    def load_ltlabel(self, conf):
+    def load_ltlabel(self, conf, ld = None, ll = None):
         from amulog import log_db
         from amulog import lt_label
-        self._ld = log_db.LogData(conf)
-        self._ll = lt_label.init_ltlabel(conf)
+        if ld is None:
+            self._ld = log_db.LogData(conf)
+        else:
+            self._ld = ld
+        if ll is None:
+            self._ll = lt_label.init_ltlabel(conf)
+        else:
+            self._ll = ll
         self._default_label = conf.get("visual", "ltlabel_default_label")
 
     def _label_ltg(self, gid):
