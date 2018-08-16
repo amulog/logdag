@@ -173,7 +173,12 @@ class LogDAG():
 
     def node_str(self, node):
         info = self.node_info(node)
-        return "[gid={0[0]}, host = {0[1]}]".format(info)
+        label = self._label_ltg(info.gid)
+        if label is None:
+            return "[gid={0[0]}, host = {0[1]}]".format(info)
+        else:
+            return "[gid={0[0]}({1}), host = {0[1]}]".format(info, label)
+
 
     def ate_prune(self, threshold, graph = None):
         if graph is None:
