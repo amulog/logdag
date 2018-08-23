@@ -10,20 +10,25 @@ from . import dtutil
 _logger = logging.getLogger(__package__)
 
 
-def pc(data, threshold, mode = "pylib",
-        skel_method = "default", pc_depth = None, verbose = False):
+def pc(data, threshold, mode = "pylib", skel_method = "default",
+       pc_depth = None, verbose = False, init_graph = None):
     if mode == "gsq_rlib":
+        if init_graph is not None:
+            _logger.warning("init_graph not used in gsq_rlib")
         graph = pc_rlib(data, threshold, skel_method, verbose)
     elif mode == "gsq":
-        graph = pc_gsq(data, threshold, skel_method, pc_depth, verbose)
+        graph = pc_gsq(data, threshold, skel_method,
+                       pc_depth, verbose, init_graph)
     elif mode in ("fisherz", "fisherz_bin"):
-        graph = pc_fisherz(data, threshold, skel_method, pc_depth, verbose)
+        graph = pc_fisherz(data, threshold, skel_method,
+                           pc_depth, verbose, init_graph)
     else:
         raise ValueError("ci_func invalid ({0})".format(mode))
     return graph
 
 
-def pc_gsq(data, threshold, skel_method, pc_depth = None, verbose = False):
+def pc_gsq(data, threshold, skel_method, pc_depth = None,
+           verbose = False, init_graph = None):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
@@ -36,12 +41,15 @@ def pc_gsq(data, threshold, skel_method, pc_depth = None, verbose = False):
             "verbose": verbose}
     if pc_depth is not None and pc_depth >= 0:
         args["max_reach"] = pc_depth
+    if init_graph is not None:
+        args["init_graph"] = init_graph
     (g, sep_set) = pcalg.estimate_skeleton(**args)
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
     return g
 
 
-def pc_fisherz(data, threshold, skel_method, pc_depth = None, verbose = False):
+def pc_fisherz(data, threshold, skel_method, pc_depth = None,
+               verbose = False, init_graph = None):
     import pcalg
     #from ci_test.ci_tests import ci_test_gauss
     from citestfz.ci_tests import ci_test_gauss
@@ -56,6 +64,8 @@ def pc_fisherz(data, threshold, skel_method, pc_depth = None, verbose = False):
             "verbose": verbose}
     if pc_depth is not None and pc_depth >= 0:
         args["max_reach"] = pc_depth
+    if init_graph is not None:
+        args["init_graph"] = init_graph
     (g, sep_set) = pcalg.estimate_skeleton(**args)
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
     return g

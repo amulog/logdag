@@ -73,7 +73,7 @@ class EventDefinitionMap(object):
     def __len__(self):
         return len(self._emap)
 
-    def _eids(self):
+    def eids(self):
         return self._emap.keys()
 
     def _next_eid(self):
