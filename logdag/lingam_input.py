@@ -15,7 +15,7 @@ from lingam_fast import lingam_fast
 def estimate(data):
     # avoid recursion depth error
     import sys
-    sys.setrecursionlimit(10000)
+    sys.setrecursionlimit(1000000)
 
     matrix = pd.DataFrame(data)
     lingam = lingam_fast.LiNGAM()
