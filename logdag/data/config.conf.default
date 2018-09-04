@@ -126,6 +126,18 @@ evmap_dir =
 output_dir = pc_output
 
 
+[pc_prune]
+# If true, pruning the initial graph of pc algorithm
+do_pruning = false
+
+# List of pruning methods
+methods = 
+
+# A json node-link file of network topology of hosts,
+# used in "network" method.
+network_file = 
+
+
 [filter]
 # Filters for log events
 
