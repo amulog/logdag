@@ -117,7 +117,7 @@ def pruning(g, conf, evmap):
 def _pruning_network(g_base, g_net, evmap):
     """Prune edges based on topology network of hosts (g_net)."""
     import networkx as nx
-    g_ret = nx.DiGraph()
+    g_ret = nx.Graph()
     for edge in g_base.edges():
         src_host, dst_host = [evmap.evdef(node).host for node in edge]
         if src_host == dst_host or g_net.has_edge(src_host, dst_host):
