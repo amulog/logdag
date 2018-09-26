@@ -3,6 +3,7 @@
 
 import sys
 import logging
+from itertools import combinations
 
 from . import arguments
 from . import log2event
@@ -28,6 +29,8 @@ def makedag_main(args):
     evmap.dump(args)
 
     if conf.getboolean("pc_prune", "do_pruning"):
+        node_ids = evmap.eids()
+        g = _complete_graph(node_ids)
         init_graph = pruning(g, conf, evmap)
     else:
         init_graph = None
@@ -78,7 +81,7 @@ def is_binarize(ci_func):
         raise NotImplementedError
 
 
-def complete_graph(node_ids):
+def _complete_graph(node_ids):
     import networkx as nx
     g = nx.Graph()
     g.add_nodes_from(node_ids)

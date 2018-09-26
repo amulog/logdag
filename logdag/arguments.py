@@ -45,6 +45,9 @@ class ArgumentManager(object):
     def args_in_area(self, area):
         return [args for args in self.l_args if args[2] == area]
 
+    def args_in_time(self, dt_range):
+        return [args for args in self.l_args if args[1] == dt_range]
+
     def show(self):
         table = []
         table.append(["name", "datetime", "area"])
