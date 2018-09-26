@@ -139,9 +139,10 @@ def _pruning_overhost(g, evmap, nodes = None):
         if evdef_i.host == evdef_j.host:
             pass
         else:
-            g.remove_edge(i, j)
-            _logger.debug("prune {0} - {1}".format(evmap.evdef_str(i),
-                                                   evmap.evdef_str(j)))
+            if g.has_edge(i, j):
+                g.remove_edge(i, j)
+                _logger.debug("prune {0} - {1}".format(evmap.evdef_str(i),
+                                                       evmap.evdef_str(j)))
     return g
 
 
