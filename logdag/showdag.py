@@ -185,7 +185,6 @@ class LogDAG():
         else:
             return "[gid={0[0]}({1}), host = {0[1]}]".format(info, label)
 
-
     def ate_prune(self, threshold, graph = None):
         if graph is None:
             graph = self.graph
@@ -215,7 +214,6 @@ class LogDAG():
             ret.remove_node(n)
 
         return ret
-
 
     def relabel_graph(self, graph = None):
         if graph is None:
