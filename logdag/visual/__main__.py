@@ -34,6 +34,7 @@ def draw_graph_common(ns):
     from . import draw
     rgraph = draw.relabel_graph(conf1, cgraph, cevmap)
     draw.graph_nx(output, rgraph)
+    print(output)
 
 
 def draw_graph_diff(ns):
@@ -56,6 +57,7 @@ def draw_graph_diff(ns):
     from . import draw
     rgraph = draw.relabel_graph(conf1, cgraph, cevmap)
     draw.graph_nx(output, rgraph)
+    print(output)
 
 
 # common argument settings

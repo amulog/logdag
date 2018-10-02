@@ -95,11 +95,11 @@ def edge_set_diff(conf1, conf2, dt_range):
         else:
             cgraph_diff.add_edge(*edge)
 
-    print(
-        cgraph_common.number_of_edges(),
-        cgraph2.number_of_edges(),
-        cgraph_diff.number_of_edges()
-          )
+    #print(
+    #    cgraph_common.number_of_edges(),
+    #    cgraph2.number_of_edges(),
+    #    cgraph_diff.number_of_edges()
+    #      )
     #import pdb; pdb.set_trace()
 
     return cevmap, cgraph_diff
