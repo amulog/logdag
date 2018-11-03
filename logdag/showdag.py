@@ -350,7 +350,7 @@ def list_results_byday(conf, src_dir = None):
         else:
             d_date[dt_range] = d
 
-    for k, v in d_date.items():
+    for k, v in sorted(d_date.items(), key = lambda x: x[0]):
         table.append([str(k[0]), v["nodes"], v["edges"]])
     return common.cli_table(table)
 
