@@ -325,7 +325,6 @@ def show_graph(conf, args, output, lib = "networkx",
         raise NotImplementedError
 
 
-
 def list_results(conf, src_dir = None):
     table = []
     table.append(["datetime", "area", "nodes", "edges", "name"])
@@ -334,6 +333,25 @@ def list_results(conf, src_dir = None):
         table.append([str(dt_range[0]), str(area),
                       str(r.number_of_nodes()), str(r.number_of_edges()),
                       r.name])
+    return common.cli_table(table)
+
+
+def list_results_byday(conf, src_dir = None):
+    table = []
+    table.append(["datetime", "nodes", "edges"])
+    d_date = {}
+    for r in iter_results(conf, src_dir):
+        c, dt_range, area = r.args
+        d = {"nodes": r.number_of_nodes(),
+             "edges": r.number_of_edges()}
+        if dt_range in d_date:
+            for k in d:
+                d_date[dt_range][k] += d[k]
+        else:
+            d_date[dt_range] = d
+
+    for k, v in d_date.items():
+        table.append([str(k[0]), v["nodes"], v["edges"]])
     return common.cli_table(table)
 
 

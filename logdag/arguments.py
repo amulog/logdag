@@ -132,6 +132,12 @@ class ArgumentManager(object):
         self.evdef_dir(conf)
         self.dag_dir(conf)
 
+    def iter_dt_range(self):
+        s = set()
+        for args in self.l_args:
+            s.add(args[1])
+        return list(s)
+
 
 def args2name(args):
     return ArgumentManager.jobname(args)

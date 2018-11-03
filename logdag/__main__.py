@@ -159,7 +159,10 @@ def show_list(ns):
     from . import showdag
     conf = arguments.open_logdag_config(ns)
     
-    print(showdag.list_results(conf))
+    if ns.byday:
+        print(showdag.list_results_byday(conf))
+    else:
+        print(showdag.list_results(conf))
 
 
 def show_results_sum(ns):
@@ -290,6 +293,9 @@ OPT_DIRNAME = [["-d", "--dirname"],
                {"dest": "dirname", "metavar": "DIRNAME", "action": "store",
                 "default": ".",
                 "help": "directory name for output"}]
+OPT_BYDAY = [["-d", "--byday"],
+             {"dest": "byday", "action": "store_true",
+              "help": "aggregate results by day"}]
 OPT_GID = [["-g", "--gid"],
            {"dest": "gid", "metavar": "GID", "action": "store",
             "type": int, "default": None,
@@ -353,7 +359,7 @@ DICT_ARGSET = {
                       [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                       show_edge_list],
     "show-list": ["Show abstracted results of DAG generation",
-                  [OPT_CONFIG, OPT_DEBUG],
+                  [OPT_CONFIG, OPT_DEBUG, OPT_BYDAY],
                   show_list],
     "show-results-sum": ["Show abstracted results of DAG generation",
                          [OPT_CONFIG, OPT_DEBUG],

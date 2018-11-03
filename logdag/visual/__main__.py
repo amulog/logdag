@@ -14,6 +14,16 @@ from amulog import common
 _logger = logging.getLogger(__package__)
 
 
+def search_gid(ns):
+    conf = arguments.open_logdag_config(ns)
+    gid = ns.gid
+
+    from . import edge_search
+    l_result = edge_search.search_gid(conf, gid)
+    for r, edge in l_result:
+        print("{0} {1}".format(r.name, r.edge_str(edge)))
+
+
 def draw_graph_common(ns):
     l_conffp = ns.confs
     assert len(l_conffp) == 2
@@ -60,6 +70,43 @@ def draw_graph_diff(ns):
     print(output)
 
 
+def show_graph_diff_lts(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    from amulog import log_db
+    ld = log_db.LogData(conf1)
+
+    from . import comp_conf
+    d_ltid = comp_conf.edge_diff_gid(conf1, conf2)
+    for ltid, l_name in sorted(d_ltid.items(), key = lambda x: len(x[1]),
+                               reverse = True):
+        print("{0}: {1} ({2})".format(len(l_name), ltid, ld.lt(ltid)))
+        if len(l_name) < 100:
+            print(l_name)
+
+
+def show_graph_diff_search(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    gid = ns.gid
+    from . import comp_conf
+    comp_conf.edge_diff_gid_search(conf1, conf2, gid)
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -97,7 +144,7 @@ OPT_IGORPHAN = [["-i", "--ignore-orphan"],
                  "help": "ignore orphan nodes (without any adjacents)"}]
 ARG_TIMESTR = [["timestr"],
                {"metavar": "TIMESTR", "action": "store",
-                "help": "%Y%m%d(_%H%M%S) style time string"}]
+                "help": "%%Y%%m%%d(_%%H%%M%%S) style time string"}]
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
@@ -112,20 +159,43 @@ ARG_DBSEARCH = [["conditions"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
+    "search-gid": ["List DAGs with edges related to given gid",
+                   [OPT_CONFIG, OPT_DEBUG,
+                    [["gid"],
+                     {"metavar": "GID", "action": "store", "type": int,
+                      "help": "gid to search"}],],
+                   search_gid],
     "draw-graph-common": ["Draw common edges of 2 DAG sets",
-                          [OPT_DEBUG, OPT_IGORPHAN, OPT_FILENAME,
+                          [OPT_DEBUG, OPT_FILENAME,
                            [["confs"],
                             {"metavar": "CONFIG", "nargs": 2,
                              "help": "2 config file path"}],
                            ARG_TIMESTR,],
                           draw_graph_common],
     "draw-graph-diff": ["Draw contrasting edges of 2 DAG sets",
-                          [OPT_DEBUG, OPT_IGORPHAN, OPT_FILENAME,
+                          [OPT_DEBUG, OPT_FILENAME,
                            [["confs"],
                             {"metavar": "CONFIG", "nargs": 2,
                              "help": "2 config file path"}],
                            ARG_TIMESTR,],
                           draw_graph_diff],
+    "show-graph-diff-lts": ["List ltids found in diff graph of 2 DAG sets",
+                            [OPT_DEBUG,
+                             [["confs"],
+                              {"metavar": "CONFIG", "nargs": 2,
+                               "help": "2 config file path"}],
+                             ],
+                            show_graph_diff_lts],
+    "show-graph-diff-search": ["Search diff graphs with given gid",
+                               [OPT_DEBUG,
+                                [["confs"],
+                                 {"metavar": "CONFIG", "nargs": 2,
+                                  "help": "2 config file path"}],
+                                [["gid"],
+                                 {"metavar": "GID", "action": "store",
+                                  "type": int,
+                                  "help": "gid to search"}],],
+                               show_graph_diff_search],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

@@ -169,3 +169,8 @@ linear_threshold = 0.5
 # parameters for method corr
 corr_th = 0.5
 corr_diff = 1h, 1d
+
+
+[eval]
+path = eval_data
+

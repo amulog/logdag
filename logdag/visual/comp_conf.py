@@ -9,6 +9,7 @@ from amulog import config
 from logdag import arguments
 from logdag import showdag
 from logdag import log2event
+from logdag import dtutil
 
 
 def _set_of_term(am):
@@ -103,4 +104,34 @@ def edge_set_diff(conf1, conf2, dt_range):
     #import pdb; pdb.set_trace()
 
     return cevmap, cgraph_diff
+
+
+def edge_diff_gid(conf1, conf2):
+    d_ltid = defaultdict(list)
+    am = arguments.ArgumentManager(conf1)
+    am.load()
+    for dt_range in am.iter_dt_range():
+        cevmap, cgraph = edge_set_diff(conf1, conf2, dt_range)
+        for edge in cgraph.edges():
+            timestr = dtutil.shortstr(dt_range[0])
+            src_evdef = cevmap.evdef(edge[0])
+            d_ltid[src_evdef.gid].append(timestr)
+            dst_evdef = cevmap.evdef(edge[1])
+            d_ltid[dst_evdef.gid].append(timestr)
+    return d_ltid
+
+
+def edge_diff_gid_search(conf1, conf2, gid):
+    # processing time too long!!!
+    d_ltid = defaultdict(int)
+    am = arguments.ArgumentManager(conf1)
+    am.load()
+    for dt_range in am.iter_dt_range():
+        cevmap, cgraph = edge_set_diff(conf1, conf2, dt_range)
+        for edge in cgraph.edges():
+            src_evdef = cevmap.evdef(edge[0])
+            dst_evdef = cevmap.evdef(edge[1])
+            if gid in (src_evdef.gid, dst_evdef.gid):
+                timestr = dtutil.shortstr(dt_range[0])
+                print("{0}: {1} - {2}".format(timestr, src_evdef, dst_evdef))
 
