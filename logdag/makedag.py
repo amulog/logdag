@@ -19,7 +19,7 @@ def makedag_main(args):
     jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
-    _logger.info("makedag job ({0}) start)".format(jobname))
+    _logger.info("makedag job ({0}) start".format(jobname))
 
     ci_func = conf.get("dag", "ci_func")
     binarize = is_binarize(ci_func)
