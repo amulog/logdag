@@ -16,10 +16,10 @@ _logger = logging.getLogger(__package__)
 
 
 def makedag_main(args):
+    jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
-    _logger.info("makedag job start ({0} - {1} in {2})".format(
-        dt_range[0], dt_range[1], area))
+    _logger.info("makedag job ({0}) start)".format(jobname))
 
     ci_func = conf.get("dag", "ci_func")
     binarize = is_binarize(ci_func)
@@ -39,8 +39,8 @@ def makedag_main(args):
     # record dag
     ldag = showdag.LogDAG(args, graph)
     ldag.dump()
-    _logger.info("makedag job done, output {0}".format(
-        arguments.ArgumentManager.dag_filepath(args)))
+    _logger.info("makedag job ({0}) done, output {1}".format(
+        jobname, arguments.ArgumentManager.dag_filepath(args)))
     return ldag
 
 
