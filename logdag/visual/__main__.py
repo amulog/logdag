@@ -70,6 +70,56 @@ def draw_graph_diff(ns):
     print(output)
 
 
+def show_graph_common_edges(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    from . import comp_conf
+    edge_sum = 0
+    d_edges = {}
+    am = arguments.ArgumentManager(conf1)
+    am.load()
+    for dt_range in am.iter_dt_range():
+        cevmap, cgraph = comp_conf.edge_set_common(conf1, conf2, dt_range)
+        edge_sum += cgraph.number_of_edges()
+        d_edges[dt_range[0]] = cgraph.edges()
+
+    print("common edge num: {0}".format(edge_sum))
+    for k, v in sorted(d_edges.items(), key = lambda x: x[0]):
+        print("{0}: {1}".format(k, len(v)))
+
+
+def show_graph_lor_edges(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    from . import comp_conf
+    edge_sum = 0
+    d_edges = {}
+    am = arguments.ArgumentManager(conf1)
+    am.load()
+    for dt_range in am.iter_dt_range():
+        cevmap, cgraph = comp_conf.edge_set_lor(conf1, conf2, dt_range)
+        edge_sum += cgraph.number_of_edges()
+        d_edges[dt_range[0]] = cgraph.edges()
+
+    print("logical disjunction edge num: {0}".format(edge_sum))
+    for k, v in sorted(d_edges.items(), key = lambda x: x[0]):
+        print("{0}: {1}".format(k, len(v)))
+
+
 def show_graph_diff_lts(ns):
     l_conffp = ns.confs
     assert len(l_conffp) == 2
@@ -179,6 +229,18 @@ DICT_ARGSET = {
                              "help": "2 config file path"}],
                            ARG_TIMESTR,],
                           draw_graph_diff],
+    "show-graph-common-edges": ["List number of edges in common graph",
+                                [OPT_DEBUG,
+                                 [["confs"],
+                                  {"metavar": "CONFIG", "nargs": 2,
+                                   "help": "2 config file path"}],],
+                                show_graph_common_edges],
+    "show-graph-lor-edges": ["List number of edges in lor graph",
+                             [OPT_DEBUG,
+                              [["confs"],
+                               {"metavar": "CONFIG", "nargs": 2,
+                                "help": "2 config file path"}],],
+                             show_graph_lor_edges],
     "show-graph-diff-lts": ["List ltids found in diff graph of 2 DAG sets",
                             [OPT_DEBUG,
                              [["confs"],

@@ -50,6 +50,46 @@ def edge_set_common(conf1, conf2, dt_range):
     am2 = arguments.ArgumentManager(conf2)
     am2.load()
 
+    temp_cevmap = log2event.EventDefinitionMap(gid_name)
+    temp_cgraph = nx.Graph()
+    for args in am1.args_in_time(dt_range):
+        r1 = showdag.LogDAG(args)
+        r1.load()
+        temp_cevmap = _add_nodes(temp_cevmap, r1)
+        temp_cgraph = _add_edges(temp_cevmap, temp_cgraph, r1)
+
+    cevmap = log2event.EventDefinitionMap(gid_name)
+    cgraph = nx.Graph()
+    for args in am2.args_in_time(dt_range):
+        r2 = showdag.LogDAG(args)
+        r2.load()
+        g = r2.graph.to_undirected()
+        for edge in g.edges():
+            src_evdef, dst_evdef = r2.edge_info(edge)
+            if temp_cevmap.has_evdef(src_evdef) \
+                    and temp_cevmap.has_evdef(dst_evdef):
+                temp_src_eid = temp_cevmap.get_eid(src_evdef)
+                temp_dst_eid = temp_cevmap.get_eid(dst_evdef)
+                if temp_cgraph.has_edge(temp_src_eid, temp_dst_eid):
+                    if cevmap.has_evdef(src_evdef):
+                        new_src_eid = cevmap.get_eid(src_evdef)
+                    else:
+                        new_src_eid = cevmap.add_evdef(src_evdef)
+                    if cevmap.has_evdef(dst_evdef):
+                        new_dst_eid = cevmap.get_eid(dst_evdef)
+                    else:
+                        new_dst_eid = cevmap.add_evdef(dst_evdef)
+                    cgraph.add_edge(new_src_eid, new_dst_eid)
+    return cevmap, cgraph
+
+
+def edge_set_lor(conf1, conf2, dt_range):
+    gid_name = conf1.get("dag", "event_gid")
+    am1 = arguments.ArgumentManager(conf1)
+    am1.load()
+    am2 = arguments.ArgumentManager(conf2)
+    am2.load()
+
     cevmap = log2event.EventDefinitionMap(gid_name)
     cgraph = nx.Graph()
     for args in am1.args_in_time(dt_range):
@@ -68,7 +108,7 @@ def edge_set_common(conf1, conf2, dt_range):
 
 def edge_set_diff(conf1, conf2, dt_range):
     """Edges exist in conf1, but not in conf2"""
-    cevmap, cgraph_common = edge_set_common(conf1, conf2, dt_range)
+    cevmap, cgraph_common = edge_set_lor(conf1, conf2, dt_range)
     
     gid_name = conf1.get("dag", "event_gid")
     am2 = arguments.ArgumentManager(conf2)
