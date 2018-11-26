@@ -66,6 +66,11 @@ class LogDAG():
                 label = self._default_label
             return label
 
+    def _label_group_ltg(self, gid):
+        label = self._label_ltg(gid)
+        group = self._ll.get_group(label)
+        return group
+
     def number_of_nodes(self, graph = None):
         if graph is None:
             graph = self.graph
