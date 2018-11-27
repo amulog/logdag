@@ -155,6 +155,7 @@ def show_match_dag(ns):
     dirname = conf.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
 
+    from logdag import showdag
     from . import match_edge
     tr = tm[ns.tid]
     d_args = match_edge.match_edges(conf, tr, rule = ns.rule)
@@ -164,7 +165,7 @@ def show_match_dag(ns):
         r = showdag.LogDAG(arguments.name2args(name, conf))
         r.load()
         for edge in l_edge:
-            print(r.edge_str(edge))
+            print(r.edge_str(edge, graph = r.graph.to_undirected()))
 
 
 def show_match_all(ns):
