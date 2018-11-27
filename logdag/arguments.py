@@ -48,6 +48,12 @@ class ArgumentManager(object):
     def args_in_time(self, dt_range):
         return [args for args in self.l_args if args[1] == dt_range]
 
+    def args_from_time(self, dt):
+        for args in self.l_args:
+            dts, dte = args[1]
+            if dts <= dt and dt < dte:
+                yield args
+
     def show(self):
         table = []
         table.append(["name", "datetime", "area"])
