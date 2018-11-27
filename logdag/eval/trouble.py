@@ -57,14 +57,14 @@ class Trouble():
     def load(cls, tid, dirname):
         tr = Trouble(tid)
         fp = cls._filepath(tid, dirname)
-        with open(fp, 'r') as f:
+        with open(fp, 'r', encoding='utf-8') as f:
             tr.data = json.load(f)
         return tr
 
     def dump(self, dirname):
         fp = self._filepath(self.tid, dirname)
         obj = self.data
-        with open(fp, 'w') as f:
+        with open(fp, 'w', encoding='utf-8') as f:
             json.dump(obj, f, **common.json_args)
 
 
