@@ -247,6 +247,64 @@ def show_match_info(ns):
     print("average edges: {0}".format(1.0 * match_edge_num / valid_ticket_num))
 
 
+def search_trouble(ns):
+    conf = arguments.open_logdag_config(ns)
+    d = parse_condition(ns.conditions)
+    from . import trouble
+    dirname = conf.get("eval", "path")
+    tm = trouble.TroubleManager(dirname)
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    gid_name = conf.get("dag", "event_gid")
+    from logdag import dtutil
+
+    # match group
+    if "group" in d:
+        l_tr = [tr for tr in tm if tr.data["group"] == d["group"]]
+    else:
+        l_tr = [tr for tr in tm]
+
+    if "gid" in d or "host" in d:
+        search_gid = d.get("gid", None)
+        search_host = d.get("host", None)
+        ret = []
+        for tr in l_tr:
+            for lid in tr.data["message"]:
+                lm = ld.get_line(lid)
+                gid = lm.lt.get(gid_name)
+                host = lm.host
+                if (search_gid is None or search_gid == gid) and \
+                        (search_host is None or search_host == host):
+                    ret.append(tr)
+                    break
+        l_tr = ret
+
+    for tr in l_tr:
+        print(tr)
+
+
+def parse_condition(conditions):
+    """
+    Args:
+        conditions (list)
+    """
+    import datetime
+    d = {}
+    for arg in conditions:
+        if not "=" in arg:
+            raise SyntaxError
+        key = arg.partition("=")[0]
+        if key == "gid":
+            d["gid"] = int(arg.partition("=")[-1])
+        elif key == "host":
+            d["host"] = arg.partition("=")[-1]
+        elif key == "group":
+            d["group"] = arg.partition("=")[-1]
+        else:
+            d[key] = arg.partition("=")[-1]
+    return d
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -278,6 +336,11 @@ ARG_MESSAGES = [["lids"],
                 {"metavar": "MESSAGE_IDS", "action": "store",
                  "type": int, "nargs": "+",
                  "help": "message IDs (lid in amulog db)"}]
+ARG_SEARCH = [["conditions"],
+              {"metavar": "CONDITION", "nargs": "+",
+               "help": ("Conditions to search log messages. "
+                        "Example: command gid=24 group=system ..., "
+                        "Keys: gid, host, group")}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -311,8 +374,11 @@ DICT_ARGSET = {
                      [OPT_CONFIG, OPT_DEBUG, OPT_LID, ARG_TID],
                      show_trouble],
     "show-trouble-info": ["Show abstracted information for the trouble",
-                     [OPT_CONFIG, OPT_DEBUG, OPT_LID, ARG_TID],
-                     show_trouble_info],
+                          [OPT_CONFIG, OPT_DEBUG, ARG_TID],
+                          show_trouble_info],
+    "search-trouble": ["Search troubles with messages of specified features",
+                       [OPT_CONFIG, OPT_DEBUG, ARG_SEARCH],
+                       search_trouble],
     "show-match-dag": ["Show matching edges in a DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE, ARG_TID],
                        show_match_dag],
