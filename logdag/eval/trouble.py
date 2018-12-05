@@ -6,6 +6,7 @@ import json
 from amulog import common
 
 TR_ZEROS = 4
+EMPTY_GROUP = "none"
 
 
 class Trouble():
@@ -72,6 +73,9 @@ class TroubleManager():
 
     def __init__(self, dirname):
         self._dirname = dirname
+
+    def __len__(self):
+        return len(self._get_tids())
 
     def __iter__(self):
         return self._generator()

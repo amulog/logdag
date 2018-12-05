@@ -117,6 +117,48 @@ def show_trouble(ns):
     print("\n".join(tr.get_message(ld, show_lid = ns.lid_header)))
 
 
+def show_trouble_info(ns):
+    conf = arguments.open_logdag_config(ns)
+    tid = ns.tid
+
+    from . import trouble
+    dirname = conf.get("eval", "path")
+    tm = trouble.TroubleManager(dirname)
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    from amulog import lt_label
+    ll = lt_label.init_ltlabel(conf)
+    gid_name = conf.get("dag", "event_gid")
+
+    d_gid = defaultdict(int)
+    d_host = defaultdict(int)
+    d_ev = defaultdict(int)
+    tr = tm[tid]
+    for lid in tr.get():
+        lm = ld.get_line(lid)
+        gid = lm.lt.get(gid_name)
+        host = lm.host
+        d_gid[gid] += 1
+        d_host[host] += 1
+        d_ev[(gid, host)] += 1
+
+    d_group = defaultdict(list)
+    for gid in d_gid.keys():
+        label = ll.get_ltg_label(gid, ld.ltg_members(gid))
+        group = ll.get_group(label)
+        d_group[group].append(gid)
+
+    print(tr)
+    print("{0} related events".format(len(d_ev)))
+    print("{0} related hosts: {1}".format(len(d_host), sorted(d_host.keys())))
+    print("{0} related templates: {1}".format(len(d_gid),
+                                              sorted(d_gid.keys())))
+    for group, l_gid in d_group.items():
+        num = sum([d_gid[gid] for gid in l_gid])
+        print("  group {0}: {1} messages, {2} templates {3}".format(
+            group, num, len(l_gid), l_gid))
+
+
 def list_trouble_label(ns):
     conf = arguments.open_logdag_config(ns)
     from . import trouble
@@ -182,6 +224,29 @@ def show_match_all(ns):
             tr, cnt))
 
 
+def show_match_info(ns):
+    conf = arguments.open_logdag_config(ns)
+    from . import trouble
+    dirname = conf.get("eval", "path")
+    tm = trouble.TroubleManager(dirname)
+
+    from . import match_edge
+    d_num = {}
+    for tr in tm:
+        d_args = match_edge.match_edges(conf, tr, rule = ns.rule)
+        cnt = sum([len(l_edge) for l_edge in d_args.values()])
+        d_num[tr.tid] = cnt
+
+    match_edge_sum = sum(d_num.values())
+    valid_ticket_num = sum([1 for tr in tm
+                            if not tr.data["group"] == trouble.EMPTY_GROUP])
+    detected_ticket_num = len(d_num.keys())
+    print("valid tickets: {0} / {1}".format(valid_ticket_num, len(tm)))
+    print("detection ratio: {0}".format(
+        1.0 * detected_ticket_num / valid_ticket_num))
+    print("average edges: {0}".format(1.0 * match_edge_num / valid_ticket_num))
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -245,6 +310,9 @@ DICT_ARGSET = {
     "show-trouble": ["Show all messages corresponding to the given trouble",
                      [OPT_CONFIG, OPT_DEBUG, OPT_LID, ARG_TID],
                      show_trouble],
+    "show-trouble-info": ["Show abstracted information for the trouble",
+                     [OPT_CONFIG, OPT_DEBUG, OPT_LID, ARG_TID],
+                     show_trouble_info],
     "show-match-dag": ["Show matching edges in a DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE, ARG_TID],
                        show_match_dag],
