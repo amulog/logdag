@@ -130,23 +130,9 @@ def show_trouble_info(ns):
     ll = lt_label.init_ltlabel(conf)
     gid_name = conf.get("dag", "event_gid")
 
-    d_gid = defaultdict(int)
-    d_host = defaultdict(int)
-    d_ev = defaultdict(int)
     tr = tm[tid]
-    for lid in tr.get():
-        lm = ld.get_line(lid)
-        gid = lm.lt.get(gid_name)
-        host = lm.host
-        d_gid[gid] += 1
-        d_host[host] += 1
-        d_ev[(gid, host)] += 1
-
-    d_group = defaultdict(list)
-    for gid in d_gid.keys():
-        label = ll.get_ltg_label(gid, ld.ltg_members(gid))
-        group = ll.get_group(label)
-        d_group[group].append(gid)
+    d_ev, d_gid, d_host = trouble.event_stat(tr, ld, gid_name)
+    d_group = trouble.event_label(d_gid, ld, ll)
 
     print(tr)
     print("{0} related events".format(len(d_ev)))
@@ -171,24 +157,53 @@ def list_trouble_label(ns):
     gid_name = conf.get("dag", "event_gid")
 
     for tr in tm:
-        d_gid = defaultdict(int)
-        for lid in tr.get():
-            lm = ld.get_line(lid)
-            gid = lm.lt.get(gid_name)
-            d_gid[gid] += 1
-
-        d = defaultdict(list)
-        for gid in d_gid.keys():
-            label = ll.get_ltg_label(gid, ld.ltg_members(gid))
-            group = ll.get_group(label)
-            d[group].append(gid)
+        d_ev, d_gid, d_host = trouble.event_stat(tr, ld, gid_name)
+        d_group = trouble.event_label(d_gid, ld, ll)
 
         buf = "{0} ({1}): ".format(tr.tid, tr.data["group"])
-        for group, l_gid in sorted(d.items(), key = lambda x: len(x[1]),
+        for group, l_gid in sorted(d_group.items(), key = lambda x: len(x[1]),
                                    reverse = True):
-            num = sum([d_gid[gid] for gid in d[group]])
+            num = sum([d_gid[gid] for gid in l_gid])
             buf += "{0}({1},{2}) ".format(group, len(l_gid), num)
         print(buf)
+
+
+def list_trouble_stat(ns):
+    conf = arguments.open_logdag_config(ns)
+    from . import trouble
+    dirname = conf.get("eval", "path")
+    tm = trouble.TroubleManager(dirname)
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    from amulog import lt_label
+    ll = lt_label.init_ltlabel(conf)
+    gid_name = conf.get("dag", "event_gid")
+
+    from scipy.stats import entropy
+
+    table = [["trouble_id", "group", "messages", "gids", "hosts",
+              "events", "groups",
+              "entropy_events", "entropy_groups"]]
+    for tr in tm:
+        line = []
+        d_ev, d_gid, d_host = trouble.event_stat(tr, ld, gid_name)
+        d_group = trouble.event_label(d_gid, ld, ll)
+        ent_ev = entropy(list(d_ev.values()), base = 2)
+        ent_group = entropy([sum([d_gid[gid] for gid in l_gid])
+                             for l_gid in d_group.values()],
+                            base = 2)
+        line.append(tr.tid)
+        line.append(tr.data["group"])
+        line.append(sum(d_gid.values())) # messages
+        line.append(len(d_gid.keys())) # gids
+        line.append(len(d_host.keys())) # hosts
+        line.append(len(d_ev.keys())) # events
+        line.append(len(d_group.keys())) # groups
+        line.append(ent_ev) # entropy of events
+        line.append(ent_group) # entropy of groups
+        table.append(line)
+
+    print(common.cli_table(table))
 
 
 def show_match_dag(ns):
@@ -264,6 +279,7 @@ def search_trouble(ns):
     else:
         l_tr = [tr for tr in tm]
 
+    # match event
     if "gid" in d or "host" in d:
         search_gid = d.get("gid", None)
         search_host = d.get("host", None)
@@ -364,6 +380,9 @@ DICT_ARGSET = {
     "list-group": ["List group information",
                    [OPT_CONFIG, OPT_DEBUG],
                    list_group],
+    "list-trouble-stat": ["List stats of messages in each troubles",
+                          [OPT_CONFIG, OPT_DEBUG],
+                          list_trouble_stat],
     "list-trouble-label": ["Show corresponding label groups of tickets",
                            [OPT_CONFIG, OPT_DEBUG],
                            list_trouble_label],

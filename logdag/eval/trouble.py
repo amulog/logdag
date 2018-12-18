@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import json
+from collections import defaultdict
 
 from amulog import common
 
@@ -133,5 +134,27 @@ class TroubleManager():
         return tr
 
 
+def event_stat(tr, ld, gid_name):
+    d_gid = defaultdict(int)
+    d_host = defaultdict(int)
+    d_ev = defaultdict(int)
+    for lid in tr.get():
+        lm = ld.get_line(lid)
+        gid = lm.lt.get(gid_name)
+        host = lm.host
+        d_gid[gid] += 1
+        d_host[host] += 1
+        d_ev[(gid, host)] += 1
+
+    return d_ev, d_gid, d_host
+
+
+def event_label(d_gid, ld, ll):
+    d_group = defaultdict(list)
+    for gid in d_gid.keys():
+        label = ll.get_ltg_label(gid, ld.ltg_members(gid))
+        group = ll.get_group(label)
+        d_group[group].append(gid)
+    return d_group
 
 
