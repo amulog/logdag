@@ -157,6 +157,38 @@ def show_graph_diff_search(ns):
     comp_conf.edge_diff_gid_search(conf1, conf2, gid)
 
 
+def show_diff_direction(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    def _print_diff(ret):
+        for ev1, ev2, di1, di2 in ret:
+            print("{0} {1} | {2} {3}".format(ev1, di1, di2, ev2))
+
+    from . import comp_conf
+    am = arguments.ArgumentManager(conf1)
+    am.load()
+    if ns.argname is None:
+        for dt_range in sorted(am.iter_dt_range()):
+            ret = comp_conf.edge_direction_diff(conf1, conf2, dt_range)
+            if len(ret) > 0:
+                print(dt_range)
+                _print_diff(ret)
+                print("")
+    else:
+        args = am.jobname2args(ns.argname, conf)
+        dt_range = args[2]
+        ret = comp_conf.edge_direction_diff(conf1, conf2, dt_range)
+        _print_diff(ret)
+
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -185,6 +217,10 @@ OPT_HOSTNAME = [["-n", "--host"],
                 {"dest": "host", "metavar": "HOST", "action": "store",
                  "default": None,
                  "help": "hostname to search events"}]
+OPT_ARGNAME = [["--argname"],
+               {"dest": "argname", "metavar": "TASKNAME",
+                "action": "store", "default": None,
+                "help": "argument name"}]
 OPT_BINSIZE = [["-b", "--binsize"],
                {"dest": "binsize", "metavar": "BINSIZE",
                 "action": "store", "default": None,
@@ -195,9 +231,6 @@ OPT_IGORPHAN = [["-i", "--ignore-orphan"],
 ARG_TIMESTR = [["timestr"],
                {"metavar": "TIMESTR", "action": "store",
                 "help": "%%Y%%m%%d(_%%H%%M%%S) style time string"}]
-ARG_ARGNAME = [["argname"],
-               {"metavar": "TASKNAME", "action": "store",
-                "help": "argument name"}]
 ARG_DBSEARCH = [["conditions"],
                 {"metavar": "CONDITION", "nargs": "+",
                  "help": ("Conditions to search log messages. "
@@ -258,6 +291,12 @@ DICT_ARGSET = {
                                   "type": int,
                                   "help": "gid to search"}],],
                                show_graph_diff_search],
+    "show-graph-diff-direction": ["List edge direction differences",
+                                  [OPT_DEBUG, OPT_ARGNAME,
+                                   [["confs"],
+                                    {"metavar": "CONFIG", "nargs": 2,
+                                     "help": "2 config file path"}],],
+                                  show_diff_direction],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

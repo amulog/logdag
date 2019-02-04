@@ -175,3 +175,48 @@ def edge_diff_gid_search(conf1, conf2, gid):
                 timestr = dtutil.shortstr(dt_range[0])
                 print("{0}: {1} - {2}".format(timestr, src_evdef, dst_evdef))
 
+
+def edge_direction_diff(conf1, conf2, dt_range):
+
+    def _get_direction(am, ev1, ev2, dt_range):
+        for args in am.args_in_time(dt_range):
+            r = showdag.LogDAG(args)
+            r.load()
+            if not r._evmap().has_evdef(ev1):
+                continue
+            if not r._evmap().has_evdef(ev2):
+                continue
+            n1, n2 = [r.info2node(ev) for ev in (ev1, ev2)]
+            if (n1, n2) in r.graph.edges():
+                if (n2, n1) in r.graph.edges():
+                    di = "-"
+                else:
+                    di = "->"
+            elif (n2, n1) in r.graph.edges():
+                di = "<-"
+            return di
+        else:
+            raise ValueError("Edge {0} - {1} not found in {2}".format(
+                ev1, ev2, r.name))
+
+    ret = []
+    gid_name = conf1.get("dag", "event_gid")
+    am1 = arguments.ArgumentManager(conf1)
+    am1.load()
+    am2 = arguments.ArgumentManager(conf2)
+    am2.load()
+    for args in am1.args_in_time(dt_range):
+        r2 = showdag.LogDAG(args)
+
+    cevmap, cgraph = edge_set_common(conf1, conf2, dt_range)
+    for edge in cgraph.edges():
+        ev1, ev2 = [cevmap.evdef(node) for node in edge]
+        di1 = _get_direction(am1, ev1, ev2, dt_range)
+        di2 = _get_direction(am2, ev1, ev2, dt_range)
+        if di1 == di2:
+            pass
+        else:
+            ret.append([ev1, ev2, di1, di2])
+    return ret
+
+
