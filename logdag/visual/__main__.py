@@ -171,12 +171,14 @@ def show_diff_direction(ns):
         for ev1, ev2, di1, di2 in ret:
             print("{0} {1} | {2} {3}".format(ev1, di1, di2, ev2))
 
+    cnt = 0
     from . import comp_conf
     am = arguments.ArgumentManager(conf1)
     am.load()
     if ns.argname is None:
         for dt_range in sorted(am.iter_dt_range()):
             ret = comp_conf.edge_direction_diff(conf1, conf2, dt_range)
+            cnt += len(ret)
             if len(ret) > 0:
                 print(dt_range)
                 _print_diff(ret)
@@ -185,8 +187,10 @@ def show_diff_direction(ns):
         args = am.jobname2args(ns.argname, conf)
         dt_range = args[2]
         ret = comp_conf.edge_direction_diff(conf1, conf2, dt_range)
+        cnt += len(ret)
         _print_diff(ret)
 
+    print(cnt)
 
 
 # common argument settings
