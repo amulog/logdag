@@ -350,7 +350,7 @@ def log2ts(conf, dt_range):
              "top_dt": top_dt,
              "end_dt": end_dt}
         iterobj = ld.iter_lines(**d)
-        l_dt = [line.dt for line in iterobj]
+        l_dt = sorted([line.dt for line in iterobj])
         _logger.debug("gid {0}, host {1}: {2} counts".format(gid, host,
                                                              len(l_dt)))
         assert len(l_dt) > 0
@@ -441,7 +441,7 @@ def log2ts_elem(args):
          "top_dt": dt_range[0],
          "end_dt": dt_range[1]}
     iterobj = ld.iter_lines(**d)
-    l_dt = [line.dt for line in iterobj]
+    l_dt = sorted([line.dt for line in iterobj])
     del iterobj
     _logger.debug("gid {0}, host {1}: {2} counts".format(gid, host,
                                                          len(l_dt)))
