@@ -598,7 +598,7 @@ def reload_ts(ld, evdef, dt_length, dt_range, gid_name):
          "top_dt": new_top_dt,
          "end_dt": dt_range[1]}
     iterobj = ld.iter_lines(**d)
-    return [line.dt for line in iterobj]
+    return sorted([line.dt for line in iterobj])
 
 
 def revert_event(a_cnt, dt_range, binsize):
