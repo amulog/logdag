@@ -155,6 +155,16 @@ def show_edge_list(ns):
     print(showdag.show_edge_list(args))
 
 
+def show_edge_detail(ns):
+    from . import showdag
+    conf = arguments.open_logdag_config(ns)
+    args = arguments.name2args(ns.argname, conf)
+    head = ns.head
+    tail = ns.tail
+
+    print(showdag.show_edge_detail(args, head, tail))
+
+
 def show_list(ns):
     from . import showdag
     conf = arguments.open_logdag_config(ns)
@@ -355,9 +365,21 @@ DICT_ARGSET = {
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],
-    "show-dag-edge": ["Show edges in a DAG",
-                      [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
-                      show_edge_list],
+    "show-edge-list": ["Show edges in a DAG",
+                       [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
+                       show_edge_list],
+    "show-edge-detail": ["Show logs of detected edges in a DAG",
+                         [OPT_CONFIG, OPT_DEBUG,
+                          [["--head",],
+                           {"dest": "head", "action": "store",
+                            "type": int, "default": 5,
+                            "help": "number of lines from log head"}],
+                          [["--tail",],
+                           {"dest": "tail", "action": "store",
+                            "type": int, "default": 5,
+                            "help": "number of lines from log tail"}],
+                          ARG_ARGNAME],
+                         show_edge_detail],
     "show-list": ["Show abstracted results of DAG generation",
                   [OPT_CONFIG, OPT_DEBUG, OPT_BYDAY],
                   show_list],

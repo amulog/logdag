@@ -190,6 +190,29 @@ class LogDAG():
         else:
             return "[gid={0[0]}({1}), host = {0[1]}]".format(info, label)
 
+    def edge_detail(self, edge, ld, head, foot):
+        buf = ["## Edge {0}".format(self.edge_str(edge)),]
+        for node in edge:
+            buf.append(self.node_detail(node, ld, head, foot))
+        return "\n".join(buf)
+
+    def node_detail(self, node, ld, head, foot):
+        gid, host = self.node_info(node)
+        gid_name = self._evmap().gid_name
+        if gid_name == "ltid":
+            buf = ["# Node {0}: {1}".format(self.node_str(node),
+                                          str(ld.lt(gid)))]
+        else:
+            buf = ["# Node {0}: {1}".format(self.node_str(node))]
+        d = {gid_name: gid,
+             "host": host,
+             "top_dt": self.dt_range[0],
+             "end_dt": self.dt_range[1],
+             "head": head,
+             "foot": foot}
+        buf.append(ld.show_log_repr(**d))
+        return "\n".join(buf)
+
     def ate_prune(self, threshold, graph = None):
         if graph is None:
             graph = self.graph
@@ -310,6 +333,18 @@ def show_edge_list(args):
     for edge in r.graph.edges():
         l_buf.append(r.edge_str(edge))
     return "\n".join(l_buf)
+
+
+def show_edge_detail(args, head, tail):
+    conf, dt_range, area = args
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+    l_buf = []
+    r = LogDAG(args)
+    r.load()
+    for edge in r.graph.edges():
+        l_buf.append(r.edge_detail(edge, ld, head, tail))
+    return "\n\n".join(l_buf)
 
 
 def show_graph(conf, args, output, lib = "networkx",
