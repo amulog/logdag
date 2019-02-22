@@ -52,7 +52,7 @@ class SingleLayerTopology():
     def __init__(self, topology_fp):
         self._topology = self._load_graph(topology_fp)
 
-    @staticmethpd
+    @staticmethod
     def _load_graph(fp):
         with open(fp, 'r', encoding='utf-8') as f:
             js = json.load(f)
