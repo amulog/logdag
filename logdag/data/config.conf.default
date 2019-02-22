@@ -131,11 +131,16 @@ output_dir = pc_output
 do_pruning = false
 
 # List of pruning methods
+# [topology, multi-topology]
 methods = 
 
 # A json node-link file of network topology of hosts,
 # used in "network" method.
-network_file = 
+single_network_file = 
+multi_network_file =
+# multi_network_file = l2:l2.json, l3:l3.json
+multi_network_group =
+# multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
 
 
 [filter]

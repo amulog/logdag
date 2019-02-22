@@ -29,9 +29,10 @@ def makedag_main(args):
     evmap.dump(args)
 
     if conf.getboolean("pc_prune", "do_pruning"):
+        from . import prune
         node_ids = evmap.eids()
         g = _complete_graph(node_ids)
-        init_graph = pruning(g, conf, evmap)
+        init_graph = prune.prune_graph(g, conf, evmap)
     else:
         init_graph = None
     graph = estimate_dag(conf, d_input, ci_func, init_graph)
@@ -90,59 +91,59 @@ def _complete_graph(node_ids):
     return g
 
 
-def pruning(g, conf, evmap):
-    import networkx as nx
-    n_edges_before = g.number_of_edges()
-    methods = config.getlist(conf, "pc_prune", "methods")
-    for method in methods:
-        if method == "network":
-            import json
-            fp = conf.get("pc_prune", "network_file")
-            with open(fp, "r") as f:
-                js = json.load(f)
-            g_network = nx.node_link_graph(js)
-            g = _pruning_network(g, g_network, evmap)
-        elif method == "same_overhost":
-            g = _pruning_overhost(g, evmap, nodes = None)
-        elif method == "ext_overhost":
-            nodes_prune = [nid for nid, evdef in evmap.items()
-                           if isinstance(evdef.gid, str)]
-            g = _pruning_overhost(g, evmap, nodes = nodes_prune)
-        else:
-            raise NotImplementedError
-    pass
-    n_edges_after = g.number_of_edges()
-    _logger.debug("DAG edge pruning: "
-                  "{0} -> {1}".format(n_edges_before, n_edges_after))
-    return g
-
-
-def _pruning_network(g_base, g_net, evmap):
-    """Prune edges based on topology network of hosts (g_net)."""
-    import networkx as nx
-    g_ret = nx.Graph()
-    for edge in g_base.edges():
-        src_host, dst_host = [evmap.evdef(node).host for node in edge]
-        if src_host == dst_host or g_net.has_edge(src_host, dst_host):
-            g_ret.add_edge(*edge)
-    return g_ret
-
-
-def _pruning_overhost(g, evmap, nodes = None):
-    """Prune edges between two nodes those are same event
-    but different hosts."""
-    if nodes is None:
-        nodes = evmap.eids()
-    for i, j in combinations(nodes, 2):
-        evdef_i = evmap.evdef(i)
-        evdef_j = evmap.evdef(j)
-        if evdef_i.host == evdef_j.host:
-            pass
-        else:
-            if g.has_edge(i, j):
-                g.remove_edge(i, j)
-                _logger.debug("prune {0} - {1}".format(evmap.evdef_str(i),
-                                                       evmap.evdef_str(j)))
-    return g
+#def pruning(g, conf, evmap):
+#    import networkx as nx
+#    n_edges_before = g.number_of_edges()
+#    methods = config.getlist(conf, "pc_prune", "methods")
+#    for method in methods:
+#        if method == "network":
+#            import json
+#            fp = conf.get("pc_prune", "network_file")
+#            with open(fp, "r") as f:
+#                js = json.load(f)
+#            g_network = nx.node_link_graph(js)
+#            g = _pruning_network(g, g_network, evmap)
+#        elif method == "same_overhost":
+#            g = _pruning_overhost(g, evmap, nodes = None)
+#        elif method == "ext_overhost":
+#            nodes_prune = [nid for nid, evdef in evmap.items()
+#                           if isinstance(evdef.gid, str)]
+#            g = _pruning_overhost(g, evmap, nodes = nodes_prune)
+#        else:
+#            raise NotImplementedError
+#    pass
+#    n_edges_after = g.number_of_edges()
+#    _logger.debug("DAG edge pruning: "
+#                  "{0} -> {1}".format(n_edges_before, n_edges_after))
+#    return g
+#
+#
+#def _pruning_network(g_base, g_net, evmap):
+#    """Prune edges based on topology network of hosts (g_net)."""
+#    import networkx as nx
+#    g_ret = nx.Graph()
+#    for edge in g_base.edges():
+#        src_host, dst_host = [evmap.evdef(node).host for node in edge]
+#        if src_host == dst_host or g_net.has_edge(src_host, dst_host):
+#            g_ret.add_edge(*edge)
+#    return g_ret
+#
+#
+#def _pruning_overhost(g, evmap, nodes = None):
+#    """Prune edges between two nodes those are same event
+#    but different hosts."""
+#    if nodes is None:
+#        nodes = evmap.eids()
+#    for i, j in combinations(nodes, 2):
+#        evdef_i = evmap.evdef(i)
+#        evdef_j = evmap.evdef(j)
+#        if evdef_i.host == evdef_j.host:
+#            pass
+#        else:
+#            if g.has_edge(i, j):
+#                g.remove_edge(i, j)
+#                _logger.debug("prune {0} - {1}".format(evmap.evdef_str(i),
+#                                                       evmap.evdef_str(j)))
+#    return g
 
 
