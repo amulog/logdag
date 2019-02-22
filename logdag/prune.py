@@ -87,6 +87,7 @@ def init_gid_layer(conf, d_rule):
 
 
 def init_pruner(conf):
+    from amulog import config
     l_pruner = []
     methods = config.getlist(conf, "pc_prune", "methods")
     for method in methods:
