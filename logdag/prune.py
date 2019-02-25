@@ -101,7 +101,7 @@ def init_pruner(conf):
                 d_fp[group] = fp
             rulestr = config.getlist(conf, "pc_prune", "multi_network_group")
             d_rule = {}
-            for rule in rules:
+            for rule in rulestr:
                 group, layer = rule.split(":")
                 d_rule[group] = layer
             d_gid = init_gid_layer(conf, d_rule)
