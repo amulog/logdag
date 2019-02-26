@@ -23,7 +23,7 @@ setup(name='logdag',
     author='Satoru Kobayashi',
     author_email='sat@hongo.wide.ad.jp',
     url='https://github.com/cpflat/logdag/',
-    install_requires=['numpy>=1.12.1', 'scipy>=1.0.0', 'pcalg>=0.1.6',
+    install_requires=['numpy>=1.12.1', 'scipy>=1.0.0', 'pcalg>=0.1.9',
                       'gsq>=0.1.6', 'networkx>=2.1'],
     classifiers=[
         'Development Status :: 4 - Beta',
