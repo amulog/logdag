@@ -35,8 +35,8 @@ def makedag_main(args):
         n_edges_before = g.number_of_edges()
         init_graph = prune.prune_graph(g, conf, evmap)
         n_edges_after = init_graph.number_of_edges()
-        _logger.debug("DAG edge pruning: "
-                      "{0} -> {1}".format(n_edges_before, n_edges_after))
+        _logger.info("DAG edge pruning: "
+                     "{0} -> {1}".format(n_edges_before, n_edges_after))
     else:
         init_graph = None
     graph = estimate_dag(conf, d_input, ci_func, init_graph)
