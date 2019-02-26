@@ -42,7 +42,7 @@ class MultiLayerTopology():
         for edge in g_base.edges():
             src_gid, src_host = [evmap.evdef(node) for node in edge]
             dst_gid, dst_host = [evmap.evdef(node) for node in edge]
-            if self.is_adjacent(src_gid, src_host, dst_gid, dst_host):
+            if self._is_adjacent(src_gid, src_host, dst_gid, dst_host):
                 g_ret.add_edge(*edge)
         return g_ret
 
