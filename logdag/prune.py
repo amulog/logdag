@@ -26,7 +26,9 @@ class MultiLayerTopology():
     def _get_layer(self, gid):
         return self._d_node_layer[gid]
 
-    def _is_adjacent(self, gid1, host1, gid2, host2):
+    def _is_adjacent(self, evdef1, evdef2):
+        gid1, host1 = evdef1
+        gid2, host2 = evdef2
         group1 = self._get_layer(gid1)
         group2 = self._get_layer(gid2)
         for group in (group1, group2):
@@ -39,10 +41,10 @@ class MultiLayerTopology():
 
     def prune(self, g_base, evmap):
         g_ret = nx.Graph()
+        g_ret.add_nodes_from(g_base.nodes())
         for edge in g_base.edges():
-            src_gid, src_host = [evmap.evdef(node) for node in edge]
-            dst_gid, dst_host = [evmap.evdef(node) for node in edge]
-            if self._is_adjacent(src_gid, src_host, dst_gid, dst_host):
+            src_evdef, dst_evdef = [evmap.evdef(node) for node in edge]
+            if self._is_adjacent(src_evdef, dst_evdef):
                 g_ret.add_edge(*edge)
         return g_ret
 
@@ -60,6 +62,7 @@ class SingleLayerTopology():
 
     def prune(self, g_base, evmap):
         g_ret = nx.Graph()
+        g_ret.add_nodes_from(g_base.nodes())
         for edge in g_base.edges():
             src_host, dst_host = [evmap.evdef(node).host for node in edge]
             if src_host == dst_host or \
