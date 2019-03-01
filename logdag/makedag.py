@@ -49,6 +49,36 @@ def makedag_main(args):
     return ldag
 
 
+def makedag_prune_test(args):
+    jobname = arguments.args2name(args)
+    conf, dt_range, area = args
+
+    _logger.info("makedag_prune job ({0}) start".format(jobname))
+
+    ci_func = conf.get("dag", "ci_func")
+    binarize = is_binarize(ci_func)
+    # generate event set and evmap, and apply preprocessing
+    d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
+    _logger.info("{0} nodes for pc input".format(len(d_input)))
+    evmap.dump(args)
+
+    assert conf.getboolean("pc_prune", "do_pruning")
+    from . import prune
+    node_ids = evmap.eids()
+    g = _complete_graph(node_ids)
+    n_edges_before = g.number_of_edges()
+    init_graph = prune.prune_graph(g, conf, evmap)
+    n_edges_after = init_graph.number_of_edges()
+    _logger.info("DAG edge pruning: "
+                 "{0} -> {1}".format(n_edges_before, n_edges_after))
+
+    # record dag
+    ldag = showdag.LogDAG(args, init_graph)
+    ldag.dump()
+    _logger.info("makedag_prune job ({0}) done, output {1}".format(
+        jobname, arguments.ArgumentManager.dag_filepath(args)))
+
+
 def estimate_dag(conf, d_input, ci_func, init_graph = None):
     if len(d_input) >= 2:
         cause_algorithm = conf.get("dag", "cause_algorithm")

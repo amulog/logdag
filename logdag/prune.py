@@ -29,6 +29,9 @@ class MultiLayerTopology():
     def _is_adjacent(self, evdef1, evdef2):
         gid1, host1 = evdef1
         gid2, host2 = evdef2
+        if host1 == host2:
+            return True
+
         group1 = self._get_layer(gid1)
         group2 = self._get_layer(gid2)
         for group in (group1, group2):

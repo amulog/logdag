@@ -125,6 +125,23 @@ def show_ts_compare(ns):
     print(tsdb.show_ts_compare(conf, **d))
 
 
+def make_dag_prune(ns):
+    from . import makedag
+
+    conf = arguments.open_logdag_config(ns)
+
+    am = arguments.ArgumentManager(conf)
+    am.init_dirs(conf)
+    args = am.jobname2args(ns.argname, conf)
+
+    timer = common.Timer("makedag_prune task for {0}".format(ns.argname),
+                         output = _logger)
+    timer.start()
+    makedag.makedag_main(args)
+    makedag.makedag_prune_test(args)
+    timer.stop()
+
+
 def show_filterlog(ns):
     from . import tsdb
     conf = arguments.open_logdag_config(ns)
@@ -347,6 +364,9 @@ DICT_ARGSET = {
     "make-dag-stdin": ["make-dag interface for pipeline processing",
                        [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_stdin],
+    "make-dag-prune": ["Show pruned DAGs before PC algorithm",
+                       [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
+                       make_dag_prune],
     "reload-area": ["Reload area definition for time-series DB",
                     [OPT_CONFIG, OPT_DEBUG],
                     reload_area],
