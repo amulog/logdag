@@ -70,6 +70,39 @@ def draw_graph_diff(ns):
     print(output)
 
 
+def show_diff_info(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    from . import conp_conf
+    d = defaultdict(int)
+    am = arguments.ArgumentManager(conf1)
+    am.load()
+    for dt_range in am.iter_dt_range():
+        cevmap_common, cgraph_common = comp_conf.edge_set_common(
+            conf1, conf2, dt_range)
+        d["common"] += cgraph_common.number_of_edges()
+        cevmap_lor, cgraph_lor = comp_conf.edge_set_lor(
+            conf1, conf2, dt_range)
+        d["lor"] += cgraph_lor.number_of_edges()
+        cevmap_diff1, cgraph_diff1 = edge_set_diff(
+            conf1, conf2, dt_range, lor = (cevmap_lor, cgraph_lor))
+        d["diff1"] += cgraph_diff1.number_of_edges()
+        cevmap_diff2, cgraph_diff2 = edge_set_diff(
+            conf2, conf1, dt_range, lor = (cevmap_lor, cgraph_lor))
+        d["diff2"] += cgraph_diff2.number_of_edges()
+    print("Logical OR edges: {0}".format(d["lor"]))
+    print("Common edges: {0}".format(d["common"]))
+    print("Edges only found in {0}: {1}".format(ns.confs[0], d["diff1"]))
+    print("Edges only found in {0}: {1}".format(ns.confs[1], d["diff2"]))
+
+
 def show_graph_common_edges(ns):
     l_conffp = ns.confs
     assert len(l_conffp) == 2
@@ -266,6 +299,12 @@ DICT_ARGSET = {
                              "help": "2 config file path"}],
                            ARG_TIMESTR,],
                           draw_graph_diff],
+    "show-diff-info": ["Show information of 2 edge sets",
+                       [OPT_DEBUG,
+                        [["confs"],
+                         {"metavar": "CONFIG", "nargs": 2,
+                          "help": "2 config file path"}],],
+                       show_diff_info],
     "show-graph-common-edges": ["List number of edges in common graph",
                                 [OPT_DEBUG,
                                  [["confs"],

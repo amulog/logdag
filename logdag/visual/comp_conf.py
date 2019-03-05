@@ -106,10 +106,13 @@ def edge_set_lor(conf1, conf2, dt_range):
     return cevmap, cgraph
 
 
-def edge_set_diff(conf1, conf2, dt_range):
+def edge_set_diff(conf1, conf2, dt_range, lor = None):
     """Edges exist in conf1, but not in conf2"""
-    cevmap, cgraph_common = edge_set_lor(conf1, conf2, dt_range)
-    
+    if lor is None:
+        cevmap, cgraph_lor = edge_set_lor(conf1, conf2, dt_range)
+    else:
+        cevmap, cgraph_lor = lor
+
     gid_name = conf1.get("dag", "event_gid")
     am2 = arguments.ArgumentManager(conf2)
     am2.load()
@@ -119,29 +122,13 @@ def edge_set_diff(conf1, conf2, dt_range):
         r2 = showdag.LogDAG(args)
         r2.load()
         cgraph2 = _add_edges(cevmap, cgraph2, r2)
-        #g2 = r2.graph.to_undirected()
-        #for edge in g2.edges():
-        #    src_evdef, dst_evdef = r2.edge_info(edge)
-        #    try:
-        #        src_eid = cevmap.get_eid(src_evdef)
-        #        dst_eid = cevmap.get_eid(dst_evdef)
-        #    except KeyError:
-        #        raise
-        #    cgraph2.add_edge(src_eid, dst_eid)
 
     cgraph_diff = nx.Graph()
-    for edge in cgraph_common.edges():
+    for edge in cgraph_lor.edges():
         if cgraph2.has_edge(*edge):
             pass
         else:
             cgraph_diff.add_edge(*edge)
-
-    #print(
-    #    cgraph_common.number_of_edges(),
-    #    cgraph2.number_of_edges(),
-    #    cgraph_diff.number_of_edges()
-    #      )
-    #import pdb; pdb.set_trace()
 
     return cevmap, cgraph_diff
 
