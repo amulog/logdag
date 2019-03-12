@@ -4,6 +4,7 @@
 import sys
 import logging
 import argparse
+from collections import defaultdict
 
 from logdag import arguments
 from logdag import dtutil
@@ -80,7 +81,7 @@ def show_diff_info(ns):
     am_logger = logging.getLogger("amulog")
     config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
 
-    from . import conp_conf
+    from . import comp_conf
     d = defaultdict(int)
     am = arguments.ArgumentManager(conf1)
     am.load()
@@ -91,16 +92,50 @@ def show_diff_info(ns):
         cevmap_lor, cgraph_lor = comp_conf.edge_set_lor(
             conf1, conf2, dt_range)
         d["lor"] += cgraph_lor.number_of_edges()
-        cevmap_diff1, cgraph_diff1 = edge_set_diff(
+        cevmap_diff1, cgraph_diff1 = comp_conf.edge_set_diff(
             conf1, conf2, dt_range, lor = (cevmap_lor, cgraph_lor))
         d["diff1"] += cgraph_diff1.number_of_edges()
-        cevmap_diff2, cgraph_diff2 = edge_set_diff(
+        cevmap_diff2, cgraph_diff2 = comp_conf.edge_set_diff(
             conf2, conf1, dt_range, lor = (cevmap_lor, cgraph_lor))
         d["diff2"] += cgraph_diff2.number_of_edges()
     print("Logical OR edges: {0}".format(d["lor"]))
     print("Common edges: {0}".format(d["common"]))
     print("Edges only found in {0}: {1}".format(ns.confs[0], d["diff1"]))
     print("Edges only found in {0}: {1}".format(ns.confs[1], d["diff2"]))
+
+
+def show_diff_edges(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    from . import comp_conf
+    am = arguments.ArgumentManager(conf1)
+    am.load()
+    for dt_range in sorted(am.iter_dt_range()):
+        cevmap, cgraph = comp_conf.edge_set_diff(conf1, conf2, dt_range)
+
+        buf_edges = []
+        for edge in cgraph.edges():
+            buf = ""
+            src_info = cevmap.evdef(edge[0])
+            buf += "[gid={0[0]}, host = {0[1]}]".format(src_info)
+            if showdag.isdirected(edge, cgraph):
+                buf += " -> "
+            else:
+                buf += " <-> "
+            dst_info = cevmap.evdef(edge[1])
+            buf += "[gid={0[0]}, host = {0[1]}]".format(dst_info)
+            buf_edges.append(buf)
+
+        if len(buf_edges) > 0:
+            print("date: {0}".format(dt_range[0]))
+            print("\n".join(buf_edges))
 
 
 def show_graph_common_edges(ns):
@@ -305,6 +340,12 @@ DICT_ARGSET = {
                          {"metavar": "CONFIG", "nargs": 2,
                           "help": "2 config file path"}],],
                        show_diff_info],
+    "show-diff-edges": ["Show all different edges of 2 edge sets",
+                        [OPT_DEBUG,
+                        [["confs"],
+                         {"metavar": "CONFIG", "nargs": 2,
+                          "help": "2 config file path"}],],
+                        show_diff_edges],
     "show-graph-common-edges": ["List number of edges in common graph",
                                 [OPT_DEBUG,
                                  [["confs"],

@@ -255,11 +255,17 @@ def show_match_info(ns):
     match_edge_sum = sum(d_num.values())
     valid_ticket_num = sum([1 for tr in tm
                             if not tr.data["group"] == trouble.EMPTY_GROUP])
-    detected_ticket_num = len(d_num.keys())
-    print("valid tickets: {0} / {1}".format(valid_ticket_num, len(tm)))
-    print("detection ratio: {0}".format(
-        1.0 * detected_ticket_num / valid_ticket_num))
-    print("average edges: {0}".format(1.0 * match_edge_num / valid_ticket_num))
+    detected_ticket_num = sum([1 for v in d_num.values() if v > 0])
+
+    valid_ratio = valid_ticket_num / len(tm)
+    print("valid: {0} in {1} ({2})".format(valid_ticket_num,
+                                           len(tm),
+                                           valid_ratio))
+    detected_ratio = detected_ticket_num / valid_ticket_num
+    print("detected: {0} in {1} ({2})".format(detected_ticket_num,
+                                              valid_ticket_num,
+                                              detected_ratio))
+    print("average edges: {0}".format(1.0 * match_edge_sum / valid_ticket_num))
 
 
 def search_trouble(ns):
@@ -404,6 +410,9 @@ DICT_ARGSET = {
     "show-match-all": ["Show matching edges in all DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
                        show_match_all],
+    "show-match-info": ["Show abstracted information of edges in all DAG",
+                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
+                        show_match_info]
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

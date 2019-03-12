@@ -201,9 +201,9 @@ class LogDAG():
         gid_name = self._evmap().gid_name
         if gid_name == "ltid":
             buf = ["# Node {0}: {1}".format(self.node_str(node),
-                                          str(ld.lt(gid)))]
+                                            str(ld.lt(gid)))]
         else:
-            buf = ["# Node {0}: {1}".format(self.node_str(node))]
+            buf = ["# Node {0}:".format(self.node_str(node))]
         d = {gid_name: gid,
              "host": host,
              "top_dt": self.dt_range[0],
@@ -322,6 +322,20 @@ def iter_results(conf, src_dir = None, area = None):
             r = LogDAG(args)
             r.load()
             yield r
+
+
+def isdirected(edge, graph):
+    rev_edge = (edge[1], edge[0])
+    if edge in graph.edges():
+        if rev_edge in graph.edges():
+            return False
+        else:
+            return True
+    else:
+        if rev_edge in graph.edges():
+            raise ValueError("Edge not found, Reversed edge exists")
+        else:
+            raise ValueError("Edge not found")
 
 
 # functions for presentation
