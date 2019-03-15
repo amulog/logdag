@@ -19,7 +19,8 @@ def makedag_main(args):
     jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
-    _logger.info("makedag job ({0}) start".format(jobname))
+    timer = common.Timer("makedag job({0})".format(jobname), output = _logger)
+    timer.start()
 
     ci_func = conf.get("dag", "ci_func")
     binarize = is_binarize(ci_func)
@@ -27,6 +28,7 @@ def makedag_main(args):
     d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
     _logger.info("{0} nodes for pc input".format(len(d_input)))
     evmap.dump(args)
+    timer.lap("load-nodes")
 
     if conf.getboolean("pc_prune", "do_pruning"):
         from . import prune
@@ -39,13 +41,16 @@ def makedag_main(args):
                      "{0} -> {1}".format(n_edges_before, n_edges_after))
     else:
         init_graph = None
+    timer.lap("prune-dag")
     graph = estimate_dag(conf, d_input, ci_func, init_graph)
+    timer.lap("estimate-dag")
 
     # record dag
     ldag = showdag.LogDAG(args, graph)
     ldag.dump()
-    _logger.info("makedag job ({0}) done, output {1}".format(
+    _logger.info("makedag job ({0}) output {1}".format(
         jobname, arguments.ArgumentManager.dag_filepath(args)))
+    timer.stop()
     return ldag
 
 
