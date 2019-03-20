@@ -269,7 +269,7 @@ def show_match_diff(ns):
             pass
         else:
             print("Trouble {0} {1} ({2})".format(
-                tr.tid, td.data[date], tr.data[group]))
+                tr.tid, tr.data[date], tr.data[group]))
             print("{0}: {1}".format(config.getname(conf1), cnt1))
             for key, l_edge in d_args.items():
                 r1 = _dag_from_name(conf1, key)
