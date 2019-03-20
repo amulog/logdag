@@ -249,6 +249,10 @@ def show_match_diff(ns):
     am_logger = logging.getLogger("amulog")
     config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
 
+    from . import trouble
+    dirname = conf.get("eval", "path")
+    tm = trouble.TroubleManager(dirname)
+
     def _dag_from_name(conf, name):
         args = argument.name2args(name, conf)
         r = showdag.LogDAG(args)
