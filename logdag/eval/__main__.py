@@ -259,6 +259,7 @@ def show_match_diff(ns):
         r.load()
         return r
 
+    from logdag import showdag
     from . import match_edge
     for tr in tm:
         d_args1 = match_edge.match_edges(conf1, tr, rule = ns.rule)
