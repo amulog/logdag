@@ -74,6 +74,21 @@ class SingleLayerTopology():
         return g_ret
 
 
+class Independent():
+
+    def __init__(self):
+        pass
+
+    def prune(self, g_base, evmap):
+        g_ret = nx.Graph()
+        g_ret.add_nodes_from(g_base.nodes())
+        for edge in g_base.edges():
+            src_host, dst_host = [evmap.evdef(node).host for node in edge]
+            if src_host == dst_host:
+                g_ret.add_edge(*edge)
+        return g_ret
+
+
 def init_gid_layer(conf, d_rule):
     from amulog import log_db
     from amulog import lt_label
@@ -112,6 +127,8 @@ def init_pruner(conf):
                 d_rule[group] = layer
             d_gid = init_gid_layer(conf, d_rule)
             l_pruner.append(MultiLayerTopology(d_fp, d_gid))
+        elif method == "independent":
+            l_pruner.append(Independent())
         else:
             raise NotImplementedError("invalid method {0}".format(method))
 
