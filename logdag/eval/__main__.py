@@ -239,6 +239,46 @@ def show_match_all(ns):
             tr, cnt))
 
 
+def show_match_diff(ns):
+    l_conffp = ns.confs
+    assert len(l_conffp) == 2
+    openconf = lambda c: config.open_config(
+        c, ex_defaults = [arguments.DEFAULT_CONFIG])
+    conf1, conf2 = [openconf(c) for c in l_conffp]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    am_logger = logging.getLogger("amulog")
+    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+
+    def _dag_from_name(conf, name):
+        args = argument.name2args(name, conf)
+        r = showdag.LogDAG(args)
+        r.load()
+        return r
+
+    from . import match_edge
+    for tr in tm:
+        d_args1 = match_edge.match_edges(conf1, tr, rule = ns.rule)
+        cnt1 = sum([len(l_edge) for l_edge in d_args1.values()])
+        d_args2 = match_edge.match_edges(conf2, tr, rule = ns.rule)
+        cnt2 = sum([len(l_edge) for l_edge in d_args2.values()])
+        if cnt1 == cnt2:
+            pass
+        else:
+            print("Trouble {0} {1} ({2})".format(
+                tr.tid, td.data[date], tr.data[group]))
+            print("{0}: {1}".format(config.getname(conf1), cnt1))
+            for key, l_edge in d_args.items():
+                r1 = _dag_from_name(conf1, key)
+                for edge in l_edge:
+                    print(r1.edge_str(edge))
+            print("{0}: {1}".format(config.getname(conf2), cnt2))
+            for key, l_edge in d_args.items():
+                r2 = _dag_from_name(conf2, key)
+                for edge in l_edge:
+                    print(r2.edge_str(edge))
+            print("")
+
+
 def show_match_info(ns):
     conf = arguments.open_logdag_config(ns)
     from . import trouble
@@ -410,6 +450,9 @@ DICT_ARGSET = {
     "show-match-all": ["Show matching edges with all tickets",
                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
                        show_match_all],
+    "show-match-diff": ["Compare 2 configs with all tickets",
+                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
+                        show_match_diff],
     "show-match-info": ["Show abstracted information of edges in all DAG",
                         [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
                         show_match_info]
