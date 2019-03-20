@@ -206,7 +206,7 @@ def list_trouble_stat(ns):
     print(common.cli_table(table))
 
 
-def show_match_dag(ns):
+def show_match(ns):
     conf = arguments.open_logdag_config(ns)
     from . import trouble
     dirname = conf.get("eval", "path")
@@ -404,10 +404,10 @@ DICT_ARGSET = {
     "search-trouble": ["Search troubles with messages of specified features",
                        [OPT_CONFIG, OPT_DEBUG, ARG_SEARCH],
                        search_trouble],
-    "show-match-dag": ["Show matching edges in a DAG",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_RULE, ARG_TID],
-                       show_match_dag],
-    "show-match-all": ["Show matching edges in all DAG",
+    "show-match": ["Show matching edges with a ticket",
+                   [OPT_CONFIG, OPT_DEBUG, OPT_RULE, ARG_TID],
+                   show_match],
+    "show-match-all": ["Show matching edges with all tickets",
                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
                        show_match_all],
     "show-match-info": ["Show abstracted information of edges in all DAG",
