@@ -254,7 +254,7 @@ def show_match_diff(ns):
     tm = trouble.TroubleManager(dirname)
 
     def _dag_from_name(conf, name):
-        args = argument.name2args(name, conf)
+        args = arguments.name2args(name, conf)
         r = showdag.LogDAG(args)
         r.load()
         return r
