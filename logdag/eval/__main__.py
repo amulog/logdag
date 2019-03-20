@@ -250,7 +250,7 @@ def show_match_diff(ns):
     config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
 
     from . import trouble
-    dirname = conf.get("eval", "path")
+    dirname = conf1.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
 
     def _dag_from_name(conf, name):
