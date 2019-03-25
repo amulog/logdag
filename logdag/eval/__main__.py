@@ -215,7 +215,7 @@ def show_match(ns):
     from logdag import showdag
     from . import match_edge
     tr = tm[ns.tid]
-    d_args = match_edge.match_edges(conf, tr, rule = ns.rule)
+    d_args = match_edge.match_edges(conf, tr, rule = ns.rule, cond = ns.cond)
     cnt = sum([len(l_edge) for l_edge in d_args.values()])
     print("{0[date]} ({0[group]}): {1}".format(tr.data, cnt))
     for name, l_edge in d_args.items():
@@ -233,7 +233,8 @@ def show_match_all(ns):
 
     from . import match_edge
     for tr in tm:
-        d_args = match_edge.match_edges(conf, tr, rule = ns.rule)
+        d_args = match_edge.match_edges(conf, tr, rule = ns.rule,
+                                        cond = ns.cond)
         cnt = sum([len(l_edge) for l_edge in d_args.values()])
         print("Trouble {0.tid} {0.data[date]} ({0.data[group]}): {1}".format(
             tr, cnt))
@@ -262,9 +263,11 @@ def show_match_diff(ns):
     from logdag import showdag
     from . import match_edge
     for tr in tm:
-        d_args1 = match_edge.match_edges(conf1, tr, rule = ns.rule)
+        d_args1 = match_edge.match_edges(conf1, tr, rule = ns.rule,
+                                         cond = ns.cond)
         cnt1 = sum([len(l_edge) for l_edge in d_args1.values()])
-        d_args2 = match_edge.match_edges(conf2, tr, rule = ns.rule)
+        d_args2 = match_edge.match_edges(conf2, tr, rule = ns.rule,
+                                         cond = ns.cond)
         cnt2 = sum([len(l_edge) for l_edge in d_args2.values()])
         if cnt1 == cnt2:
             pass
@@ -293,7 +296,8 @@ def show_match_info(ns):
     from . import match_edge
     d_num = {}
     for tr in tm:
-        d_args = match_edge.match_edges(conf, tr, rule = ns.rule)
+        d_args = match_edge.match_edges(conf, tr, rule = ns.rule,
+                                        cond = ns.cond)
         cnt = sum([len(l_edge) for l_edge in d_args.values()])
         d_num[tr.tid] = cnt
 
@@ -387,6 +391,10 @@ OPT_RULE = [["-r", "--rule"],
             {"dest": "rule", "action": "store",
              "type": str, "default": "all",
              "help": "one of [all, either, both]"}]
+OPT_COND = [["-e", "--edge-condition"],
+                 {"dest": "cond", "action": "store",
+                  "type": str, "default": None,
+                  "help": "rules for matched edges, [xhost] is now available"}]
 ARG_TID = [["tid"],
            {"metavar": "TID", "action": "store", "type": int,
             "help": "trouble identifier"}]
@@ -450,19 +458,19 @@ DICT_ARGSET = {
                        [OPT_CONFIG, OPT_DEBUG, ARG_SEARCH],
                        search_trouble],
     "show-match": ["Show matching edges with a ticket",
-                   [OPT_CONFIG, OPT_DEBUG, OPT_RULE, ARG_TID],
+                   [OPT_CONFIG, OPT_DEBUG, OPT_RULE, OPT_CONDITION, ARG_TID],
                    show_match],
     "show-match-all": ["Show matching edges with all tickets",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
+                       [OPT_CONFIG, OPT_DEBUG, OPT_RULE, OPT_CONDITION],
                        show_match_all],
     "show-match-diff": ["Compare 2 configs with all tickets",
-                        [OPT_DEBUG, OPT_RULE,
+                        [OPT_DEBUG, OPT_RULE, OPT_CONDITION,
                          [["confs"],
                           {"metavar": "CONFIG", "nargs": 2,
                            "help": "2 config file path"}],],
                         show_match_diff],
     "show-match-info": ["Show abstracted information of edges in all DAG",
-                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE],
+                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE, OPT_CONDITION],
                         show_match_info]
 }
 

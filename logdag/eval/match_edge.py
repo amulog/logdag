@@ -25,7 +25,7 @@ def separate_args(conf, tr):
             for name, l_lm in d_args.items()]
 
 
-def match_edges(conf, tr, rule = "all"):
+def match_edges(conf, tr, rule = "all", cond = None):
 
     def _match_edge(input_evdef, edgeinfo, rule):
         src_evdef, dst_evdef = edgeinfo
@@ -40,6 +40,15 @@ def match_edges(conf, tr, rule = "all"):
             return (src_bool or dst_bool) and not (src_bool and dst_bool)
         else:
             raise ValueError
+
+    def _pass_condifiton(edgeinfo, cond):
+        if cond is None:
+            return True
+        elif cond == "xhost":
+            src_evdef, dst_evdef = edgeinfo
+            return not src_evdef.host == dst_evdef.host
+        else:
+            raise NotImplementedError
 
     def _lm2ev(l_lm, gid_name):
         d = defaultdict(list)
@@ -60,6 +69,8 @@ def match_edges(conf, tr, rule = "all"):
         g = r.graph.to_undirected()
         for edge in g.edges():
             edgeinfo = r.edge_info(edge)
+            if not _pass_condition(edgeinfo, cond):
+                continue
             l_evdef = [evdef for evdef in _lm2ev(l_lm, gid_name).keys()]
             if _match_edge(l_evdef, edgeinfo, rule):
                 d[r.name].append(edge)
