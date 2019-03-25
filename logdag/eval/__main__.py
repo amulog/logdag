@@ -391,7 +391,7 @@ OPT_RULE = [["-r", "--rule"],
             {"dest": "rule", "action": "store",
              "type": str, "default": "all",
              "help": "one of [all, either, both]"}]
-OPT_COND = [["-e", "--edge-condition"],
+OPT_CONDITION = [["-e", "--edge-condition"],
                  {"dest": "cond", "action": "store",
                   "type": str, "default": None,
                   "help": "rules for matched edges, [xhost] is now available"}]

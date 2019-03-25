@@ -41,7 +41,7 @@ def match_edges(conf, tr, rule = "all", cond = None):
         else:
             raise ValueError
 
-    def _pass_condifiton(edgeinfo, cond):
+    def _pass_condition(edgeinfo, cond):
         if cond is None:
             return True
         elif cond == "xhost":
