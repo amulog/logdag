@@ -222,7 +222,8 @@ def show_match(ns):
         r = showdag.LogDAG(arguments.name2args(name, conf))
         r.load()
         for edge in l_edge:
-            print(r.edge_str(edge, graph = r.graph.to_undirected()))
+            edgestr = r.edge_str(edge, graph = r.graph.to_undirected())
+            print(name, edgestr)
 
 
 def show_match_all(ns):
@@ -278,12 +279,14 @@ def show_match_diff(ns):
             for key, l_edge in d_args1.items():
                 r1 = _dag_from_name(conf1, key)
                 for edge in l_edge:
-                    print(r1.edge_str(edge, graph = r1.graph.to_undirected()))
+                    edgestr = r1.edge_str(edge, graph = r1.graph.to_undirected())
+                    print(key, edgestr)
             print("{0}: {1}".format(config.getname(conf2), cnt2))
             for key, l_edge in d_args2.items():
                 r2 = _dag_from_name(conf2, key)
                 for edge in l_edge:
-                    print(r2.edge_str(edge, graph = r2.graph.to_undirected()))
+                    edgestr = r2.edge_str(edge, graph = r2.graph.to_undirected())
+                    print(key, edgestr)
             print("")
 
 
