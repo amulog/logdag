@@ -30,18 +30,22 @@ def makedag_main(args):
     evmap.dump(args)
     timer.lap("load-nodes")
 
+    node_ids = evmap.eids()
+    g = _complete_graph(node_ids)
     if conf.getboolean("pc_prune", "do_pruning"):
         from . import prune
-        node_ids = evmap.eids()
-        g = _complete_graph(node_ids)
         n_edges_before = g.number_of_edges()
         init_graph = prune.prune_graph(g, conf, evmap)
         n_edges_after = init_graph.number_of_edges()
         _logger.info("{0} DAG edge pruning: ".format(jobname) + \
                      "{0} -> {1}".format(n_edges_before, n_edges_after))
     else:
-        init_graph = None
+        n_edges = g.number_of_edges()
+        init_graph = g
+        _logger.info("{0} DAG edge candidates: ".format(jobname) + \
+                     "{0}".format(n_edges))
     timer.lap("prune-dag")
+
     graph = estimate_dag(conf, d_input, ci_func, init_graph)
     timer.lap("estimate-dag")
 
