@@ -1,0 +1,181 @@
+[general]
+
+# Processing log output path (not dataset but log of this system)
+# If empty, output log on stderr
+logging = auto.log
+
+# Another configparser filename, to add any options without warnings
+# Use this to define new options for private use
+# In imported configparser file, existing options in defaults will be ignored
+import = 
+
+
+[database_ts]
+# you can use same db as that of amulog classified log database
+
+# Database management system to use
+# [sqlite3, mysql] is available
+# mysql : Require MySQL for PYTHON (MySQLdb) package
+database = sqlite3
+
+# timeseries database for sqlite3
+sqlite3_filename = log.db
+
+# Database hostname for mysql
+mysql_host = localhost
+
+# Database name for mysql
+mysql_dbname = logcausality
+
+# Mysql username
+mysql_user = test
+
+# Mysql user password
+mysql_passwd = test
+
+# Filtering redundant events with periodicity test before generating causality graph
+usefilter = false
+
+# Length of unit terms to generate tsdb
+unit_term = 24h
+
+# Length of time difference to generate tsdb
+unit_diff = 24h
+
+
+
+[dag]
+# IDs for grouping criterion of log messages to define DAG node
+# [ltgid, ltid] is available
+event_gid = ltgid
+
+# Target term of log messages to construct DAG
+# Divided into unit terms by "default_term" before processing
+# If empty, set whole days including all log data in DB
+# For example:
+# whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
+whole_term = 
+
+# Target areas of DAG construction
+# If "all" given, use whole hosts as 1 area named "all"
+# If "each" given, define each host as 1 area named with hostname
+# For example:
+# area = core, area1, area2, area3
+area = all
+
+# Length of unit terms to construct DAG
+unit_term = 30h
+
+# Length of time difference of unit terms
+unit_diff = 24h
+
+# Method to generate conditional-independence test input
+# [sequential, slide, radius]
+ci_bin_method = sequential
+
+# Bin size of discrete data for conditional-independence test
+ci_bin_size = 1m
+
+# Distance between each bin in discrete data for conditional-independence test
+# If ci_bin_method is sequential,
+# this option is ignored (using same as ci_bin_size).
+ci_bin_diff = 1m
+
+# Method to estimate conditional independency
+# [fisherz, fisherz_bin, gsq, gsq_rlib] is available
+ci_func = gsq
+
+# Method to estimate causal DAG
+# pc in default, and lingam (LiNGAM-fast) is also available
+cause_algorithm = pc
+
+# Method to estimate skeleton in PC algorithm
+# default : original-PC algorithm, fast but not accurate in sparse data
+# stable : stable-PC algorithm, result is order-independent of input data
+skeleton_method = default
+
+# Maximum depth of conditional independence
+# if -1, no limit is set
+skeleton_depth = -1
+
+# Threshold of p-value for conditional independence test
+skeleton_threshold = 0.01
+
+# for debugging
+skeleton_verbose = false
+
+# Argument manager file
+# default: args_<config_filename>
+args_fn = args
+
+## Event appearance data
+## If empty, dag.output_dir is used with filename extended
+#evts_dir =
+
+# Event definition data
+# If empty, dag.output_dir is used with filename extended
+evmap_dir =
+
+## Event appearance / definition data for preprocessing
+## usually specify existing evts set
+## use for makedag-large or makedag-small
+#evts_org_dir =
+#evmap_org_dir = 
+
+# Found DAG object data
+output_dir = pc_output
+
+
+[pc_prune]
+# If true, pruning the initial graph of pc algorithm
+do_pruning = false
+
+# List of pruning methods
+# [topology, multi-topology]
+methods = 
+
+# A json node-link file of network topology of hosts,
+# used in "network" method.
+single_network_file = 
+multi_network_file =
+# multi_network_file = l2:l2.json, l3:l3.json
+multi_network_group =
+# multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
+
+
+[filter]
+# Filters for log events
+
+# Action to apply for periodic events
+# [remove, replace, linear, replace+linear] is available
+action = replace+linear
+
+# Sampling term to calculate interval candidate in 'periodic-whole'
+sample_rule = 1d_10s, 7d_1m
+
+# Required event appearance for preprocessing
+# set more than 3
+pre_count = 5
+
+# Required event range for preprocessing
+pre_term = 6h
+
+# threshold for fourier analysis
+fourier_th_spec = 0.4
+fourier_th_eval = 0.1
+fourier_th_restore = 0.5
+fourier_peak_order = 200
+
+# threshold for continuous distribution dt filter
+linear_binsize = 10s
+linear_count = 10
+linear_threshold = 0.5
+
+# parameters for method corr
+corr_th = 0.5
+corr_diff = 1h, 1d
+
+
+[eval]
+path = eval_data
+

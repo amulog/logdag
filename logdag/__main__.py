@@ -10,6 +10,7 @@ from amulog import config
 from amulog import common
 
 _logger = logging.getLogger(__package__)
+SUBLIB = ["source", "visual", "eval", "label"]
 
 
 def test_makedag(ns):
@@ -442,7 +443,9 @@ USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
                             for key, val in sorted(DICT_ARGSET.items())])
 USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
          "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
-    "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0])
+    "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0]) + \
+    "\nalso see sub-liblary {0}".format(" ".join(["logdag.{0}".format(n)
+                                                  for n in SUBLIB]))
 
 if __name__ == "__main__":
     if len(sys.argv) < 1:
