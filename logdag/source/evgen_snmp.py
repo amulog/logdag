@@ -82,8 +82,8 @@ class EventLoader(object):
                 df = self.source.load(path)
                 yield (key, df)
 
-    def _read_vsource(self, name, dump_org = False):
-        sourcename, func = self._d_vsource[name]
+    def _read_vsource(self, sourcename, func, dump_org = False):
+        #sourcename, func = self._d_vsource[name]
         if func == "hostsum":
             return self._read_vsource_hostsum(sourcename, dump_org)
         else:
@@ -152,7 +152,8 @@ class EventLoader(object):
             elif sourcename in self._d_vsource:
                 _logger.info("loading vsource {0}".format(sourcename))
                 key = "all"
-                for host, df in self._read_vsource(sourcename, dump_org):
+                orgname, func = self._d_vsource[sourcename]
+                for host, df in self._read_vsource(orgname, func, dump_org):
                     if df is None or self.isallnan(df):
                         _logger.info("vsource {0} {1} {2} is empty".format(
                             sourcename, host, key))
@@ -163,6 +164,7 @@ class EventLoader(object):
                             (host, key), df.shape))
                     self._make_feature(sourcename, host, key,
                                        df, l_feature_def)
+                all_sourcename.remove(orgsourcename)
             all_sourcename.remove(sourcename)
 
         if not dump_org:
@@ -185,7 +187,8 @@ class EventLoader(object):
             elif sourcename in self._d_vsource:
                 _logger.info("loading vsource {0}".format(sourcename))
                 key = "all"
-                for host, df in self._read_vsource(sourcename, dump_org):
+                orgname, func = self._d_vsource[sourcename]
+                for host, df in self._read_vsource(orgname, func, dump_org):
                     if df is None or self.isallnan(df):
                         _logger.info("vsource {0} {1} {2} is empty".format(
                             sourcename, host, key))
