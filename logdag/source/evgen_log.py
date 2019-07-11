@@ -4,6 +4,7 @@
 import logging
 
 from amulog import config
+from . import filter_log
 
 _logger = logging.getLogger(__package__)
 
@@ -16,7 +17,7 @@ class LogEventLoader(object):
         src = conf["general"]["log_source"] 
         if src == "amulog":
             from . import source_amulog
-            args = [config.getterm(conf, "general", "whole_term"),
+            args = [config.getterm(conf, "general", "evdb_whole_term"),
                     conf["database_amulog"]["source_conf"],
                     conf["database_amulog"]["event_gid"]]
             self.source = source_amulog.AmulogLoader(*args)
@@ -28,7 +29,7 @@ class LogEventLoader(object):
 
         dst = conf["general"]["evdb"]
         if dst == "influx":
-            dbname = conf["general"]["log_dbname"]
+            dbname = conf["database_influx"]["log_dbname"]
             from . import influx
             self.evdb = influx.init_influx(conf, dbname, df = False)
         else:
@@ -39,7 +40,7 @@ class LogEventLoader(object):
     def _apply_filter(self, l_dt, dt_range, evdef):
         tmp_l_dt = l_dt
         for method in self._filter_rules:
-            args = tmp_l_dt, dt_range, evdef
+            args = (tmp_l_dt, dt_range, evdef)
             tmp_l_dt = getattr(self._lf, method)(*args)
             if tmp_l_dt is None or len(tmp_l_dt) == 0:
                 msg = "event {0} removed with {1}".format(evdef, method)
@@ -56,26 +57,24 @@ class LogEventLoader(object):
 
         measure = "log"
         for evdef in self.source.iter_evdef():
-            gid, host = evdef
-            l_dt = list(self.source.iter_dt(evdef))
+            host, gid = evdef
+            l_dt = self.source.load(evdef)
             if len(l_dt) == 0:
                 _logger.info("log gid={0} host={1} is empty".format(
                     gid, host))
                 continue
             if dump_org:
-                df = self.source.timestamp2df(l_dt)
-                self.dump("log_org", host, gid, df)
+                self.dump("log_org", host, gid, l_dt)
                 _logger.info("added org {0} size {1}".format(
-                    (host, gid), df.shape))
+                    (host, gid), len(l_dt)))
                 pass
             feature_dt = self._apply_filter(l_dt, dt_range, evdef)
             if feature_dt is not None:
-                feature_df = self.source.timestamp2df(feature_dt)
-                self.dump("log_feature", host, gid, feature_df)
+                self.dump("log_feature", host, gid, feature_dt)
                 _logger.info("added feature {0} size {1}".format(
-                    (host, gid), df.shape))
+                    (host, gid), len(feature_dt)))
 
-    def dump(self, measure, host, key, df):
+    def dump(self, measure, host, key, l_dt):
         if self.dry:
             return
         data = {k: [v,] for k, v in self.source.timestamp2dict(l_dt).items()}

@@ -9,6 +9,7 @@ import configparser
 
 from amulog import config
 from amulog import common
+from logdag import dtutil
 
 _logger = logging.getLogger(__package__)
 
@@ -36,8 +37,8 @@ def make_evdb_log_all(ns):
     dry = ns.dry
 
     from . import evgen_log
-    el = evgen_log.EventLoader(conf, dry = dry)
-    for term in self._iter_evdb_term(conf):
+    el = evgen_log.LogEventLoader(conf, dry = dry)
+    for term in _iter_evdb_term(conf):
         el.read(term, dump_org = dump_org)
 
 
@@ -48,7 +49,7 @@ def make_evdb_snmp_all(ns):
 
     from . import evgen_snmp
     el = evgen_snmp.EventLoader(conf, dry = dry)
-    for term in self._iter_evdb_term(conf):
+    for term in _iter_evdb_term(conf):
         el.read(term, dump_org = dump_org)
 
 
@@ -71,9 +72,6 @@ OPT_DRY = [["-d", "--dry"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "make-evdb-args": ["Initialize argument list",
-                       [OPT_CONFIG, OPT_DEBUG],
-                       make_evdb_args],
     "make-evdb-log": ["Load log data from amulog and output features",
                           [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY],
                           make_evdb_log_all],

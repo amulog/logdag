@@ -12,7 +12,7 @@ class InfluxDB(object):
         self.dbname = dbname
         self._precision = 's'
         self._batch_size = batch_size
-        self._protocol = protocol
+        #self._protocol = protocol
         inf_kwargs["database"] = dbname
         self.client = influxdb.InfluxDBClient(**inf_kwargs)
         if not dbname in list(self._list_database()):
@@ -47,7 +47,8 @@ class InfluxDB(object):
             self.client.write_points(data, database = self.dbname,
                                      time_precision = self._precision,
                                      batch_size = self._batch_size,
-                                     protocol = self._protocol)
+                                     #protocol = self._protocol,
+                                     )
         return len(data)
 
 #    def add_df(self, measure, d_tags, df):
