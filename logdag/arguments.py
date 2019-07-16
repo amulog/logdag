@@ -162,21 +162,11 @@ def open_logdag_config(ns):
     return conf
 
 
-def whole_term(conf, w_term = None, ld = None):
-    if w_term is None:
-        if ld is None:
-            from amulog import log_db
-            ld = log_db.LogData(conf)
-        return ld.whole_term()
-    else:
-        return w_term
-
-
 def all_args(conf):
+    amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
     from amulog import log_db
-    ld = log_db.LogData(conf)
-    w_term = config.getterm(conf, "dag", "whole_term")
-    w_top_dt, w_end_dt = whole_term(conf, w_term, ld)
+    ld = log_db.LogData(amulog_conf)
+    w_top_dt, w_end_dt = config.getterm(conf, "dag", "whole_term")
     term = config.getdur(conf, "dag", "unit_term")
     diff = config.getdur(conf, "dag", "unit_diff")
 
@@ -196,7 +186,7 @@ def all_args(conf):
 
 
 def all_terms(conf, term, diff, w_term = None):
-    w_top_dt, w_end_dt = whole_term(conf, w_term, ld)
+    w_top_dt, w_end_dt = config.getterm(conf, "dag", "whole_term")
 
     l_args = []
     top_dt = w_top_dt
