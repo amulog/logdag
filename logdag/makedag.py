@@ -25,7 +25,8 @@ def makedag_main(args):
     ci_func = conf.get("dag", "ci_func")
     binarize = is_binarize(ci_func)
     # generate event set and evmap, and apply preprocessing
-    d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
+    #d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
+    d_input, evmap = log2event.makeinput(conf, dt_range, area, binarize)
     _logger.info("{0} nodes for pc input".format(len(d_input)))
     evmap.dump(args)
     timer.lap("load-nodes")

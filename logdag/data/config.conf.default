@@ -132,10 +132,71 @@ rt_outucast_sum = rt_if_hostsum, outucast, norm_fillavg, outlier
 
 [dag]
 
+# data sources for dag estimation input
+# [log, snmp] are available
+source = log, snmp
+
 # Target areas of DAG construction
 # If "all" given, use whole hosts as 1 area named "all"
 # If "each" given, define each host as 1 area named with hostname
 # For example:
 # area = core, area1, area2, area3
 area = all
+area_def = 
+
+# Length of unit terms to construct DAG
+unit_term = 30h
+
+# Length of time difference of unit terms
+unit_diff = 24h
+
+# Method to generate conditional-independence test input
+# [sequential, slide, radius]
+ci_bin_method = sequential
+
+# Bin size of discrete data for conditional-independence test
+ci_bin_size = 1m
+
+# Distance between each bin in discrete data for conditional-independence test
+# If ci_bin_method is sequential,
+# this option is ignored (using same as ci_bin_size).
+ci_bin_diff = 1m
+
+# Method to estimate conditional independency
+# [fisherz, fisherz_bin, gsq, gsq_rlib] is available
+ci_func = gsq
+
+# Method to estimate causal DAG
+# pc in default, and lingam (LiNGAM-fast) is also available
+cause_algorithm = pc
+
+# Method to estimate skeleton in PC algorithm
+# default : original-PC algorithm, fast but not accurate in sparse data
+# stable : stable-PC algorithm, result is order-independent of input data
+skeleton_method = stable
+
+# Maximum depth of conditional independence
+# if -1, no limit is set
+skeleton_depth = -1
+
+# Threshold of p-value for conditional independence test
+skeleton_threshold = 0.01
+
+# for debugging
+skeleton_verbose = false
+
+# Argument manager file
+# default: args_<config_filename>
+args_fn = args
+
+# Event definition data
+# If empty, dag.output_dir is used with filename extended
+evmap_dir =
+
+# Found DAG object data
+output_dir = pc_output
+
+
+[eval]
+path = eval_data
 

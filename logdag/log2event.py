@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
 import logging
 import pickle
 from collections import namedtuple
@@ -11,62 +10,24 @@ from . import arguments
 from amulog import config
 
 _logger = logging.getLogger(__package__)
-EvDef = namedtuple("EvDef", ["gid", "host"])
+EvDef = namedtuple("EvDef", ["source", "host", "key"])
 
 
 class EventDefinitionMap(object):
-    """Before analyze system log messages, we need to classify them with
-    multiple criterions like log template IDs and hostnames.
-    This class defines classified groups as "Event", and provide
+    """This class defines classified groups as "Event", and provide
     interconvirsion functions between Event IDs and their
     classifying criterions.
-    
-    This class allows 2 types of classifying criterion combinations.
-        ltgid-host: Use log template grouping IDs and hostnames.
-        ltid-host: Use log template IDs and hostnames.
-    
-    In addition, their can be virtual Events, not a group of log messages
-    but a set of symptoms found in the data sequence of log messages.
-    This class allows 2 types of virtual Events.
-        periodic_top: The start of periodic appearance of an Event.
-        periodic_end: The end of periodic appearance of an Event.
 
     The definition of Event is saved as a nametuple EvDef.
     Evdef has following attributes.
-        type (int): An event type identifier.
-            0: Normal event that comes from a raw log message appearance.
-            1: periodic_top event.
-            2: periodic_end event.
-        note (any): Some paramaters to show the event characteristics.
-            In the case of periodic_*, this attributes requires the interval
-            of periodic appearance (seconds(int)) of log messages.
-        gid (int): 
+        source (str):
+        key (int): 
         host (str):
 
-    Attributes:
-        type_normal (int): 0.
-        type_periodic_top (int): 1.
-        type_periodic_end (int): 2.
-        type_periodic_remainder (int): 3.
-        type_mixed (int): 9.
     """
-    type_normal = 0
-    type_periodic_top = 1
-    type_periodic_end = 2
-    type_periodic_remainder = 3
-    type_mixed = 9
-    l_attr = ["gid", "host"]
+    l_attr = ["source", "host", "key"]
 
-    def __init__(self, gid_name = "ltgid"):
-        """
-        Args:
-            gid_name (str): A string to assign classifying criterion
-                            of log messages. 1 of [ltgid, ltid].
-        """
-        assert gid_name in ("ltid", "ltgid")
-        self.gid_name = gid_name
-        #self.l_attr = ["gid", "host"]
-
+    def __init__(self):
         self._emap = {} # key : eid, val : evdef
         self._ermap = {} # key : evdef, val : eid
 
@@ -84,13 +45,14 @@ class EventDefinitionMap(object):
             return eid
 
     @staticmethod
-    def form_evdef(gid, host):
-        d = {"gid" : gid,
-             "host" : host}
+    def form_evdef(src, key, host):
+        d = {"source": src,
+             "host" : host,
+             "key" : key}
         return EvDef(**d)
 
-    def add_event(self, gid, host):
-        evdef = self.form_evdef(gid, host)
+    def add_event(self, src, host, key):
+        evdef = self.form_evdef(src, host, key)
         return self.add_evdef(evdef)
 
     def add_evdef(self, evdef):
@@ -120,17 +82,17 @@ class EventDefinitionMap(object):
                 for key in cls.l_attr])
         return "[{0}]".format(string)
 
-    def search_cond(self):
-        return {key : getattr(self, key) for key in [self.gid_name, "host"]}
-
-    def evdef_repr(self, ld, eid, dt_range, limit = 5):
-        info = self._emap[eid]
-        top_dt, end_dt = self.dt_range
-        d = {"head" : limit, "foot" : limit,
-             "top_dt" : top_dt, "end_dt" : end_dt}
-        d[self.gid_name] = info.gid
-        d["host"] = info.host
-        return ld.show_log_repr(**d)
+    #def search_cond(self):
+    #    return {key : getattr(self, key) for key in [self.gid_name, "host"]}
+    #
+    #def evdef_repr(self, ld, eid, dt_range, limit = 5):
+    #    info = self._emap[eid]
+    #    top_dt, end_dt = self.dt_range
+    #    d = {"head" : limit, "foot" : limit,
+    #         "top_dt" : top_dt, "end_dt" : end_dt}
+    #    d[self.gid_name] = info.gid
+    #    d["host"] = info.host
+    #    return ld.show_log_repr(**d)
 
     def get_eid(self, info):
         return self._ermap[info]
@@ -143,7 +105,7 @@ class EventDefinitionMap(object):
 
     def dump(self, args):
         fp = arguments.ArgumentManager.evdef_filepath(args)
-        obj = (self.gid_name, self._emap, self._ermap)
+        obj = (self._emap, self._ermap)
         with open(fp, "wb") as f:
             pickle.dump(obj, f)
 
@@ -151,48 +113,136 @@ class EventDefinitionMap(object):
         fp = arguments.ArgumentManager.evdef_filepath(args)
         with open(fp, "rb") as f:
             obj = pickle.load(f)
-        self.gid_name, self._emap, self._ermap = obj
+        self._emap, self._ermap = obj
 
 
-def ts2input(conf, dt_range, area, binarize):
-    from . import tsdb
-    gid_name = conf.get("dag", "event_gid")
+class AreaTest():
+
+    def __init__(self, conf):
+        self._arearule = conf["dag"]["area"]
+        self._areadict = config.GroupDef(conf["dag"]["area_def"])
+
+        if self._arearule == "all":
+            self._testfunc = self._test_all
+
+    def _test_all(self, area, host):
+        return True
+
+    def _test_each(self, area, host):
+        return area == host
+
+    def _test_ingroup(self, area, host):
+        return self._areadict.ingroup(area, host)
+
+    def test(self, area, host):
+        return self._testfunc(area, host)
+
+
+def _load_evgen_log(conf, dt_range, area, binarize):
+    areatest = AreaTest(conf)
     method = conf.get("dag", "ci_bin_method")
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
-    td = tsdb.TimeSeriesDB(conf)
-    evmap = EventDefinitionMap(gid_name)
 
-    d_input = {}
-    kwargs = {"dts" : dt_range[0],
-              "dte" : dt_range[1],
-              "area" : area}
-    for gid, host in td.whole_gid_host(**kwargs):
-        _logger.debug("load event {0}".format((gid, host)))
-        ev_kwargs = {"dts" : dt_range[0],
-                     "dte" : dt_range[1],
-                     "gid" : gid,
-                     "host" : host}
-        l_dt = [dt for dt in td.iter_ts(**ev_kwargs)]
-        if len(l_dt) == 0:
-            _logger.warning("empty event {0}".format((gid, host)))
+    from .source import evgen_log
+    evg = evgen_log.LogEventLoader(conf)
+    for measure, host, gid in evg.all_condition():
+        if not areatest.test(host):
             continue
 
         if method == "sequential":
-            array = dtutil.discretize_sequential(l_dt, dt_range,
-                                                 ci_bin_size, binarize)
+            data = evg.load(measure, host, gid, dt_range, ci_bin_size)
+            if binarize:
+                data[data > 0] = 1
         elif method == "slide":
-            array = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
-                                            ci_bin_size, binarize)
+            l_dt, l_array = evg.load_items(measure, host, gid, dt_range)
+            data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
+                                           ci_bin_size, binarize,
+                                           l_dt_values = l_array)
         elif method == "radius":
             ci_bin_radius = 0.5 * ci_bin_size
-            array = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
-                                             ci_bin_radius, binarize)
+            data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
+                                            ci_bin_radius, binarize,
+                                            l_dt_values = l_array)
+        yield (host, gid, data)
 
-        eid = evmap.add_event(gid, host)
-        d_input[eid] = array
 
-    return d_input, evmap
+def _load_evgen_snmp(conf, dt_range, area, binarize):
+    areatest = AreaTest(conf)
+    ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
+
+    from .source import evgen_snmp
+    evg = evgen_snmp.EventLoader(conf)
+    for measure, host, gid in evg.all_condition():
+        if not areatest.test(host):
+            continue
+        data = evg.load(measure, host, key, dt_range, ci_bin_size)
+        if binarize:
+            data[data > 0] = 1
+        yield (host, gid, data)
+
+
+def _load_evgen(src, conf, dt_range, area, binarize):
+    if src == "log":
+        return _load_evgen_log(conf, dt_range, area, binarize)
+    elif src == "snmp":
+        return _load_evgen_snmp(conf, dt_range, area, binarize)
+    else:
+        raise NotImplementedError
+
+
+def makeinput(conf, dt_range, area, binarize):
+    evmap = EventDefinitionMap()
+    edict = {}
+    sources = set(config.getlist(conf, "dag", "sources"))
+    for src in sources:
+        for host, key, data in self._load_evgen(src, conf, dt_range,
+                                                area, binarize):
+            eid = evmap.add_event(src, host, key)
+            edict[eid] = data
+            _logger.debug("loaded event {0} {1}".format(eid, evmap.evdef(eid)))
+    return (edict, evmap)
+
+
+#def ts2input(conf, dt_range, area, binarize):
+#    from . import tsdb
+#    gid_name = conf.get("dag", "event_gid")
+#    method = conf.get("dag", "ci_bin_method")
+#    ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
+#    ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
+#    td = tsdb.TimeSeriesDB(conf)
+#    evmap = EventDefinitionMap(gid_name)
+#
+#    d_input = {}
+#    kwargs = {"dts" : dt_range[0],
+#              "dte" : dt_range[1],
+#              "area" : area}
+#    for gid, host in td.whole_gid_host(**kwargs):
+#        _logger.debug("load event {0}".format((gid, host)))
+#        ev_kwargs = {"dts" : dt_range[0],
+#                     "dte" : dt_range[1],
+#                     "gid" : gid,
+#                     "host" : host}
+#        l_dt = [dt for dt in td.iter_ts(**ev_kwargs)]
+#        if len(l_dt) == 0:
+#            _logger.warning("empty event {0}".format((gid, host)))
+#            continue
+#
+#        if method == "sequential":
+#            array = dtutil.discretize_sequential(l_dt, dt_range,
+#                                                 ci_bin_size, binarize)
+#        elif method == "slide":
+#            array = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
+#                                            ci_bin_size, binarize)
+#        elif method == "radius":
+#            ci_bin_radius = 0.5 * ci_bin_size
+#            array = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
+#                                             ci_bin_radius, binarize)
+#
+#        eid = evmap.add_event(gid, host)
+#        d_input[eid] = array
+#
+#    return d_input, evmap
 
 
 # visualize functions

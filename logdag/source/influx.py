@@ -25,11 +25,20 @@ class InfluxDB(object):
     def list_measurements(self):
         return [d["name"] for d in self.client.get_list_measurements()]
 
-    def get_series(self, measure = None):
+    def list_series(self, measure = None):
+        ret = []
         if measure:
-            return self.client.query("show series from {0}".format(measure))
+            rs = self.client.query("SHOW SERIES FROM \"{0}\"".format(measure))
         else:
-            return self.client.query("show series")
+            rs = self.client.query("SHOW SERIES")
+        for p in rs.get_points():
+            d = {}
+            for s in p["key"].split(","):
+                if "=" in s:
+                    name, _, tag = s.partition("=")
+                    d[name] = tag
+            ret.append(d)
+        return ret
 
     def add(self, measure, d_tags, d_input, columns):
         data = []
@@ -51,25 +60,35 @@ class InfluxDB(object):
                                      )
         return len(data)
 
-#    def add_df(self, measure, d_tags, df):
-#        data = []
-#        for t, row in df.iterrows():
-#            fields = {key: val for key, val in row.iteritems()
-#                      if not (np.isnan(val) or val is None)}
-#            if len(fields) == 0:
-#                continue
-#            d = {'measurement': measure,
-#                 'time': t,
-#                 'tags': d_tags,
-#                 'fields': fields}
-#            data.append(d)
-#        if len(data) > 0:
-#            self.client.write_points(data, database = self.dbname,
-#                                     time_precision = self._precision)
-#        return len(data)
-
     def commit(self):
         pass
+
+    def get(self, measure, d_tags, fields, ut_range,
+            str_bin = None, func = None, fill = None):
+        if func is None:
+            s_fields = ", ".join(["\"{0}\"".format(s) for s in fields])
+        else:
+            s_fields = ", ".join(["{0}(\"{1}\")".format(func, s)
+                                  for s in fields])
+        s_from = "\"{0}\".\"{1}\".\"{2}\"".format(self.dbname, self._rpolicy,
+                                                  measure)
+        s_where = " AND ".join(["{0} = {1}".format(k, v)
+                                for k, v in d_tags.items()])
+        s_where += " AND time >= {0} AND time < {1}".format(ut_range[0],
+                                                            ut_range[1])
+        if str_bin is None:
+            s_gb = ""
+        else:
+            s_gb = " GROUP BY time({0})".format(str_bin)
+            if fill is not None:
+                s_gb += " fill({0})".format(str(fill))
+
+        iql = "SELECT {0} FROM {1} WHERE {2}".format(
+            s_fields, s_from, s_where)
+        iql += s_gb
+
+        _logger.debug("influxql query: {0}".format(iql))
+        ret = self.client.query(iql)
 
 
 class InfluxDF(InfluxDB):
@@ -77,6 +96,7 @@ class InfluxDF(InfluxDB):
     def __init__(self, dbname, inf_kwargs,
                  batch_size = 1000, protocol = "line"):
         self.dbname = dbname
+        self._rpolicy = "autogen"
         self._precision = 's'
         self._batch_size = batch_size
         self._protocol = protocol
@@ -92,14 +112,6 @@ class InfluxDF(InfluxDB):
                                  time_precision = self._precision,
                                  batch_size = self._batch_size,
                                  protocol = self._protocol)
-
-    def get(self, measure, d_tags, ut_range):
-        iql = "select * from {0} where "
-        iql += " and ".join(["{0} = {1}".format(k, v)
-                             for k, v in d_tags.items()])
-        iql += " and time >= {0} and time < {1}".format(ut_range[0],
-                                                        ut_range[1])
-        ret = self.client.query(iql)
 
 
 def init_influx(conf, dbname, df = False):

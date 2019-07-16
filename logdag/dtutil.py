@@ -47,7 +47,7 @@ def dtrange(top_dt, end_dt, duration, include_end = False):
 # -> iter_term
 
 
-def discretize(l_dt, l_term, dt_range, binarize):
+def discretize(l_dt, l_term, dt_range, binarize, l_dt_values = None):
     """Convert list of datetime into numpy array.
     This function use mapping algorithm: split datetime space by change points
     (i.e., all ends of datetime terms) and iterate l_dt only once
@@ -62,28 +62,18 @@ def discretize(l_dt, l_term, dt_range, binarize):
                 it is included in any terms.
         binarize (bool): If True, return 0 or 1 for each bin. 1 means
                 some datetime found in l_dt.
+        l_dt_values (List[np.array], optional):
+                Values to be aggregated, corresponding to l_dt.
+                If None, this function returns timestamp count for each bins.
 
     Returns:
         np.array
     """
 
+    if l_dt_values is None:
+        l_dt_values = np.array([1] * len(l_dt))
     top_dt, end_dt = dt_range
     a_ret = np.zeros(len(l_term), dtype=int)
-
-#    # generate l_cp: A list of (change point datetime, list of term indexes)
-#    d_cp = defaultdict(list)
-#    keys = set(dt_range)
-#    _logger.debug("discretize term init")
-#    for term in l_term:
-#        keys = keys | set(term)
-#    _logger.debug("discretize term done")
-#    for k in keys:
-#        for idx, term in enumerate(l_term):
-#            if term[0] <= k < term[1]:
-#                d_cp[k].append(idx)
-#    _logger.debug("discretize key setup done")
-#    l_cp = sorted(d_cp.items(), key = lambda x: x[0])
-#    _logger.debug("discretize sort done")
 
     # extract change points
     d_cp = defaultdict(list)
@@ -97,7 +87,7 @@ def discretize(l_dt, l_term, dt_range, binarize):
             d_cp[term[0]].append((idx, True))
         if end_dt >= term[1]:
             d_cp[term[1]].append((idx, False))
-    # test top_dt
+    # test end_dt
     for idx, term in enumerate(l_term):
         if term[0] <= end_dt < term[1]:
             d_cp[end_dt].append((idx, False))
@@ -121,7 +111,7 @@ def discretize(l_dt, l_term, dt_range, binarize):
     except StopIteration:
         return a_ret
 
-    for dt in l_dt:
+    for dt, v in zip(l_dt, l_dt_values):
         if not dt_range[0] <= dt < dt_range[1]:
             # ignored
             continue
@@ -139,12 +129,13 @@ def discretize(l_dt, l_term, dt_range, binarize):
         if binarize:
             a_ret[np.array(l_rid)] = 1
         else:
-            a_ret[np.array(l_rid)] += 1
+            a_ret[np.array(l_rid)] += v
 
     return a_ret
 
 
-def discretize_sequential(l_dt, dt_range, binsize, binarize = False):
+def discretize_sequential(l_dt, dt_range, binsize,
+                          binarize = False, l_dt_values = None):
     l_term = []
     top_dt, end_dt = dt_range
     temp_dt = top_dt
@@ -155,7 +146,8 @@ def discretize_sequential(l_dt, dt_range, binsize, binarize = False):
     return discretize(l_dt, l_term, dt_range, binarize)
 
 
-def discretize_slide(l_dt, dt_range, bin_slide, binsize, binarize = False):
+def discretize_slide(l_dt, dt_range, bin_slide, binsize,
+                     binarize = False, l_dt_values = None):
     l_term = []
     top_dt, end_dt = dt_range
     temp_dt = top_dt
@@ -166,7 +158,8 @@ def discretize_slide(l_dt, dt_range, bin_slide, binsize, binarize = False):
     return discretize(l_dt, l_term, dt_range, binarize)
 
 
-def discretize_radius(l_dt, dt_range, bin_slide, bin_radius, binarize = False):
+def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
+                      binarize = False, l_dt_values = None):
     l_label = []
     top_dt, end_dt = dt_range
     temp_dt = top_dt + 0.5 * bin_slide

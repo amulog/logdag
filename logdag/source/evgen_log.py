@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import logging
+import numpy as np
 
 from amulog import config
 from . import filter_log
@@ -10,6 +11,7 @@ _logger = logging.getLogger(__package__)
 
 
 class LogEventLoader(object):
+    fields = ["val",]
 
     def __init__(self, conf, dry = False):
         self.conf = conf
@@ -32,6 +34,7 @@ class LogEventLoader(object):
             dbname = conf["database_influx"]["log_dbname"]
             from . import influx
             self.evdb = influx.init_influx(conf, dbname, df = False)
+            self.evdb_df = influx.init_influx(conf, dbname, df = True)
         else:
             raise NotImplementedError
 
@@ -42,7 +45,11 @@ class LogEventLoader(object):
         for method in self._filter_rules:
             args = (tmp_l_dt, dt_range, evdef)
             tmp_l_dt = getattr(self._lf, method)(*args)
-            if tmp_l_dt is None or len(tmp_l_dt) == 0:
+            if method == "sizetest":
+                # sizetest failure means skipping later tests
+                if tmp_l_dt is None:
+                    return l_dt
+            elif tmp_l_dt is None or len(tmp_l_dt) == 0:
                 msg = "event {0} removed with {1}".format(evdef, method)
                 _logger.info(msg)
                 return None
@@ -74,11 +81,48 @@ class LogEventLoader(object):
                 _logger.info("added feature {0} size {1}".format(
                     (host, gid), len(feature_dt)))
 
-    def dump(self, measure, host, key, l_dt):
+    def dump(self, measure, host, gid, l_dt):
         if self.dry:
             return
         data = {k: [v,] for k, v in self.source.timestamp2dict(l_dt).items()}
-        self.evdb.add(measure, {"host": host, "key": key}, data, ["val",])
+        self.evdb.add(measure, {"host": host, "key": gid}, data, self.fields)
         self.evdb.commit()
+
+    def all_feature(self):
+        return ["log_feature",]
+
+    def all_condition(self):
+        ret = []
+        for featurename in self.all_feature:
+            measure = featurename
+            d_tags = self.evdb.list_series(measure = measure)
+            ret.append((measure, d_tags["host"], int(d_tags["key"])))
+        return ret
+
+    def load(self, measure, host, gid, dt_range, binsize):
+        d_tags = {"host": host, "key": str(gid)}
+        ut_range = tuple(time.timestamp(dt) for dt in dt_range)
+        str_bin = config.dur2str(binsize)
+        df = self.source_df.get(measure, d_tags, self.fields,
+                                ut_range, str_bin, func = "sum", fill = 0)
+        return df
+
+    def load_items(self, measure, host, gid, dt_range):
+        d_tags = {"host": host, "key": str(gid)}
+        ut_range = tuple(time.timestamp(dt) for dt in dt_range)
+        rs = self.source.get(measure, d_tags, self.fields, ut_range)
+
+        l_dt = [p["time"] for p in rs.get_points()]
+        l_array = [np.array([p[f] for f in self.fields])
+                   for p in rs.get_points()]
+        return (l_dt, l_array)
+
+    def load_all(self, dt_range, binsize):
+        for featurename in self.all_feature:
+            measure = featurename
+            for series in self.all_series(measure):
+                host, key = tuple(series)
+                df = self.load(measure, host, key, dt_range, binsize)
+                yield (host, key, df)
 
 

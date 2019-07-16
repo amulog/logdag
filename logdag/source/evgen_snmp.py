@@ -15,6 +15,8 @@ _logger = logging.getLogger(__package__)
 
 class EventLoader(object):
 
+    fields = ["val",]
+
     def __init__(self, conf, dry = False):
         self.conf = conf
         self.dry = dry
@@ -35,8 +37,8 @@ class EventLoader(object):
 
         ha_fn = conf["general"]["host_alias_filename"]
         self._ha = host_alias.HostAlias(ha_fn)
-        self._init_sourcelist(conf)
-        self._init_featurelist(conf)
+        self._d_source, self._d_vsource = self._init_sourcelist(conf)
+        self._d_feature = self._init_featurelist(conf)
 
     @staticmethod
     def _read_filelist(fp):
@@ -58,16 +60,17 @@ class EventLoader(object):
             return name
 
     def _init_sourcelist(self, conf):
-        self._d_source = {}
+        d_source = {}
         for name in config.getlist(conf, "source", "all"):
             fp = conf["source"][name]
-            self._d_source[name] = [(path, self._ha.resolve_host(host), key)
-                                    for path, host, key in self._read_filelist(fp)]
-        self._d_vsource = {}
+            d_source[name] = [(path, self._ha.resolve_host(host), key)
+                              for path, host, key in self._read_filelist(fp)]
+        d_vsource = {}
         for name in config.getlist(conf, "vsource", "all"):
             tmp = [e.strip() for e in conf["vsource"][name].split(",")]
             assert len(tmp) == 2
-            self._d_vsource[name] = tmp
+            d_vsource[name] = tmp
+        return (d_source, d_vsource)
 
     def _read_source(self, name):
         for path, host, key in self._d_source[name]:
@@ -133,9 +136,9 @@ class EventLoader(object):
         if dt_range is not None:
             self.source.dt_range = dt_range
         # reverse resolution by sourcenames to avoid duplicated load
-        all_sourcename = set(self._d_source.keys()) | set(self._d_vsource.keys())
-        d_feature = self._init_featurelist(self.conf)
-        for sourcename, l_feature_def in sorted(d_feature.items()):
+        all_sourcename = set(self._d_source.keys()) | \
+                         set(self._d_vsource.keys())
+        for sourcename, l_feature_def in sorted(self._d_feature.items()):
             if sourcename in self._d_source:
                 _logger.info("loading source {0}".format(sourcename))
                 for host, key, df in self._read_source(sourcename):
@@ -218,7 +221,7 @@ class EventLoader(object):
             if not keyfunc in df.columns:
                 return None
             sr = df[keyfunc]
-            new_columns = ["val",]
+            new_columns = self.fields
 
         if self.isallnan(sr):
             return None
@@ -242,4 +245,34 @@ class EventLoader(object):
         self.evdb.commit()
         #self.evdb.add_df(measure, {"host": host, "key": key}, df)
 
+    def all_feature(self):
+        ret = []
+        for l_featuredef in self._d_feature.values():
+            for name, keyfunc, l_postfunc in l_featuredef:
+                ret.append(name)
+        return ret
+
+    def all_condition(self):
+        ret = []
+        for featurename in self.all_feature:
+            measure = featurename
+            d_tags = self.evdb.list_series(measure = measure)
+            ret.append((measure, d_tags["host"], int(d_tags["key"])))
+        return ret
+
+    def load(self, measure, host, key, dt_range, binsize):
+        d_tags = {"host": host, "key": gid}
+        ut_range = tuple(time.timestamp(dt) for dt in dt_range)
+        strbinsize = config.dur2str(binsize)
+        df = self.source_df.get(measure, d_tags, self.fields,
+                                ut_range, strbinsize, func = "mean", fill = 0)
+        return df
+
+    def load_all(self, dt_range, binsize):
+        for featurename in self.all_feature:
+            measure = featurename
+            for series in self.all_series(measure):
+                host, key = tuple(series)
+                df = self.load(measure, host, key, dt_range, binsize)
+                yield (host, key, df)
 
