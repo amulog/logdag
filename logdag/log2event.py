@@ -146,12 +146,15 @@ def _load_evgen_log(conf, dt_range, area, binarize):
 
     from .source import evgen_log
     evg = evgen_log.LogEventLoader(conf)
-    for measure, host, gid in evg.all_condition():
-        if not areatest.test(host):
+    for measure, host, gid in evg.all_condition(dt_range):
+        if not areatest.test(area, host):
             continue
 
         if method == "sequential":
             data = evg.load(measure, host, gid, dt_range, ci_bin_size)
+            if data is None:
+                _logger.debug("{0} is empty".format((measure, host, gid)))
+                continue
             if binarize:
                 data[data > 0] = 1
         elif method == "slide":
@@ -173,13 +176,17 @@ def _load_evgen_snmp(conf, dt_range, area, binarize):
 
     from .source import evgen_snmp
     evg = evgen_snmp.EventLoader(conf)
-    for measure, host, gid in evg.all_condition():
-        if not areatest.test(host):
+    for measure, host, key in evg.all_condition(dt_range):
+        if not areatest.test(area, host):
             continue
         data = evg.load(measure, host, key, dt_range, ci_bin_size)
+        if data is None:
+            _logger.debug("{0} is empty".format((measure, host, key)))
+            continue
         if binarize:
             data[data > 0] = 1
-        yield (host, gid, data)
+        name = "{0}_{1}".format(measure, key)
+        yield (host, name, data)
 
 
 def _load_evgen(src, conf, dt_range, area, binarize):
@@ -194,10 +201,10 @@ def _load_evgen(src, conf, dt_range, area, binarize):
 def makeinput(conf, dt_range, area, binarize):
     evmap = EventDefinitionMap()
     edict = {}
-    sources = set(config.getlist(conf, "dag", "sources"))
+    sources = set(config.getlist(conf, "dag", "source"))
     for src in sources:
-        for host, key, data in self._load_evgen(src, conf, dt_range,
-                                                area, binarize):
+        for host, key, data in _load_evgen(src, conf, dt_range,
+                                           area, binarize):
             eid = evmap.add_event(src, host, key)
             edict[eid] = data
             _logger.debug("loaded event {0} {1}".format(eid, evmap.evdef(eid)))

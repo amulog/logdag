@@ -23,13 +23,14 @@ class EventLoader(object):
         src = conf["general"]["snmp_source"] 
         if src == "rrd":
             from . import rrd
-            self.source = rrd.RRDLoader(conf)
+            dt_range = conf["general"]["evdb_whole_term"]
+            self.source = rrd.RRDLoader(conf, dt_range)
         else:
             raise NotImplementedError
 
         dst = conf["general"]["evdb"]
         if dst == "influx":
-            dbname = conf["general"]["snmp_dbname"]
+            dbname = conf["database_influx"]["snmp_dbname"]
             from . import influx
             self.evdb = influx.init_influx(conf, dbname, df = True)
         else:
@@ -61,13 +62,13 @@ class EventLoader(object):
 
     def _init_sourcelist(self, conf):
         d_source = {}
-        for name in config.getlist(conf, "source", "all"):
-            fp = conf["source"][name]
+        for name in config.getlist(conf, "snmp_source", "all"):
+            fp = conf["snmp_source"][name]
             d_source[name] = [(path, self._ha.resolve_host(host), key)
                               for path, host, key in self._read_filelist(fp)]
         d_vsource = {}
-        for name in config.getlist(conf, "vsource", "all"):
-            tmp = [e.strip() for e in conf["vsource"][name].split(",")]
+        for name in config.getlist(conf, "snmp_vsource", "all"):
+            tmp = [e.strip() for e in conf["snmp_vsource"][name].split(",")]
             assert len(tmp) == 2
             d_vsource[name] = tmp
         return (d_source, d_vsource)
@@ -252,20 +253,26 @@ class EventLoader(object):
                 ret.append(name)
         return ret
 
-    def all_condition(self):
-        ret = []
-        for featurename in self.all_feature:
+    def all_condition(self, dt_range = None):
+        for featurename in self.all_feature():
             measure = featurename
-            d_tags = self.evdb.list_series(measure = measure)
-            ret.append((measure, d_tags["host"], int(d_tags["key"])))
-        return ret
+            if dt_range is None:
+                l_d_tags = self.evdb.list_series(measure = measure)
+            else:
+                ut_range = tuple(dt.timestamp() for dt in dt_range)
+                l_d_tags = self.evdb.list_series(measure = measure,
+                                                 ut_range = ut_range)
+            for d_tags in l_d_tags:
+                if not ("host" in d_tags and "key" in d_tags):
+                    continue
+                yield (measure, d_tags["host"], d_tags["key"])
 
     def load(self, measure, host, key, dt_range, binsize):
-        d_tags = {"host": host, "key": gid}
-        ut_range = tuple(time.timestamp(dt) for dt in dt_range)
+        d_tags = {"host": host, "key": key}
+        ut_range = tuple(dt.timestamp() for dt in dt_range)
         strbinsize = config.dur2str(binsize)
-        df = self.source_df.get(measure, d_tags, self.fields,
-                                ut_range, strbinsize, func = "mean", fill = 0)
+        df = self.evdb.get(measure, d_tags, self.fields,
+                           ut_range, strbinsize, func = "max", fill = 0)
         return df
 
     def load_all(self, dt_range, binsize):

@@ -11,7 +11,7 @@ from amulog import config
 class RRDLoader():
 
     def __init__(self, conf, dt_range):
-        self.dt_range = config.getterm(conf, "general", "whole_term")
+        self.dt_range = dt_range
         self._rows = conf.getint("database_rrd", "rows")
         self._cf = conf["database_rrd"]["cf"]
         self._correct_roundup = conf.getboolean("database_rrd",

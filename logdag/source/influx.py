@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import logging
 import numpy as np
 import influxdb
+
+_logger = logging.getLogger(__package__)
 
 
 class InfluxDB(object):
@@ -25,12 +28,19 @@ class InfluxDB(object):
     def list_measurements(self):
         return [d["name"] for d in self.client.get_list_measurements()]
 
-    def list_series(self, measure = None):
+    def list_series(self, measure = None, ut_range = None):
         ret = []
         if measure:
-            rs = self.client.query("SHOW SERIES FROM \"{0}\"".format(measure))
+            iql = "SHOW SERIES FROM \"{0}\"".format(measure)
         else:
-            rs = self.client.query("SHOW SERIES")
+            iql = "SHOW SERIES"
+        if ut_range is not None:
+            iql += " WHERE time >= {0}s AND time < {1}s".format(
+                int(ut_range[0]), int(ut_range[1]))
+        
+        _logger.debug("influxql query: {0}".format(iql))
+        rs = self.client.query(iql, epoch = self._precision,
+                               database = self.dbname)
         for p in rs.get_points():
             d = {}
             for s in p["key"].split(","):
@@ -72,10 +82,10 @@ class InfluxDB(object):
                                   for s in fields])
         s_from = "\"{0}\".\"{1}\".\"{2}\"".format(self.dbname, self._rpolicy,
                                                   measure)
-        s_where = " AND ".join(["{0} = {1}".format(k, v)
+        s_where = " AND ".join(["\"{0}\" = '{1}'".format(k, v)
                                 for k, v in d_tags.items()])
-        s_where += " AND time >= {0} AND time < {1}".format(ut_range[0],
-                                                            ut_range[1])
+        s_where += " AND time >= {0}s AND time < {1}s".format(
+            int(ut_range[0]), int(ut_range[1]))
         if str_bin is None:
             s_gb = ""
         else:
@@ -88,7 +98,9 @@ class InfluxDB(object):
         iql += s_gb
 
         _logger.debug("influxql query: {0}".format(iql))
-        ret = self.client.query(iql)
+        ret = self.client.query(iql, epoch = self._precision,
+                                database = self.dbname)
+        return ret
 
 
 class InfluxDF(InfluxDB):

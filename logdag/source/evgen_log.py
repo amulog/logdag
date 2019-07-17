@@ -91,26 +91,31 @@ class LogEventLoader(object):
     def all_feature(self):
         return ["log_feature",]
 
-    def all_condition(self):
-        ret = []
-        for featurename in self.all_feature:
+    def all_condition(self, dt_range = None):
+        for featurename in self.all_feature():
             measure = featurename
-            d_tags = self.evdb.list_series(measure = measure)
-            ret.append((measure, d_tags["host"], int(d_tags["key"])))
-        return ret
+            if dt_range is None:
+                l_d_tags = self.evdb.list_series(measure = measure)
+            else:
+                ut_range = tuple(dt.timestamp() for dt in dt_range)
+                l_d_tags = self.evdb.list_series(measure = measure,
+                                                 ut_range = ut_range)
+            for d_tags in l_d_tags:
+                yield (measure, d_tags["host"], int(d_tags["key"]))
 
     def load(self, measure, host, gid, dt_range, binsize):
         d_tags = {"host": host, "key": str(gid)}
-        ut_range = tuple(time.timestamp(dt) for dt in dt_range)
+        ut_range = tuple(dt.timestamp() for dt in dt_range)
         str_bin = config.dur2str(binsize)
-        df = self.source_df.get(measure, d_tags, self.fields,
-                                ut_range, str_bin, func = "sum", fill = 0)
+        df = self.evdb_df.get(measure, d_tags, self.fields,
+                              ut_range, str_bin, func = "sum", fill = 0)
+        import pdb; pdb.set_trace()
         return df
 
     def load_items(self, measure, host, gid, dt_range):
         d_tags = {"host": host, "key": str(gid)}
-        ut_range = tuple(time.timestamp(dt) for dt in dt_range)
-        rs = self.source.get(measure, d_tags, self.fields, ut_range)
+        ut_range = tuple(dt.timestamp() for dt in dt_range)
+        rs = self.evdb.get(measure, d_tags, self.fields, ut_range)
 
         l_dt = [p["time"] for p in rs.get_points()]
         l_array = [np.array([p[f] for f in self.fields])
