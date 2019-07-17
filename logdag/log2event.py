@@ -138,6 +138,17 @@ class AreaTest():
         return self._testfunc(area, host)
 
 
+def init_evgen(conf):
+    if src == "log":
+        from .source import evgen_log
+        return evgen_log.LogEventLoader(conf)
+    elif src == "snmp":
+        from .source import evgen_snmp
+        return evgen_snmp.SNMPEventLoader(conf)
+    else:
+        raise NotImplementedError
+
+
 def _load_evgen_log(conf, dt_range, area, binarize):
     areatest = AreaTest(conf)
     method = conf.get("dag", "ci_bin_method")
@@ -151,19 +162,21 @@ def _load_evgen_log(conf, dt_range, area, binarize):
             continue
 
         if method == "sequential":
-            data = evg.load(measure, host, gid, dt_range, ci_bin_size)
+            df = evg.load(measure, host, gid, dt_range, ci_bin_size)
             if data is None:
                 _logger.debug("{0} is empty".format((measure, host, gid)))
                 continue
             if binarize:
                 data[data > 0] = 1
         elif method == "slide":
-            l_dt, l_array = evg.load_items(measure, host, gid, dt_range)
+            l_dt, l_array = zip(*evg.load_items(measure, host, gid, dt_range))
             data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
                                            ci_bin_size, binarize,
                                            l_dt_values = l_array)
+            df = pd.DataFrame(data, index = pd.to_datetime(l_dt))
         elif method == "radius":
             ci_bin_radius = 0.5 * ci_bin_size
+            l_dt, l_array = zip(*evg.load_items(measure, host, gid, dt_range))
             data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
                                             ci_bin_radius, binarize,
                                             l_dt_values = l_array)
@@ -175,7 +188,7 @@ def _load_evgen_snmp(conf, dt_range, area, binarize):
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
 
     from .source import evgen_snmp
-    evg = evgen_snmp.EventLoader(conf)
+    evg = evgen_snmp.SNMPEventLoader(conf)
     for measure, host, key in evg.all_condition(dt_range):
         if not areatest.test(area, host):
             continue

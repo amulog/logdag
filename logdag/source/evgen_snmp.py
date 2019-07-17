@@ -8,12 +8,13 @@ from collections import defaultdict
 
 from amulog import config
 from amulog import host_alias
+from . import evgen_common
 from . import evpost
 
 _logger = logging.getLogger(__package__)
 
 
-class EventLoader(object):
+class SNMPEventLoader(evgen_common.EventLoader):
 
     fields = ["val",]
 
@@ -32,7 +33,7 @@ class EventLoader(object):
         if dst == "influx":
             dbname = conf["database_influx"]["snmp_dbname"]
             from . import influx
-            self.evdb = influx.init_influx(conf, dbname, df = True)
+            self.evdb = influx.init_influx(conf, dbname, df = False)
         else:
             raise NotImplementedError
 
@@ -240,11 +241,14 @@ class EventLoader(object):
     def dump(self, measure, host, key, df):
         if self.dry:
             return
-        #times = df.index
-        #columns = df.columns
-        self.evdb.add(measure, {"host": host, "key": key}, df)
+        data = {k: v for k, v
+                in zip(df.index, df.itertuples(index = False, name = None))}
+        d_tags = {"host": host, "key": key}
+        self.evdb.add(measure, d_tags, data, self.fields)
         self.evdb.commit()
-        #self.evdb.add_df(measure, {"host": host, "key": key}, df)
+
+    def dump_feature(self, measure, host, key, df):
+        return self.dump(measure, host, key, df[df > 0].dropna())
 
     def all_feature(self):
         ret = []
@@ -252,34 +256,4 @@ class EventLoader(object):
             for name, keyfunc, l_postfunc in l_featuredef:
                 ret.append(name)
         return ret
-
-    def all_condition(self, dt_range = None):
-        for featurename in self.all_feature():
-            measure = featurename
-            if dt_range is None:
-                l_d_tags = self.evdb.list_series(measure = measure)
-            else:
-                ut_range = tuple(dt.timestamp() for dt in dt_range)
-                l_d_tags = self.evdb.list_series(measure = measure,
-                                                 ut_range = ut_range)
-            for d_tags in l_d_tags:
-                if not ("host" in d_tags and "key" in d_tags):
-                    continue
-                yield (measure, d_tags["host"], d_tags["key"])
-
-    def load(self, measure, host, key, dt_range, binsize):
-        d_tags = {"host": host, "key": key}
-        ut_range = tuple(dt.timestamp() for dt in dt_range)
-        strbinsize = config.dur2str(binsize)
-        df = self.evdb.get(measure, d_tags, self.fields,
-                           ut_range, strbinsize, func = "max", fill = 0)
-        return df
-
-    def load_all(self, dt_range, binsize):
-        for featurename in self.all_feature:
-            measure = featurename
-            for series in self.all_series(measure):
-                host, key = tuple(series)
-                df = self.load(measure, host, key, dt_range, binsize)
-                yield (host, key, df)
 

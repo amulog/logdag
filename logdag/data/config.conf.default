@@ -132,6 +132,11 @@ rt_outucast_sum = rt_if_hostsum, outucast, norm_fillavg, outlier
 
 [dag]
 
+# Fetching term for estimating dag
+# For example:
+# whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
+whole_term =
+
 # data sources for dag estimation input
 # [log, snmp] are available
 source = log, snmp

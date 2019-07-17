@@ -3,6 +3,7 @@
 
 import logging
 import numpy as np
+import pandas as pd
 import influxdb
 
 _logger = logging.getLogger(__package__)
@@ -13,7 +14,7 @@ class InfluxDB(object):
     def __init__(self, dbname, inf_kwargs,
                  batch_size = 1000, protocol = "line"):
         self.dbname = dbname
-        self._precision = 's'
+        self._precision = 'n'
         self._batch_size = batch_size
         #self._protocol = protocol
         inf_kwargs["database"] = dbname
@@ -73,7 +74,7 @@ class InfluxDB(object):
     def commit(self):
         pass
 
-    def get(self, measure, d_tags, fields, ut_range,
+    def get(self, measure, d_tags, fields, dt_range,
             str_bin = None, func = None, fill = None):
         if func is None:
             s_fields = ", ".join(["\"{0}\"".format(s) for s in fields])
@@ -102,28 +103,49 @@ class InfluxDB(object):
                                 database = self.dbname)
         return ret
 
+    def get_items(self, measure, d_tags, fields, ut_range):
+        rs = self.get(measure, d_tags, fields, ut_range)
 
-class InfluxDF(InfluxDB):
+        for p in rs.get_points():
+            dt = pd.to_datetime(p["time"])
+            array = np.array([p[f] for f in self.fields])
+            yield (dt, array)
 
-    def __init__(self, dbname, inf_kwargs,
-                 batch_size = 1000, protocol = "line"):
-        self.dbname = dbname
-        self._rpolicy = "autogen"
-        self._precision = 's'
-        self._batch_size = batch_size
-        self._protocol = protocol
-        inf_kwargs["database"] = dbname
-        self.client = influxdb.DataFrameClient(**inf_kwargs)
-        if not dbname in list(self._list_database()):
-            raise IOError("No database {0}".format(dbname))
-            #self.client.create_database(dbname)
+    def get_df(self, measure, d_tags, fields, ut_range,
+               str_bin = None, func = None, fill = None):
+        rs = self.get(measure, d_tags, fields, ut_range,
+                      str_bin, func, fill)
 
-    def add(self, measure, d_tags, df):
-        self.client.write_points(df, database = self.dbname,
-                                 measurement = measure, tags = d_tags,
-                                 time_precision = self._precision,
-                                 batch_size = self._batch_size,
-                                 protocol = self._protocol)
+        l_dt = pd.to_datetime([p["time"] for p in rs.get_points()])
+        l_array = [np.array([p[f] for f in self.fields])
+                   for p in rs.get_points()]
+        return pd.DataFrame(l_array, index = l_dt)
+
+    def drop_measurement(self, measure):
+        self.client.drop_measurement(measure)
+
+
+#class InfluxDF(InfluxDB):
+#
+#    def __init__(self, dbname, inf_kwargs,
+#                 batch_size = 1000, protocol = "line"):
+#        self.dbname = dbname
+#        self._rpolicy = "autogen"
+#        self._precision = 's'
+#        self._batch_size = batch_size
+#        self._protocol = protocol
+#        inf_kwargs["database"] = dbname
+#        self.client = influxdb.DataFrameClient(**inf_kwargs)
+#        if not dbname in list(self._list_database()):
+#            raise IOError("No database {0}".format(dbname))
+#            #self.client.create_database(dbname)
+#
+#    def add(self, measure, d_tags, df):
+#        self.client.write_points(df, database = self.dbname,
+#                                 measurement = measure, tags = d_tags,
+#                                 time_precision = self._precision,
+#                                 batch_size = self._batch_size,
+#                                 protocol = self._protocol)
 
 
 def init_influx(conf, dbname, df = False):
@@ -136,7 +158,8 @@ def init_influx(conf, dbname, df = False):
     batch_size = conf.getint("database_influx", "batch_size")
     protocol = conf["database_influx"]["protocol"]
     if df:
-    	return InfluxDF(dbname, d, batch_size = batch_size,
+        raise NotImplementedError
+        return InfluxDF(dbname, d, batch_size = batch_size,
                         protocol = protocol)
     else:
     	return InfluxDB(dbname, d, batch_size = batch_size,
