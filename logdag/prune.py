@@ -5,7 +5,7 @@ import json
 import networkx as nx
 
 
-class MultiLayerTopology():
+class LogMultiLayerTopology():
 
     def __init__(self, d_topology_fp, d_gid, default_group):
         self._topology = self._load_graph(d_topology_fp)
@@ -132,7 +132,7 @@ def init_pruner(conf):
                 d_rule[group] = layer
             d_gid = init_gid_layer(conf, amulog_conf, d_rule)
             default_group = amulog_conf["visual"]["ltlabel_default_group"]
-            l_pruner.append(MultiLayerTopology(d_fp, d_gid, default_group))
+            l_pruner.append(LogMultiLayerTopology(d_fp, d_gid, default_group))
         elif method == "independent":
             l_pruner.append(Independent())
         else:

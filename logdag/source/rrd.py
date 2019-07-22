@@ -10,8 +10,7 @@ from amulog import config
 
 class RRDLoader():
 
-    def __init__(self, conf, dt_range):
-        self.dt_range = dt_range
+    def __init__(self, conf):
         self._rows = conf.getint("database_rrd", "rows")
         self._cf = conf["database_rrd"]["cf"]
         self._correct_roundup = conf.getboolean("database_rrd",
@@ -19,8 +18,8 @@ class RRDLoader():
         self._binsize = int(
             config.getdur(conf, "database_rrd", "binsize").total_seconds())
 
-    def load(self, fp):
-        ut_range = [dt.timestamp() for dt in self.dt_range]
+    def load(self, fp, dt_range):
+        ut_range = [dt.timestamp() for dt in dt_range]
         return fetch(fp, ut_range, self._rows, self._cf,
                      self._binsize, self._correct_roundup)
 

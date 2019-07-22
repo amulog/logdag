@@ -159,10 +159,7 @@ def init_influx(conf, dbname, df = False):
     protocol = conf["database_influx"]["protocol"]
     if df:
         raise NotImplementedError
-        return InfluxDF(dbname, d, batch_size = batch_size,
-                        protocol = protocol)
-    else:
-    	return InfluxDB(dbname, d, batch_size = batch_size,
-                        protocol = protocol)
+    return InfluxDB(dbname, d, batch_size = batch_size,
+                    protocol = protocol)
 
 

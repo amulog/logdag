@@ -2,12 +2,12 @@
 # coding: utf-8
 
 
-import sys
 import pickle
 import networkx as nx
 from collections import defaultdict
 
 from . import arguments
+from . import log2event
 from amulog import common
 
 fmt_int = lambda x: "{:,d}".format(x)
@@ -17,22 +17,26 @@ fmt_int_ratio = lambda x, y: "{:,d}({:.1f}%)".format(x, y)
 
 class LogDAG():
 
-    def __init__(self, args, graph = None):
+    def __init__(self, args, graph=None):
         self.args = args
         self.conf, self.dt_range, self.area = self.args
         self.name = arguments.args2name(self.args)
         self.graph = graph
+
         self._evmap_obj = None
-        self._ll = None
+        self._evloader = None
 
     def _evmap(self):
         if self._evmap_obj is None:
-            from . import log2event
-            gid_name = self.conf.get("dag", "event_gid")
-            evmap = log2event.EventDefinitionMap(gid_name)
+            evmap = log2event.EventDefinitionMap()
             evmap.load(self.args)
             self._evmap_obj = evmap
         return self._evmap_obj
+
+    def _evloader(self):
+        if self._d_el is None:
+            self._d_el = log2event.init_evloaders(self.conf)
+        return self._d_el
 
     def dump(self):
         fp = arguments.ArgumentManager.dag_filepath(self.args)
@@ -44,42 +48,15 @@ class LogDAG():
         with open(fp, 'rb') as f:
             self.graph = pickle.load(f)
 
-    def load_ltlabel(self, conf, ld = None, ll = None):
-        from amulog import log_db
-        from amulog import lt_label
-        if ld is None:
-            self._ld = log_db.LogData(conf)
-        else:
-            self._ld = ld
-        if ll is None:
-            self._ll = lt_label.init_ltlabel(conf)
-        else:
-            self._ll = ll
-        self._default_label = conf.get("visual", "ltlabel_default_label")
-
-    def _label_ltg(self, gid):
-        if self._ll is None:
-            return None
-        else:
-            label = self._ll.get_ltg_label(gid, self._ld.ltg_members(gid))
-            if label is None:
-                label = self._default_label
-            return label
-
-    def _label_group_ltg(self, gid):
-        label = self._label_ltg(gid)
-        group = self._ll.get_group(label)
-        return group
-
-    def number_of_nodes(self, graph = None):
+    def number_of_nodes(self, graph=None):
         if graph is None:
             graph = self.graph
         return graph.number_of_nodes()
 
-    def number_of_edges(self, graph = None):
+    def number_of_edges(self, graph=None):
         if graph is None:
             graph = self.graph
-        #temp_graph = nx.Graph(graph)
+        # temp_graph = nx.Graph(graph)
         temp_graph = graph.to_undirected()
         return temp_graph.number_of_edges()
 
@@ -87,19 +64,19 @@ class LogDAG():
         evmap = self._evmap()
         return evmap.evdef(node)
 
-    def info2node(self, info):
+    def info2node(self, evdef):
         evmap = self._evmap()
-        return evmap.get_eid(info)
+        return evmap.get_eid(evdef)
 
     def edge_info(self, edge):
         evmap = self._evmap()
         return [evmap.evdef(node) for node in edge]
 
-    def info2edge(self, t_info):
+    def info2edge(self, t_evdef):
         evmap = self._evmap()
-        return [evmap.get_eid(info) for info in t_info]
+        return [evmap.get_eid(evdef) for evdef in t_evdef]
 
-    def edges_directed(self, graph = None):
+    def edges_directed(self, graph=None):
         """Returns subgraphs of input graph its edges by
         the availability of their directions.
 
@@ -126,7 +103,7 @@ class LogDAG():
         g_di.add_edges_from(l_temp_edge)
         return g_di, g_nodi
 
-    def edge_isdirected(self, edge, graph = None):
+    def edge_isdirected(self, edge, graph=None):
         if graph is None:
             graph = self.graph
         rev_edge = (edge[1], edge[0])
@@ -141,7 +118,7 @@ class LogDAG():
             else:
                 raise ValueError("Edge not found")
 
-    def edges_across_host(self, graph = None):
+    def edges_across_host(self, graph=None):
         """Returns subgraphs of input graph its edges by the consistency
         of the hosts of adjacent nodes.
 
@@ -165,13 +142,13 @@ class LogDAG():
                 g_diff.add_edge(*edge)
         return g_same, g_diff
 
-    def connected_subgraphs(self, graph = None):
+    def connected_subgraphs(self, graph=None):
         if graph is None:
             graph = self.graph
         temp_graph = graph.to_undirected()
         return nx.connected_components(temp_graph)
 
-    def edge_str(self, edge, graph = None):
+    def edge_str(self, edge, graph=None):
         if graph is None:
             graph = self.graph
         src_node, dst_node = edge
@@ -183,44 +160,33 @@ class LogDAG():
             return "{0} <-> {1}".format(src_str, dst_str)
 
     def node_str(self, node):
-        info = self.node_info(node)
-        label = self._label_ltg(info.gid)
-        if label is None:
-            return "[gid={0[0]}, host = {0[1]}]".format(info)
-        else:
-            return "[gid={0[0]}({1}), host = {0[1]}]".format(info, label)
+        evdef = self.node_info(node)
+        label = log2event.evdef_label(self.conf, evdef, d_el=self._evloader())
+        return "[host = {0}, key={1}({2})]".format(evdef.host, evdef.key, label)
 
-    def edge_detail(self, edge, ld, head, foot):
-        buf = ["## Edge {0}".format(self.edge_str(edge)),]
+    def edge_detail(self, edge, head, foot):
+        buf = ["## Edge {0}".format(self.edge_str(edge)), ]
         for node in edge:
-            buf.append(self.node_detail(node, ld, head, foot))
+            buf.append(self.node_detail(node, head, foot))
         return "\n".join(buf)
 
-    def node_detail(self, node, ld, head, foot):
-        gid, host = self.node_info(node)
-        gid_name = self._evmap().gid_name
-        if gid_name == "ltid":
-            buf = ["# Node {0}: {1}".format(self.node_str(node),
-                                            str(ld.lt(gid)))]
-        else:
-            buf = ["# Node {0}:".format(self.node_str(node))]
-        d = {gid_name: gid,
-             "host": host,
-             "top_dt": self.dt_range[0],
-             "end_dt": self.dt_range[1],
-             "head": head,
-             "foot": foot}
-        buf.append(ld.show_log_repr(**d))
+    def node_detail(self, node, head, foot):
+        evdef = self.node_info(node)
+        buf = ["# Node {0}:".format(self.node_str(node)),
+               log2event.evdef_detail(self.conf, evdef, self.dt_range,
+                                      head, foot, d_el=self._evloader())]
         return "\n".join(buf)
 
-    def ate_prune(self, threshold, graph = None):
+    def ate_prune(self, threshold, graph=None):
+        """Prune edges with smaller ATE (average treatment effect).
+        Effective if DAG estimation algorithm is LiNGAM."""
         if graph is None:
             graph = self.graph
         ret = graph.copy()
 
         try:
             edge_label = {(u, v): d["label"]
-                          for (u, v, d) in graph.edges(data = True)}
+                          for (u, v, d) in graph.edges(data=True)}
             for (src, dst), val in edge_label.items():
                 if float(val) < threshold:
                     ret.remove_edge(src, dst)
@@ -228,7 +194,7 @@ class LogDAG():
         except KeyError:
             return None
 
-    def graph_no_orphan(self, graph = None):
+    def graph_no_orphan(self, graph=None):
         if graph is None:
             graph = self.graph
         ret = graph.copy()
@@ -243,68 +209,26 @@ class LogDAG():
 
         return ret
 
-    def relabel_graph(self, graph = None):
+    def relabel_graph(self, graph=None):
         if graph is None:
             graph = self.graph
 
         mapping = {}
         for node in graph.nodes():
-            info = self.node_info(node)
-            label = self._label_ltg(info.gid)
-            if label is None:
-                mapping[node] = "{0}, {1}".format(info.gid, info.host)
-            else:
-                mapping[node] = "{0}({1}), {2}".format(info.gid,
-                        label, info.host)
-        return nx.relabel_nodes(graph, mapping, copy = True)
+            evdef = self.node_info(node)
+            label = log2event.evdef_label(self.conf, evdef, d_el=self._evloader())
+            mapping[node] = "{0}({1}), {2}".format(evdef.gid,
+                                                   label, evdef.host)
+        return nx.relabel_nodes(graph, mapping, copy=True)
 
-    def graph_nx(self, output, graph = None):
+    def graph_nx(self, output, graph=None):
         if graph is None:
             graph = self.graph
         rgraph = self.relabel_graph(graph)
 
         ag = nx.nx_agraph.to_agraph(rgraph)
-        ag.draw(output, prog = 'circo')
+        ag.draw(output, prog='circo')
         return output
-
-        #import matplotlib.pyplot as plt
-        #plt.figure()
-        #plt.axis('off')
-        #pos = nx.spring_layout(g)
-        #pos = nx.circular_layout(g)
-        #pos = nx.nx_agraph.graphviz_layout(g, prog = 'neato')
-
-        #node_color = [d.get("color", "black")
-        #              for (n, d) in g.nodes(data = True)]
-        #edge_color = [d.get("color", "black")
-        #              for (u, v, d) in g.edges(data = True)]
-        ##nx.draw_networkx_nodes(g, pos, node_size = 600,
-        ##                       node_color = "w", edgecolors = node_color)
-        #nx.draw_networkx_nodes(g, pos,
-        #                       node_color = "w", edgecolors = node_color)
-        ##nx.draw_networkx_edges(g, pos, width = 3.0, arrowsize = 30,
-        ##                       edge_color = edge_color)
-        #nx.draw_networkx_edges(g, pos, width = 3.0, arrowsize = 30,
-        #                       edge_color = edge_color)
-        #nx.draw_networkx_labels(g, pos, fontsize = 12, font_color = "k",
-        #                        font_family = "Arial Black",
-        #                        font_weight = "bold")
-        ##nx.draw_networkx_labels(g, pos, fontsize = 18, font_color = "k",
-        ##                        font_family = "Arial Black",
-        ##                        font_weight = "bold")
-        #try:
-        #    edge_label = {(u, v): d["label"]
-        #                  for (u, v, d) in g.edges(data = True)}
-        #    #nx.draw_networkx_edge_labels(g, pos, edge_labels = edge_label,
-        #    #                             fontsize = 18, font_color = "k",
-        #    #                             font_family = "Arial Black")
-        #    nx.draw_networkx_edge_labels(g, pos, edge_labels = edge_label,
-        #                                 fontsize = 8, font_color = "k",
-        #                                 font_family = "Arial Black")
-        #except KeyError:
-        #    pass
-        #plt.savefig(output)
-        #return output
 
 
 # common functions
@@ -314,7 +238,7 @@ def empty_dag():
     return nx.DiGraph()
 
 
-def iter_results(conf, src_dir = None, area = None):
+def iter_results(conf, src_dir=None, area=None):
     am = arguments.ArgumentManager(conf)
     am.load()
     for args in am:
@@ -361,8 +285,8 @@ def show_edge_detail(args, head, tail):
     return "\n\n".join(l_buf)
 
 
-def show_graph(conf, args, output, lib = "networkx",
-               threshold = None, ignore_orphan = False):
+def show_graph(conf, args, output, lib="networkx",
+               threshold=None, ignore_orphan=False):
     if lib == "networkx":
         r = LogDAG(args)
         r.load()
@@ -371,17 +295,16 @@ def show_graph(conf, args, output, lib = "networkx",
         else:
             g = r.graph
         if ignore_orphan:
-            g = r.graph_no_orphan(graph = g)
-        r.load_ltlabel(conf)
-        fp = r.graph_nx(output, graph = g)
+            g = r.graph_no_orphan(graph=g)
+        r.relabel_graph()
+        fp = r.graph_nx(output, graph=g)
         return fp
     else:
         raise NotImplementedError
 
 
-def list_results(conf, src_dir = None):
-    table = []
-    table.append(["datetime", "area", "nodes", "edges", "name"])
+def list_results(conf, src_dir=None):
+    table = [["datetime", "area", "nodes", "edges", "name"], ]
     for r in iter_results(conf, src_dir):
         c, dt_range, area = r.args
         table.append([str(dt_range[0]), str(area),
@@ -390,9 +313,8 @@ def list_results(conf, src_dir = None):
     return common.cli_table(table)
 
 
-def list_results_byday(conf, src_dir = None):
-    table = []
-    table.append(["datetime", "nodes", "edges"])
+def list_results_byday(conf, src_dir=None):
+    table = [["datetime", "nodes", "edges"], ]
     d_date = {}
     for r in iter_results(conf, src_dir):
         c, dt_range, area = r.args
@@ -404,12 +326,12 @@ def list_results_byday(conf, src_dir = None):
         else:
             d_date[dt_range] = d
 
-    for k, v in sorted(d_date.items(), key = lambda x: x[0]):
+    for k, v in sorted(d_date.items(), key=lambda x: x[0]):
         table.append([str(k[0]), v["nodes"], v["edges"]])
     return common.cli_table(table)
 
 
-def show_results_sum(conf, src_dir = None):
+def show_results_sum(conf, src_dir=None):
     node_num = 0
     edge_num = 0
     di_num = 0
@@ -440,7 +362,7 @@ def show_results_sum(conf, src_dir = None):
                   fmt_int(nodidiff_num),
                   fmt_ratio(100.0 * nodidiff_num / edge_num)])
     table.append(["number of all edges", fmt_int(edge_num), ""])
-    return common.cli_table(table, align = "right")
+    return common.cli_table(table, align="right")
 
 
 def list_netsize(conf):
@@ -451,7 +373,7 @@ def list_netsize(conf):
         for net in r.connected_subgraphs():
             d_size[len(net)] += 1
         buf = []
-        for size, cnt in sorted(d_size.items(), reverse = True):
+        for size, cnt in sorted(d_size.items(), reverse=True):
             if cnt == 1:
                 buf.append(str(size))
             else:
@@ -469,4 +391,3 @@ def show_netsize_dist(conf):
             d_size[len(net)] += 1
     return "\n".join(["{0} {1}".format(size, cnt)
                       for size, cnt in d_size.items()])
-

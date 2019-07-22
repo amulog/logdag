@@ -3,10 +3,12 @@
 
 import logging
 import pickle
+import pandas as pd
 from collections import namedtuple
 
 from . import dtutil
 from . import arguments
+from amulog import common
 from amulog import config
 
 _logger = logging.getLogger(__package__)
@@ -28,8 +30,8 @@ class EventDefinitionMap(object):
     l_attr = ["source", "host", "key"]
 
     def __init__(self):
-        self._emap = {} # key : eid, val : evdef
-        self._ermap = {} # key : evdef, val : eid
+        self._emap = {}  # key : eid, val : evdef
+        self._ermap = {}  # key : evdef, val : eid
 
     def __len__(self):
         return len(self._emap)
@@ -47,8 +49,8 @@ class EventDefinitionMap(object):
     @staticmethod
     def form_evdef(src, key, host):
         d = {"source": src,
-             "host" : host,
-             "key" : key}
+             "host": host,
+             "key": key}
         return EvDef(**d)
 
     def add_event(self, src, host, key):
@@ -79,13 +81,13 @@ class EventDefinitionMap(object):
     @classmethod
     def get_str(cls, evdef):
         string = ", ".join(["{0}={1}".format(key, getattr(evdef, key))
-                for key in cls.l_attr])
+                            for key in cls.l_attr])
         return "[{0}]".format(string)
 
-    #def search_cond(self):
+    # def search_cond(self):
     #    return {key : getattr(self, key) for key in [self.gid_name, "host"]}
     #
-    #def evdef_repr(self, ld, eid, dt_range, limit = 5):
+    # def evdef_repr(self, ld, eid, dt_range, limit = 5):
     #    info = self._emap[eid]
     #    top_dt, end_dt = self.dt_range
     #    d = {"head" : limit, "foot" : limit,
@@ -138,7 +140,7 @@ class AreaTest():
         return self._testfunc(area, host)
 
 
-def init_evgen(conf):
+def init_evloader(conf, src):
     if src == "log":
         from .source import evgen_log
         return evgen_log.LogEventLoader(conf)
@@ -147,6 +149,11 @@ def init_evgen(conf):
         return evgen_snmp.SNMPEventLoader(conf)
     else:
         raise NotImplementedError
+
+
+def init_evloaders(conf):
+    return {src: init_evloader(conf, src)
+            for src in config.getlist(conf, "dag", "source")}
 
 
 def _load_evgen_log(conf, dt_range, area, binarize):
@@ -172,15 +179,24 @@ def _load_evgen_log(conf, dt_range, area, binarize):
             l_dt, l_array = zip(*evg.load_items(measure, host, gid, dt_range))
             data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
                                            ci_bin_size, binarize,
-                                           l_dt_values = l_array)
-            df = pd.DataFrame(data, index = pd.to_datetime(l_dt))
+                                           l_dt_values=l_array)
+            df = pd.DataFrame(data, index=pd.to_datetime(l_dt))
         elif method == "radius":
             ci_bin_radius = 0.5 * ci_bin_size
             l_dt, l_array = zip(*evg.load_items(measure, host, gid, dt_range))
             data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
                                             ci_bin_radius, binarize,
-                                            l_dt_values = l_array)
+                                            l_dt_values=l_array)
         yield (host, gid, data)
+
+
+def _snmp_tag2name(measure, key):
+    return "{0}@{1}"
+
+
+def _snmp_name2tag(name):
+    measure, key = tuple(name.split("@"))
+    return (measure, key)
 
 
 def _load_evgen_snmp(conf, dt_range, area, binarize):
@@ -224,196 +240,58 @@ def makeinput(conf, dt_range, area, binarize):
     return (edict, evmap)
 
 
-#def ts2input(conf, dt_range, area, binarize):
-#    from . import tsdb
-#    gid_name = conf.get("dag", "event_gid")
-#    method = conf.get("dag", "ci_bin_method")
-#    ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
-#    ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
-#    td = tsdb.TimeSeriesDB(conf)
-#    evmap = EventDefinitionMap(gid_name)
-#
-#    d_input = {}
-#    kwargs = {"dts" : dt_range[0],
-#              "dte" : dt_range[1],
-#              "area" : area}
-#    for gid, host in td.whole_gid_host(**kwargs):
-#        _logger.debug("load event {0}".format((gid, host)))
-#        ev_kwargs = {"dts" : dt_range[0],
-#                     "dte" : dt_range[1],
-#                     "gid" : gid,
-#                     "host" : host}
-#        l_dt = [dt for dt in td.iter_ts(**ev_kwargs)]
-#        if len(l_dt) == 0:
-#            _logger.warning("empty event {0}".format((gid, host)))
-#            continue
-#
-#        if method == "sequential":
-#            array = dtutil.discretize_sequential(l_dt, dt_range,
-#                                                 ci_bin_size, binarize)
-#        elif method == "slide":
-#            array = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
-#                                            ci_bin_size, binarize)
-#        elif method == "radius":
-#            ci_bin_radius = 0.5 * ci_bin_size
-#            array = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
-#                                             ci_bin_radius, binarize)
-#
-#        eid = evmap.add_event(gid, host)
-#        d_input[eid] = array
-#
-#    return d_input, evmap
+def evdef_instruction(conf, evdef, d_el=None):
+    if d_el is None:
+        d_el = init_evloaders(conf)
+    if evdef.source == "log":
+        return d_el[evdef.source].instruction(evdef.host, evdef.key)
+    else:
+        return str(evdef)
 
 
-# visualize functions
-# should be moved to tsdb
-
-#def graph_filter(args, gid = None, host = None, binsize = None,
-#                 conf_nofilter = None, dirname = "."):
-#    conf, dt_range, area = args
-#    if binsize is None:
-#        binsize = config.getdur(conf, "dag", "ci_bin_size")
-#    evts, evmap = get_event(args)
-#
-#    if conf_nofilter is None:
-#        gid_name = conf.get("dag", "event_gid")
-#        evmap2 = EventDefinitionMap(gid_name)
-#        evts2 = EventTimeSeries(dt_range)
-#
-#        from amulog import log_db
-#        ld = log_db.LogData(conf)
-#        if gid_name == "ltid":
-#            iterobj = ld.whole_host_lt(dt_range[0], dt_range[1], area)
-#        elif gid_name == "ltgid":
-#            iterobj = ld.whole_host_ltg(dt_range[0], dt_range[1], area)
-#        else:
-#            raise NotImplementedError
-#        for temp_host, temp_gid in iterobj:
-#            d = {gid_name: temp_gid,
-#                 "host": temp_host,
-#                 "top_dt": dt_range[0],
-#                 "end_dt": dt_range[1]}
-#            iterobj = ld.iter_lines(**d)
-#            l_dt = [line.dt for line in iterobj]
-#            eid = evmap2.add_event(temp_gid, temp_host,
-#                                   EventDefinitionMap.type_normal, None)
-#            evts2.add(eid, l_dt)
-#    else:
-#        args_nofilter = conf_nofilter, dt_range, area
-#        evts2, evmap2 = get_event(args_nofilter)
-#
-#    for evdef in evmap.iter_evdef():
-#        if (gid is None or evdef.gid == gid) and \
-#                (host is None or evdef.host == host):
-#            eid1 = evmap.get_eid(evdef)
-#            data1 = dtutil.discretize_sequential(evts[eid1], dt_range,
-#                                                 binsize, False)
-#            eid2 = evmap2.search_event(evdef.gid, evdef.host)
-#            data2 = dtutil.discretize_sequential(evts2[eid2], dt_range,
-#                                                 binsize, False)
-#
-#            output = "{0}/{1}_{2}_{3}.pdf".format(dirname,
-#                                                  arguments.args2name(args),
-#                                                  evdef.gid, evdef.host)
-#            plot_ts_diff(data2, data1, output)
-#
-#
-#def graph_dis(args, gid = None, host = None, binsize = None, dirname = "."):
-#    conf, dt_range, area = args
-#    if binsize is None:
-#        binsize = config.getdur(conf, "dag", "ci_bin_size")
-#    evts, evmap = get_event(args)
-#
-#    ci_bin_method = conf.get("dag", "ci_bin_method")
-#    ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
-#    ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
-#    ci_func = conf.get("dag", "ci_func")
-#    from . import makedag
-#    binarize = makedag.is_binarize(ci_func)
-#    
-#    data = {}
-#    for eid, l_dt in evts.items():
-#        data[eid] = dtutil.discretize_sequential(l_dt, dt_range,
-#                                                 binsize, False)
-#    data2 = event2input(evts, ci_bin_method, ci_bin_size,
-#                        ci_bin_diff, dt_range, binarize)
-#
-#    for key in evts:
-#        evdef = evmap.evdef(key)
-#        if (gid is None or evdef.gid == gid) and \
-#                (host is None or evdef.host == host):
-#            output = "{0}/{1}_{2}_{3}.pdf".format(
-#                dirname, arguments.args2name(args), evdef.gid, evdef.host)
-#            plot_dis(data[key], data2[key], output)
-#
-#
-#def plot_ts_diff(data1, data2, output):
-#    import matplotlib
-#    matplotlib.use('Agg')
-#    import matplotlib.pyplot as plt
-#    import matplotlib.dates
-#
-#    fig = plt.figure()
-#    # a big subplot that is turned off axis lines and ticks
-#    # only showing common labels
-#    ax = fig.add_subplot(111)
-#    ax.spines['top'].set_color('none')
-#    ax.spines['bottom'].set_color('none')
-#    ax.spines['left'].set_color('none')
-#    ax.spines['right'].set_color('none')
-#    ax.tick_params(labelcolor='w', top=None, bottom=None,
-#                   left=None, right=None)
-#    #ax.tick_params(labelcolor='w', top='off', bottom='off',
-#    #               left='off', right='off')
-#    ax.set_xlabel("Time")
-#    ax.set_ylabel("Cumulative sum of time series")
-#
-#    ax1 = fig.add_subplot(211)
-#    ax1.set_xlim(0, len(data1))
-#    ax1.plot(range(len(data1)), np.cumsum(data1))
-#    ax2 = fig.add_subplot(212)
-#    ax2.set_xlim(0, len(data2))
-#    ax2.plot(range(len(data2)), np.cumsum(data2))
-#
-#    plt.savefig(output)
-#    plt.close()
-#    print(output)
-#
-#
-#def plot_dis(data1, data2, output):
-#    import matplotlib
-#    matplotlib.use('Agg')
-#    import matplotlib.pyplot as plt
-#    import matplotlib.dates
-#
-#    fig = plt.figure()
-#    # a big subplot that is turned off axis lines and ticks
-#    # only showing common labels
-#    ax = fig.add_subplot(111)
-#    ax.spines['top'].set_color('none')
-#    ax.spines['bottom'].set_color('none')
-#    ax.spines['left'].set_color('none')
-#    ax.spines['right'].set_color('none')
-#    ax.tick_params(labelcolor='w', top=None, bottom=None,
-#                   left=None, right=None)
-#    #ax.tick_params(labelcolor='w', top='off', bottom='off',
-#    #               left='off', right='off')
-#    ax.set_xlabel("Time")
-#    ax.set_ylabel("Cumulative sum of time series")
-#
-#    ax1 = fig.add_subplot(211)
-#    ax1.set_xlim(0, len(data1))
-#    ax1.plot(range(len(data1)), np.cumsum(data1))
-#    ax1.set_xlabel("Time")
-#    ax1.set_ylabel("Cumulative sum of time series")
-#    ax2 = fig.add_subplot(212)
-#    ax2.set_xlim(0, len(data2))
-#    ax2.plot(range(len(data2)), data2)
-#    ax1.set_xlabel("Time")
-#    ax1.set_ylabel("Value")
-#
-#    plt.savefig(output)
-#    plt.close()
-#    print(output)
+def evdef_label(conf, evdef, d_el=None):
+    if d_el is None:
+        d_el = init_evloaders(conf)
+    if evdef.source == "log":
+        return d_el["log"].label(evdef.key)
+    else:
+        return d_el["log"].label(None)
 
 
+def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
+    if d_el is None:
+        d_el = init_evloaders(conf)
+    if evdef.source == "log":
+        measure = "log_feature"
+        key = evdef.key
+    elif evdef.source == "snmp":
+        measure, key = _snmp_name2tag(evdef.key)
+    else:
+        raise NotImplementedError
+    el = d_el[evdef.source]
+    data = list(el.load_items(measure, evdef.host, key, dt_range))
+    return common.show_repr(
+        data, head, foot,
+        strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
+
+
+def evdef_detail_org(conf, evdef, dt_range, head, foot, d_el=None):
+    if d_el is None:
+        d_el = init_evloaders(conf)
+    source, host, key = evdef
+    if source == "log":
+        el = d_el[source]
+        ev = (host, key)
+        data = list(el.load_org(ev, dt_range))
+        return common.show_repr(
+            data, head, foot,
+            strfunc=lambda x: "{0} {1} {2}".format(x[0], x[1], x[2]))
+    elif source == "snmp":
+        el = d_el[source]
+        measure, key = _snmp_name2tag(evdef.key)
+        data = list(el.load_org(measure, host, key, dt_range))
+        return common.show_repr(
+            data, head, foot,
+            strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
+    else:
+        raise NotImplementedError
