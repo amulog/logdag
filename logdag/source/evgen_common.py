@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import datetime
+import pandas as pd
 
 from amulog import config
 
@@ -17,19 +19,16 @@ class EventLoader(object):
 
         raise NotImplementedError
 
-    def all_condition(self, dt_range=None):
+    def all_condition(self):
         for featurename in self.all_feature():
             measure = featurename
-            if dt_range is None:
-                l_d_tags = self.evdb.list_series(measure=measure)
-            else:
-                ut_range = tuple(dt.timestamp() for dt in dt_range)
-                l_d_tags = self.evdb.list_series(measure=measure,
-                                                 ut_range=ut_range)
+            l_d_tags = self.evdb.list_series(measure=measure)
             for d_tags in l_d_tags:
-                yield (measure, d_tags["host"], int(d_tags["key"]))
+                if "host" in d_tags and "key" in d_tags:
+                    yield (measure, d_tags["host"], d_tags["key"])
 
-    def load(self, measure, host, key, dt_range, binsize):
+    def load(self, measure: str, host: str, key: str,
+             dt_range: tuple, binsize: datetime.timedelta) -> pd.DataFrame:
         d_tags = {"host": host, "key": key}
         ut_range = tuple(dt.timestamp() for dt in dt_range)
         str_bin = config.dur2str(binsize)
@@ -41,9 +40,10 @@ class EventLoader(object):
         ut_range = tuple(dt.timestamp() for dt in dt_range)
         return self.evdb.get_items(measure, d_tags, self.fields, ut_range)
 
-    def load_all(self, dt_range, binsize):
-        for measure, host, key in self.all_condition(dt_range):
-            yield self.load(measure, host, key, dt_range, binsize)
+    def has_data(self, measure, host, key, dt_range):
+        d_tags = {"host": host, "key": key}
+        ut_range = tuple(dt.timestamp() for dt in dt_range)
+        return self.evdb.has_data(measure, d_tags, self.fields, ut_range)
 
     def drop_feature(self):
         for measure in self.all_feature():

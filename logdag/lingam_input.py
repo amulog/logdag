@@ -16,9 +16,8 @@ def estimate(data):
     import sys
     sys.setrecursionlimit(1000000)
 
-    matrix = pd.DataFrame(data)
     lingam = lingam_fast.LiNGAM()
-    ret = lingam.fit(matrix, use_sklearn = True, algorithm="fast",
+    ret = lingam.fit(data, use_sklearn = True, algorithm="fast",
                      reg_type = "lasso")
     graph = lingam.visualize(lib = "networkx")
     return graph

@@ -98,4 +98,4 @@ class LogEventLoader(evgen_common.EventLoader):
         return "{0}: {1}".format(host, self.source.gid_instruction(key))
 
     def label(self, key):
-        return self.source.label(key)
+        return self.source.label(int(key))

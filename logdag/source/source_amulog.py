@@ -78,10 +78,10 @@ class AmulogLoader(object):
             else:
                 "{0} tpls like: {1}".format(len(l_lt), l_lt[0])
 
-    def deflabel(self, gid):
+    def label(self, gid):
         if self._ll is None:
             from amulog import lt_label
             self._ll = lt_label.init_ltlabel(self.conf)
         if gid is None:
-            return self.conf["visual"]["ltlabel_default_label"]
-        return self._ll.get_ltg_label(gid, self._ld.ltg_members(gid))
+            return self.conf["visual"]["ltlabel_default_group"]
+        return self._ll.get_ltg_group(gid, self._ld.ltg_members(gid))

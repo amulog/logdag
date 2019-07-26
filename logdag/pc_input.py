@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import logging
 import numpy as np
 import networkx as nx
-import logging
-
-from . import dtutil
 
 _logger = logging.getLogger(__package__)
 
 
-def pc(data, threshold, mode = "pylib", skel_method = "default",
-       pc_depth = None, verbose = False, init_graph = None):
+def pc(data, threshold, mode="pylib", skel_method="default",
+       pc_depth=None, verbose=False, init_graph=None):
     if mode == "gsq_rlib":
         if init_graph is not None:
             _logger.warning("init_graph not used in gsq_rlib")
@@ -27,15 +25,13 @@ def pc(data, threshold, mode = "pylib", skel_method = "default",
     return graph
 
 
-def pc_gsq(data, threshold, skel_method, pc_depth = None,
-           verbose = False, init_graph = None):
+def pc_gsq(data, threshold, skel_method, pc_depth=None,
+           verbose=False, init_graph=None):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
-    #dm = np.array([data for nid, data in sorted(data.items())])
-    dm = np.array([data for nid, data in sorted(data.items())]).transpose()
     args = {"indep_test_func": ci_test_bin,
-            "data_matrix": dm,
+            "data_matrix": data.values,
             "alpha": threshold,
             "method": skel_method,
             "verbose": verbose}
@@ -48,16 +44,16 @@ def pc_gsq(data, threshold, skel_method, pc_depth = None,
     return g
 
 
-def pc_fisherz(data, threshold, skel_method, pc_depth = None,
-               verbose = False, init_graph = None):
+def pc_fisherz(data, threshold, skel_method, pc_depth=None,
+               verbose=False, init_graph=None):
     import pcalg
-    #from ci_test.ci_tests import ci_test_gauss
+    # from ci_test.ci_tests import ci_test_gauss
     from citestfz.ci_tests import ci_test_gauss
 
-    dm = np.array([data for nid, data in sorted(data.items())]).transpose()
-    cm = np.corrcoef(dm.T)
+    # dm = np.array([data for nid, data in sorted(data.items())]).transpose()
+    cm = np.corrcoef(data.T)
     args = {"indep_test_func": ci_test_gauss,
-            "data_matrix": dm,
+            "data_matrix": data.values,
             "corr_matrix": cm,
             "alpha": threshold,
             "method": skel_method,
@@ -80,23 +76,18 @@ def pc_rlib(data, threshold, skel_method, verbose):
     else:
         method = skel_method
 
-    input_data = data
-    #input_data = {}
-    #for nid, ns in nsdict.iteritems():
-    #    input_data[nid] = ns.get_values()
-
     r = pyper.R(use_pandas='True')
     r("library(pcalg)")
     r("library(graph)")
 
-    df = pandas.DataFrame(input_data)
+    df = pandas.DataFrame(data)
     r.assign("input.df", df)
     r.assign("method", method)
     r("evts = as.matrix(input.df)")
-    #print r("evts")
-    #r("t(evts)")
-    
-    #r("save(evts, file='rtemp')")
+    # print r("evts")
+    # r("t(evts)")
+
+    # r("save(evts, file='rtemp')")
 
     r.assign("event.num", len(input_data))
     r.assign("threshold", threshold)
@@ -107,11 +98,11 @@ def pc_rlib(data, threshold, skel_method, verbose):
             indepTest = binCItest, alpha = threshold, skel.method = method,
             labels = as.character(seq(event.num)-1), verbose = verbose.flag)
     """))
-    #print r("""
+    # print r("""
     #    pc.result <- pc(suffStat = list(dm = evts, adaptDF = FALSE),
     #        indepTest = binCItest, alpha = threshold,
     #        labels = as.character(seq(event.num)-1), verbose = TRUE)
-    #""")
+    # """)
 
     r("node.num <- length(nodes(pc.result@graph))")
 
@@ -129,7 +120,3 @@ def pc_rlib(data, threshold, skel_method, verbose):
         else:
             raise ValueError("edges is unknown type {0}".format(type(edges)))
     return g
-
-
-
-

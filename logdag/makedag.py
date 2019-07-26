@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
 import logging
 from itertools import combinations
 
@@ -10,7 +9,6 @@ from . import log2event
 from . import pc_input
 from . import showdag
 from amulog import common
-from amulog import config
 
 _logger = logging.getLogger(__package__)
 
@@ -19,15 +17,15 @@ def makedag_main(args):
     jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
-    timer = common.Timer("makedag job({0})".format(jobname), output = _logger)
+    timer = common.Timer("makedag job({0})".format(jobname), output=_logger)
     timer.start()
 
     ci_func = conf.get("dag", "ci_func")
     binarize = is_binarize(ci_func)
     # generate event set and evmap, and apply preprocessing
-    #d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
-    d_input, evmap = log2event.makeinput(conf, dt_range, area, binarize)
-    _logger.info("{0} nodes for pc input".format(len(d_input)))
+    # d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
+    input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
+    _logger.info("pc input shape: {0}".format(input_df.shape))
     evmap.dump(args)
     timer.lap("load-nodes")
 
@@ -47,7 +45,7 @@ def makedag_main(args):
                      "{0}".format(n_edges))
     timer.lap("prune-dag")
 
-    graph = estimate_dag(conf, d_input, ci_func, init_graph)
+    graph = estimate_dag(conf, input_df, ci_func, init_graph)
     timer.lap("estimate-dag")
 
     # record dag
@@ -59,7 +57,7 @@ def makedag_main(args):
     return ldag
 
 
-#def makedag_prune_test(args):
+# def makedag_prune_test(args):
 #    jobname = arguments.args2name(args)
 #    conf, dt_range, area = args
 #
@@ -89,8 +87,8 @@ def makedag_main(args):
 #        jobname, arguments.ArgumentManager.dag_filepath(args)))
 
 
-def estimate_dag(conf, d_input, ci_func, init_graph = None):
-    if len(d_input) >= 2:
+def estimate_dag(conf, input_df, ci_func, init_graph=None):
+    if input_df.shape[1] >= 2:
         cause_algorithm = conf.get("dag", "cause_algorithm")
         if cause_algorithm == "pc":
             # apply pc algorithm to estimate dag
@@ -98,19 +96,17 @@ def estimate_dag(conf, d_input, ci_func, init_graph = None):
             skel_th = conf.getfloat("dag", "skeleton_threshold")
             skel_depth = conf.getint("dag", "skeleton_depth")
             skel_verbose = conf.getboolean("dag", "skeleton_verbose")
-            graph = pc_input.pc(d_input, skel_th, ci_func, skel_method,
-                    skel_depth, skel_verbose, init_graph)
+            return pc_input.pc(input_df, skel_th, ci_func, skel_method,
+                               skel_depth, skel_verbose, init_graph)
         elif cause_algorithm == "lingam":
             if init_graph is not None:
                 _logger.warning("init_graph not used in lingam")
             from . import lingam_input
-            graph = lingam_input.estimate(d_input)
+            return lingam_input.estimate(input_df)
     else:
         _logger.info("input too small({0} nodes), return empty dag".format(
-            len(d_input)))
-        graph = showdag.empty_dag()
-
-    return graph
+            input_df.shape[1]))
+        return showdag.empty_dag()
 
 
 def is_binarize(ci_func):
@@ -134,8 +130,7 @@ def _complete_graph(node_ids):
         g.add_edge(i, j)
     return g
 
-
-#def pruning(g, conf, evmap):
+# def pruning(g, conf, evmap):
 #    import networkx as nx
 #    n_edges_before = g.number_of_edges()
 #    methods = config.getlist(conf, "pc_prune", "methods")
@@ -162,7 +157,7 @@ def _complete_graph(node_ids):
 #    return g
 #
 #
-#def _pruning_network(g_base, g_net, evmap):
+# def _pruning_network(g_base, g_net, evmap):
 #    """Prune edges based on topology network of hosts (g_net)."""
 #    import networkx as nx
 #    g_ret = nx.Graph()
@@ -173,7 +168,7 @@ def _complete_graph(node_ids):
 #    return g_ret
 #
 #
-#def _pruning_overhost(g, evmap, nodes = None):
+# def _pruning_overhost(g, evmap, nodes = None):
 #    """Prune edges between two nodes those are same event
 #    but different hosts."""
 #    if nodes is None:
@@ -189,5 +184,3 @@ def _complete_graph(node_ids):
 #                _logger.debug("prune {0} - {1}".format(evmap.evdef_str(i),
 #                                                       evmap.evdef_str(j)))
 #    return g
-
-

@@ -6,11 +6,11 @@ import networkx as nx
 
 
 class LogMultiLayerTopology():
+    _default_layer = "other"
 
-    def __init__(self, d_topology_fp, d_gid, default_group):
+    def __init__(self, d_topology_fp, d_rule):
         self._topology = self._load_graph(d_topology_fp)
-        self._d_node_layer = d_gid
-        self._default_group = default_group
+        self._d_rule = d_rule
 
     @staticmethod
     def _load_graph(d_fp):
@@ -24,24 +24,22 @@ class LogMultiLayerTopology():
                 topo[name] = nx.Graph()
         return topo
 
-    def _get_layer(self, gid):
-        if gid in self._d_node_layer:
-            return self._d_node_layer[gid]
+    def _get_layer(self, evdef):
+        if evdef.group in self._d_rule:
+            return self._d_rule[evdef.group]
         else:
-            return self._default_group
+            return self._default_layer
 
     def _is_adjacent(self, evdef1, evdef2):
-        src1, gid1, host1 = evdef1
-        src2, gid2, host2 = evdef2
-        if host1 == host2:
+        if evdef1.host == evdef2.host:
             return True
 
-        group1 = self._get_layer(gid1)
-        group2 = self._get_layer(gid2)
-        for group in (group1, group2):
-            if group in self._topology:
-                net = self._topology[group]
-                if net.has_edge(host1, host2):
+        layer1 = self._get_layer(evdef1)
+        layer2 = self._get_layer(evdef2)
+        for layer in (layer1, layer2):
+            if layer in self._topology:
+                net = self._topology[layer]
+                if net.has_edge(evdef1.host, evdef2.host):
                     return True
         else:
             return False
@@ -93,24 +91,6 @@ class Independent():
         return g_ret
 
 
-def init_gid_layer(conf, amulog_conf, d_rule):
-    from amulog import log_db
-    from amulog import lt_label
-    ld = log_db.LogData(amulog_conf)
-    ll = lt_label.init_ltlabel(amulog_conf)
-    gid_name = conf.get("database_amulog", "event_gid")
-
-    d_gid = {}
-    for gid in ld.iter_gid(gid_name):
-        group = ll.get_gid_group(gid, gid_name, ld)
-        if group in d_rule:
-            layer = d_rule[group]
-            d_gid[gid] = layer
-        else:
-            d_gid[gid] = None
-    return d_gid
-
-
 def init_pruner(conf):
     from amulog import config
     l_pruner = []
@@ -130,9 +110,7 @@ def init_pruner(conf):
             for rule in rulestr:
                 group, layer = rule.split(":")
                 d_rule[group] = layer
-            d_gid = init_gid_layer(conf, amulog_conf, d_rule)
-            default_group = amulog_conf["visual"]["ltlabel_default_group"]
-            l_pruner.append(LogMultiLayerTopology(d_fp, d_gid, default_group))
+            l_pruner.append(LogMultiLayerTopology(d_fp, d_rule))
         elif method == "independent":
             l_pruner.append(Independent())
         else:

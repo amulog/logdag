@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 # coding: utf-8
 
 import logging
@@ -12,7 +12,9 @@ from amulog import common
 from amulog import config
 
 _logger = logging.getLogger(__package__)
-EvDef = namedtuple("EvDef", ["source", "host", "key"])
+
+EVDEF_KEYS = ["source", "host", "key", "group"]
+EvDef = namedtuple("EvDef", EVDEF_KEYS)
 
 
 class EventDefinitionMap(object):
@@ -25,9 +27,10 @@ class EventDefinitionMap(object):
         source (str):
         key (int): 
         host (str):
+        label (str):
 
     """
-    l_attr = ["source", "host", "key"]
+    l_attr = EVDEF_KEYS
 
     def __init__(self):
         self._emap = {}  # key : eid, val : evdef
@@ -47,14 +50,11 @@ class EventDefinitionMap(object):
             return eid
 
     @staticmethod
-    def form_evdef(src, key, host):
-        d = {"source": src,
-             "host": host,
-             "key": key}
-        return EvDef(**d)
+    def form_evdef(**kwargs):
+        return EvDef(**kwargs)
 
-    def add_event(self, src, host, key):
-        evdef = self.form_evdef(src, host, key)
+    def add_event(self, **kwargs):
+        evdef = self.form_evdef(**kwargs)
         return self.add_evdef(evdef)
 
     def add_evdef(self, evdef):
@@ -163,31 +163,40 @@ def _load_evgen_log(conf, dt_range, area, binarize):
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
     from .source import evgen_log
-    evg = evgen_log.LogEventLoader(conf)
-    for measure, host, gid in evg.all_condition(dt_range):
+    el = evgen_log.LogEventLoader(conf)
+    for measure, host, key in el.all_condition():
         if not areatest.test(area, host):
             continue
 
         if method == "sequential":
-            df = evg.load(measure, host, gid, dt_range, ci_bin_size)
-            if data is None:
-                _logger.debug("{0} is empty".format((measure, host, gid)))
+            df = el.load(measure, host, key, dt_range, ci_bin_size)
+            if df is None or df[el.fields[0]].sum() == 0:
+                _logger.debug("{0} is empty".format((measure, host, key)))
                 continue
             if binarize:
-                data[data > 0] = 1
+                df[df > 0] = 1
         elif method == "slide":
-            l_dt, l_array = zip(*evg.load_items(measure, host, gid, dt_range))
+            l_dt, l_array = zip(*el.load_items(measure, host, key, dt_range))
             data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
                                            ci_bin_size, binarize,
                                            l_dt_values=l_array)
             df = pd.DataFrame(data, index=pd.to_datetime(l_dt))
+            if df is None or sum(df) == 0:
+                _logger.debug("{0} is empty".format((measure, host, key)))
+                continue
         elif method == "radius":
             ci_bin_radius = 0.5 * ci_bin_size
-            l_dt, l_array = zip(*evg.load_items(measure, host, gid, dt_range))
+            l_dt, l_array = zip(*el.load_items(measure, host, key, dt_range))
             data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
                                             ci_bin_radius, binarize,
                                             l_dt_values=l_array)
-        yield (host, gid, data)
+            df = pd.DataFrame(data, index=pd.to_datetime(l_dt))
+            if df is None or sum(df) == 0:
+                _logger.debug("{0} is empty".format((measure, host, key)))
+                continue
+
+        group = el.label(key)
+        yield (host, key, group, df)
 
 
 def _snmp_tag2name(measure, key):
@@ -196,7 +205,7 @@ def _snmp_tag2name(measure, key):
 
 def _snmp_name2tag(name):
     measure, key = tuple(name.split("@"))
-    return (measure, key)
+    return measure, key
 
 
 def _load_evgen_snmp(conf, dt_range, area, binarize):
@@ -204,18 +213,19 @@ def _load_evgen_snmp(conf, dt_range, area, binarize):
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
 
     from .source import evgen_snmp
-    evg = evgen_snmp.SNMPEventLoader(conf)
-    for measure, host, key in evg.all_condition(dt_range):
+    el = evgen_snmp.SNMPEventLoader(conf)
+    for measure, host, key in el.all_condition():
         if not areatest.test(area, host):
             continue
-        data = evg.load(measure, host, key, dt_range, ci_bin_size)
-        if data is None:
+        df = el.load(measure, host, key, dt_range, ci_bin_size)
+        if df is None or df[el.fields[0]].sum() == 0:
             _logger.debug("{0} is empty".format((measure, host, key)))
             continue
         if binarize:
-            data[data > 0] = 1
+            df[df > 0] = 1
+        group = el.label(measure)
         name = "{0}_{1}".format(measure, key)
-        yield (host, name, data)
+        yield host, name, group, df
 
 
 def _load_evgen(src, conf, dt_range, area, binarize):
@@ -229,15 +239,18 @@ def _load_evgen(src, conf, dt_range, area, binarize):
 
 def makeinput(conf, dt_range, area, binarize):
     evmap = EventDefinitionMap()
-    edict = {}
-    sources = set(config.getlist(conf, "dag", "source"))
-    for src in sources:
-        for host, key, data in _load_evgen(src, conf, dt_range,
-                                           area, binarize):
-            eid = evmap.add_event(src, host, key)
-            edict[eid] = data
-            _logger.debug("loaded event {0} {1}".format(eid, evmap.evdef(eid)))
-    return (edict, evmap)
+    evlist = []
+    for src in config.getlist(conf, "dag", "source"):
+        for host, key, group, df in _load_evgen(src, conf, dt_range,
+                                                area, binarize):
+            eid = evmap.add_event(source=src, host=host, key=key, group=group)
+            df.columns = [eid, ]
+            evlist.append(df)
+            msg = "loaded event {0} {1} (sum: {2})".format(eid, evmap.evdef(eid),
+                                                           df[eid].sum())
+            _logger.debug(msg)
+    input_df = pd.concat(evlist, axis=1)
+    return input_df, evmap
 
 
 def evdef_instruction(conf, evdef, d_el=None):
@@ -247,15 +260,6 @@ def evdef_instruction(conf, evdef, d_el=None):
         return d_el[evdef.source].instruction(evdef.host, evdef.key)
     else:
         return str(evdef)
-
-
-def evdef_label(conf, evdef, d_el=None):
-    if d_el is None:
-        d_el = init_evloaders(conf)
-    if evdef.source == "log":
-        return d_el["log"].label(evdef.key)
-    else:
-        return d_el["log"].label(None)
 
 
 def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
