@@ -17,7 +17,7 @@ data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
 setup(name='logdag',
-      version='0.0.1',
+      version='0.0.2',
       description='',
       long_description=read_md('README.md'),
       author='Satoru Kobayashi',
