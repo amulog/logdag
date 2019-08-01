@@ -161,8 +161,8 @@ class LogDAG():
 
     def node_str(self, node):
         evdef = self.node_info(node)
-        label = log2event.evdef_label(self.conf, evdef, d_el=self._evloader())
-        return "[host = {0}, key={1}({2})]".format(evdef.host, evdef.key, label)
+        return "[host = {0}, key={1}({2})]".format(evdef.host, evdef.key,
+                                                   evdef.group)
 
     def edge_detail(self, edge, head, foot):
         buf = ["## Edge {0}".format(self.edge_str(edge)), ]
@@ -216,9 +216,9 @@ class LogDAG():
         mapping = {}
         for node in graph.nodes():
             evdef = self.node_info(node)
-            label = log2event.evdef_label(self.conf, evdef, d_el=self._evloader())
-            mapping[node] = "{0}({1}), {2}".format(evdef.gid,
-                                                   label, evdef.host)
+            #label = log2event.evdef_label(self.conf, evdef, d_el=self._evloader())
+            mapping[node] = "{0}({1}), {2}".format(evdef.key, evdef.group,
+                                                   evdef.host)
         return nx.relabel_nodes(graph, mapping, copy=True)
 
     def graph_nx(self, output, graph=None):
@@ -275,13 +275,11 @@ def show_edge_list(args):
 
 def show_edge_detail(args, head, tail):
     conf, dt_range, area = args
-    from amulog import log_db
-    ld = log_db.LogData(conf)
     l_buf = []
     r = LogDAG(args)
     r.load()
     for edge in r.graph.edges():
-        l_buf.append(r.edge_detail(edge, ld, head, tail))
+        l_buf.append(r.edge_detail(edge, head, tail))
     return "\n\n".join(l_buf)
 
 

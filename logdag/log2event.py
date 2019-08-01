@@ -156,14 +156,18 @@ def init_evloaders(conf):
             for src in config.getlist(conf, "dag", "source")}
 
 
-def _load_evgen_log(conf, dt_range, area, binarize):
+def load_event_log_all(conf, dt_range, area, binarize, d_el=None):
+    if d_el is None:
+        from .source import evgen_log
+        el = evgen_log.LogEventLoader(conf)
+    else:
+        el = d_el["log"]
+
     areatest = AreaTest(conf)
     method = conf.get("dag", "ci_bin_method")
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
-    from .source import evgen_log
-    el = evgen_log.LogEventLoader(conf)
     for measure, host, key in el.all_condition():
         if not areatest.test(area, host):
             continue
@@ -194,13 +198,15 @@ def _load_evgen_log(conf, dt_range, area, binarize):
             if df is None or sum(df) == 0:
                 _logger.debug("{0} is empty".format((measure, host, key)))
                 continue
+        else:
+            raise NotImplementedError
 
         group = el.label(key)
         yield (host, key, group, df)
 
 
 def _snmp_tag2name(measure, key):
-    return "{0}@{1}"
+    return "{0}@{1}".format(measure, key)
 
 
 def _snmp_name2tag(name):
@@ -208,12 +214,16 @@ def _snmp_name2tag(name):
     return measure, key
 
 
-def _load_evgen_snmp(conf, dt_range, area, binarize):
+def load_event_snmp_all(conf, dt_range, area, binarize, d_el=None):
+    if d_el is None:
+        from .source import evgen_snmp
+        el = evgen_snmp.SNMPEventLoader(conf)
+    else:
+        el = d_el["snmp"]
+
     areatest = AreaTest(conf)
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
 
-    from .source import evgen_snmp
-    el = evgen_snmp.SNMPEventLoader(conf)
     for measure, host, key in el.all_condition():
         if not areatest.test(area, host):
             continue
@@ -228,11 +238,11 @@ def _load_evgen_snmp(conf, dt_range, area, binarize):
         yield host, name, group, df
 
 
-def _load_evgen(src, conf, dt_range, area, binarize):
+def load_event_all(src, conf, dt_range, area, binarize):
     if src == "log":
-        return _load_evgen_log(conf, dt_range, area, binarize)
+        return load_event_log_all(conf, dt_range, area, binarize)
     elif src == "snmp":
-        return _load_evgen_snmp(conf, dt_range, area, binarize)
+        return load_event_snmp_all(conf, dt_range, area, binarize)
     else:
         raise NotImplementedError
 
@@ -241,8 +251,8 @@ def makeinput(conf, dt_range, area, binarize):
     evmap = EventDefinitionMap()
     evlist = []
     for src in config.getlist(conf, "dag", "source"):
-        for host, key, group, df in _load_evgen(src, conf, dt_range,
-                                                area, binarize):
+        for host, key, group, df in load_event_all(src, conf, dt_range,
+                                                   area, binarize):
             eid = evmap.add_event(source=src, host=host, key=key, group=group)
             df.columns = [eid, ]
             evlist.append(df)
