@@ -47,10 +47,10 @@ def fetch(fp, ut_range, rows = 1, cf = "MAX", binsize = 60,
     # correction for rounded up timestamp
     # (adjust to syslogs that is usually rounded down)
     if correct_roundup:
-        time = list(range(int(robj[0][0]) + binsize,
-                          int(robj[0][1]) + binsize, int(robj[0][2])))
+        time = list(range(robj[0][0] + binsize,
+                          robj[0][1] + binsize, robj[0][2]))
     else:
-        time = list(range(int(robj[0][0]), int(robj[0][1], int(robj[0][2]))))
+        time = list(range(robj[0][0], robj[0][1], robj[0][2]))
     keys = list(robj[1])
     data = np.array(robj[2])
     if len(data) == 0:

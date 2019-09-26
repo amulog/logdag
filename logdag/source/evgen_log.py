@@ -4,10 +4,37 @@
 import logging
 
 from amulog import config
+from logdag import log2event
 from . import evgen_common
 from . import filter_log
 
 _logger = logging.getLogger(__package__)
+
+FEATURE_MEASUREMENT = "log_feature"
+
+
+class LogEventDefinition(log2event.EventDefinition):
+
+    _l_attr_log = ["gid", ]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        for attr in self._l_attr_log:
+            setattr(self, attr, kwargs[attr])
+
+    def __str__(self):
+        return "{0}, gid:{1}({2})".format(self.host, str(self.gid),
+                                          self.group)
+
+    def key(self):
+        return str(self.gid)
+
+    def tags(self):
+        return {"host": self.host,
+                "key": self.key()}
+
+    def series(self):
+        return FEATURE_MEASUREMENT, self.tags()
 
 
 class LogEventLoader(evgen_common.EventLoader):
@@ -39,6 +66,13 @@ class LogEventLoader(evgen_common.EventLoader):
             raise NotImplementedError
 
         self._lf = filter_log.init_logfilter(conf, self.source)
+
+    def _evdef(self, host, gid, group):
+        d = {"source": log2event.SRCCLS_LOG,
+             "host": host,
+             "group": group,
+             "gid": gid}
+        return LogEventDefinition(**d)
 
     def _apply_filter(self, l_dt, dt_range, ev):
         tmp_l_dt = l_dt
@@ -75,7 +109,7 @@ class LogEventLoader(evgen_common.EventLoader):
                 pass
             feature_dt = self._apply_filter(l_dt, dt_range, ev)
             if feature_dt is not None:
-                self.dump("log_feature", host, gid, feature_dt)
+                self.dump(FEATURE_MEASUREMENT, host, gid, feature_dt)
                 _logger.info("added feature {0} size {1}".format(
                     (host, gid), len(feature_dt)))
 
@@ -88,14 +122,20 @@ class LogEventLoader(evgen_common.EventLoader):
         self.evdb.commit()
 
     def all_feature(self):
-        return ["log_feature", ]
+        return [FEATURE_MEASUREMENT, ]
 
     def load_org(self, ev, dt_range):
         """Return: tuple(dt, host, msg)"""
         return self.source.load_org(ev, dt_range)
 
-    def instruction(self, host, key):
-        return "{0}: {1}".format(host, self.source.gid_instruction(key))
+    def iter_evdef(self, dt_range=None, area=None):
+        for host, gid in self.source.iter_event(dt_range=dt_range, area=area):
+            group = self.source.label(gid)
+            d = {"source": log2event.SRCCLS_LOG,
+                 "host": host,
+                 "group": group,
+                 "gid": gid}
+            yield LogEventDefinition(**d)
 
-    def label(self, key):
-        return self.source.label(int(key))
+    def instruction(self, evdef):
+        return "{0}: {1}".format(evdef.host, self.source.gid_instruction(evdef.gid))

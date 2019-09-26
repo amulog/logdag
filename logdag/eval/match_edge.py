@@ -68,7 +68,7 @@ def match_edges(conf, tr, rule = "all", cond = None):
         r.load()
         g = r.graph.to_undirected()
         for edge in g.edges():
-            edgeinfo = r.edge_info(edge)
+            edgeinfo = r.edge_evdef(edge)
             if not _pass_condition(edgeinfo, cond):
                 continue
             l_evdef = [evdef for evdef in _lm2ev(l_lm, gid_name).keys()]

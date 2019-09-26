@@ -22,7 +22,7 @@ def _set_of_term(am):
 
 def _add_nodes(evmap, r):
     for node in r.graph.nodes():
-        evdef = r.node_info(node)
+        evdef = r.node_evdef(node)
         if evmap.has_evdef(evdef):
             eid = evmap.get_eid(evdef)
         else:
@@ -33,7 +33,7 @@ def _add_nodes(evmap, r):
 def _add_edges(evmap, cgraph, r):
     g = r.graph.to_undirected()
     for edge in g.edges():
-        src_evdef, dst_evdef = r.edge_info(edge)
+        src_evdef, dst_evdef = r.edge_evdef(edge)
         try:
             src_eid = evmap.get_eid(src_evdef)
             dst_eid = evmap.get_eid(dst_evdef)
@@ -65,7 +65,7 @@ def edge_set_common(conf1, conf2, dt_range):
         r2.load()
         g = r2.graph.to_undirected()
         for edge in g.edges():
-            src_evdef, dst_evdef = r2.edge_info(edge)
+            src_evdef, dst_evdef = r2.edge_evdef(edge)
             if temp_cevmap.has_evdef(src_evdef) \
                     and temp_cevmap.has_evdef(dst_evdef):
                 temp_src_eid = temp_cevmap.get_eid(src_evdef)
@@ -173,7 +173,7 @@ def edge_direction_diff(conf1, conf2, dt_range):
                 continue
             if not r._evmap().has_evdef(ev2):
                 continue
-            n1, n2 = [r.info2node(ev) for ev in (ev1, ev2)]
+            n1, n2 = [r.evdef2node(ev) for ev in (ev1, ev2)]
             if (n1, n2) in r.graph.edges():
                 if (n2, n1) in r.graph.edges():
                     di = "-"

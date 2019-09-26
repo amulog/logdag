@@ -1,4 +1,4 @@
-    #!/usr/bin/env python
+#!/usr/bin/env python
 # coding: utf-8
 
 import logging
@@ -13,8 +13,19 @@ from amulog import config
 
 _logger = logging.getLogger(__package__)
 
-EVDEF_KEYS = ["source", "host", "key", "group"]
-EvDef = namedtuple("EvDef", EVDEF_KEYS)
+SRCCLS_LOG = "log"
+SRCCLS_SNMP = "snmp"
+
+
+class EventDefinition(object):
+    _l_attr = ["source", "host", "group"]
+
+    def __init__(self, **kwargs):
+        for attr in self._l_attr:
+            setattr(self, attr, kwargs[attr])
+
+    def key(self):
+        return None
 
 
 class EventDefinitionMap(object):
@@ -30,7 +41,6 @@ class EventDefinitionMap(object):
         label (str):
 
     """
-    l_attr = EVDEF_KEYS
 
     def __init__(self):
         self._emap = {}  # key : eid, val : evdef
@@ -49,14 +59,6 @@ class EventDefinitionMap(object):
         else:
             return eid
 
-    @staticmethod
-    def form_evdef(**kwargs):
-        return EvDef(**kwargs)
-
-    def add_event(self, **kwargs):
-        evdef = self.form_evdef(**kwargs)
-        return self.add_evdef(evdef)
-
     def add_evdef(self, evdef):
         eid = self._next_eid()
         self._emap[eid] = evdef
@@ -74,27 +76,6 @@ class EventDefinitionMap(object):
 
     def items(self):
         return self._emap.items()
-
-    def evdef_str(self, eid):
-        return self.get_str(self.evdef(eid))
-
-    @classmethod
-    def get_str(cls, evdef):
-        string = ", ".join(["{0}={1}".format(key, getattr(evdef, key))
-                            for key in cls.l_attr])
-        return "[{0}]".format(string)
-
-    # def search_cond(self):
-    #    return {key : getattr(self, key) for key in [self.gid_name, "host"]}
-    #
-    # def evdef_repr(self, ld, eid, dt_range, limit = 5):
-    #    info = self._emap[eid]
-    #    top_dt, end_dt = self.dt_range
-    #    d = {"head" : limit, "foot" : limit,
-    #         "top_dt" : top_dt, "end_dt" : end_dt}
-    #    d[self.gid_name] = info.gid
-    #    d["host"] = info.host
-    #    return ld.show_log_repr(**d)
 
     def get_eid(self, info):
         return self._ermap[info]
@@ -141,10 +122,10 @@ class AreaTest():
 
 
 def init_evloader(conf, src):
-    if src == "log":
+    if src == SRCCLS_LOG:
         from .source import evgen_log
         return evgen_log.LogEventLoader(conf)
-    elif src == "snmp":
+    elif src == SRCCLS_SNMP:
         from .source import evgen_snmp
         return evgen_snmp.SNMPEventLoader(conf)
     else:
@@ -161,57 +142,46 @@ def load_event_log_all(conf, dt_range, area, binarize, d_el=None):
         from .source import evgen_log
         el = evgen_log.LogEventLoader(conf)
     else:
-        el = d_el["log"]
+        el = d_el[SRCCLS_LOG]
 
     areatest = AreaTest(conf)
     method = conf.get("dag", "ci_bin_method")
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
-    for measure, host, key in el.all_condition():
-        if not areatest.test(area, host):
-            continue
+    for evdef in el.iter_evdef(dt_range, area):
+        measure, tags = evdef.series()
 
         if method == "sequential":
-            df = el.load(measure, host, key, dt_range, ci_bin_size)
+            df = el.load(measure, tags, dt_range, ci_bin_size)
             if df is None or df[el.fields[0]].sum() == 0:
-                _logger.debug("{0} is empty".format((measure, host, key)))
+                _logger.debug("{0} is empty".format((measure, tags)))
                 continue
             if binarize:
                 df[df > 0] = 1
         elif method == "slide":
-            l_dt, l_array = zip(*el.load_items(measure, host, key, dt_range))
+            l_dt, l_array = zip(*el.load_items(measure, tags, dt_range))
             data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
                                            ci_bin_size, binarize,
                                            l_dt_values=l_array)
             df = pd.DataFrame(data, index=pd.to_datetime(l_dt))
             if df is None or sum(df) == 0:
-                _logger.debug("{0} is empty".format((measure, host, key)))
+                _logger.debug("{0} is empty".format((measure, tags)))
                 continue
         elif method == "radius":
             ci_bin_radius = 0.5 * ci_bin_size
-            l_dt, l_array = zip(*el.load_items(measure, host, key, dt_range))
+            l_dt, l_array = zip(*el.load_items(measure, tags, dt_range))
             data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
                                             ci_bin_radius, binarize,
                                             l_dt_values=l_array)
             df = pd.DataFrame(data, index=pd.to_datetime(l_dt))
             if df is None or sum(df) == 0:
-                _logger.debug("{0} is empty".format((measure, host, key)))
+                _logger.debug("{0} is empty".format((measure, tags)))
                 continue
         else:
             raise NotImplementedError
 
-        group = el.label(key)
-        yield (host, key, group, df)
-
-
-def _snmp_tag2name(measure, key):
-    return "{0}@{1}".format(measure, key)
-
-
-def _snmp_name2tag(name):
-    measure, key = tuple(name.split("@"))
-    return measure, key
+        yield evdef, df
 
 
 def load_event_snmp_all(conf, dt_range, area, binarize, d_el=None):
@@ -220,45 +190,49 @@ def load_event_snmp_all(conf, dt_range, area, binarize, d_el=None):
         el = evgen_snmp.SNMPEventLoader(conf)
     else:
         el = d_el["snmp"]
-
     areatest = AreaTest(conf)
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
 
-    for measure, host, key in el.all_condition():
-        if not areatest.test(area, host):
+    l_feature_name = config.getlist(conf, "dag", "snmp_features")
+    if len(l_feature_name) == 0:
+        l_feature_name = el.all_feature()
+        # l_feature_name = None
+    for evdef in el.iter_evdef(l_feature_name):
+        measure, tags = evdef.series()
+        if not areatest.test(area, tags["host"]):
             continue
-        df = el.load(measure, host, key, dt_range, ci_bin_size)
+        df = el.load(measure, tags, dt_range, ci_bin_size)
         if df is None or df[el.fields[0]].sum() == 0:
-            _logger.debug("{0} is empty".format((measure, host, key)))
+            _logger.debug("{0} is empty".format((measure, tags)))
             continue
         if binarize:
             df[df > 0] = 1
-        group = el.label(measure)
-        name = "{0}_{1}".format(measure, key)
-        yield host, name, group, df
+        yield evdef, df
 
 
-def load_event_all(src, conf, dt_range, area, binarize):
-    if src == "log":
-        return load_event_log_all(conf, dt_range, area, binarize)
-    elif src == "snmp":
-        return load_event_snmp_all(conf, dt_range, area, binarize)
-    else:
-        raise NotImplementedError
+def load_event_all(sources, conf, dt_range, area, binarize):
+    for src in sources:
+        if src == SRCCLS_LOG:
+            for evdef, df in load_event_log_all(conf, dt_range, area, binarize):
+                yield evdef, df
+        elif src == SRCCLS_SNMP:
+            for evdef, df in load_event_snmp_all(conf, dt_range, area, binarize):
+                yield evdef, df
+        else:
+            raise NotImplementedError
 
 
 def makeinput(conf, dt_range, area, binarize):
     evmap = EventDefinitionMap()
     evlist = []
-    for src in config.getlist(conf, "dag", "source"):
-        for host, key, group, df in load_event_all(src, conf, dt_range,
-                                                   area, binarize):
-            eid = evmap.add_event(source=src, host=host, key=key, group=group)
-            df.columns = [eid, ]
-            evlist.append(df)
-            msg = "loaded event {0} {1} (sum: {2})".format(eid, evmap.evdef(eid),
-                                                           df[eid].sum())
-            _logger.debug(msg)
+    sources = config.getlist(conf, "dag", "source")
+    for evdef, df in load_event_all(sources, conf, dt_range, area, binarize):
+        eid = evmap.add_evdef(evdef)
+        df.columns = [eid, ]
+        evlist.append(df)
+        msg = "loaded event {0} {1} (sum: {2})".format(eid, evmap.evdef(eid),
+                                                       df[eid].sum())
+        _logger.debug(msg)
     input_df = pd.concat(evlist, axis=1)
     return input_df, evmap
 
@@ -266,46 +240,42 @@ def makeinput(conf, dt_range, area, binarize):
 def evdef_instruction(conf, evdef, d_el=None):
     if d_el is None:
         d_el = init_evloaders(conf)
-    if evdef.source == "log":
-        return d_el[evdef.source].instruction(evdef.host, evdef.key)
-    else:
-        return str(evdef)
+    return d_el[evdef.source].instruction(evdef)
 
-
-def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
-    if d_el is None:
-        d_el = init_evloaders(conf)
-    if evdef.source == "log":
-        measure = "log_feature"
-        key = evdef.key
-    elif evdef.source == "snmp":
-        measure, key = _snmp_name2tag(evdef.key)
-    else:
-        raise NotImplementedError
-    el = d_el[evdef.source]
-    data = list(el.load_items(measure, evdef.host, key, dt_range))
-    return common.show_repr(
-        data, head, foot,
-        strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
-
-
-def evdef_detail_org(conf, evdef, dt_range, head, foot, d_el=None):
-    if d_el is None:
-        d_el = init_evloaders(conf)
-    source, host, key = evdef
-    if source == "log":
-        el = d_el[source]
-        ev = (host, key)
-        data = list(el.load_org(ev, dt_range))
-        return common.show_repr(
-            data, head, foot,
-            strfunc=lambda x: "{0} {1} {2}".format(x[0], x[1], x[2]))
-    elif source == "snmp":
-        el = d_el[source]
-        measure, key = _snmp_name2tag(evdef.key)
-        data = list(el.load_org(measure, host, key, dt_range))
-        return common.show_repr(
-            data, head, foot,
-            strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
-    else:
-        raise NotImplementedError
+# def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
+#    if d_el is None:
+#        d_el = init_evloaders(conf)
+#    if evdef.source == SRCCLS_LOG:
+#        measure = "log_feature"
+#        key = evdef.key
+#    elif evdef.source == SRCCLS_SNMP:
+#        measure, key = _snmp_name2tag(evdef.key)
+#    else:
+#        raise NotImplementedError
+#    el = d_el[evdef.source]
+#    tags = {"host": evdef.host, "key": evdef.key()}
+#    data = list(el.load_items(measure, evdef.host, key, dt_range))
+#    return common.show_repr(
+#        data, head, foot,
+#        strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
+#
+#
+# def evdef_detail_org(conf, evdef, dt_range, head, foot, d_el=None):
+#    if d_el is None:
+#        d_el = init_evloaders(conf)
+#    if evdef.source == SRCCLS_LOG:
+#        el = d_el[source]
+#        ev = (host, key)
+#        data = list(el.load_org(ev, dt_range))
+#        return common.show_repr(
+#            data, head, foot,
+#            strfunc=lambda x: "{0} {1} {2}".format(x[0], x[1], x[2]))
+#    elif evdef.source == SRCCLS_SNMP:
+#        el = d_el[source]
+#        measure, key = _snmp_name2tag(evdef.key)
+#        data = list(el.load_org(measure, host, key, dt_range))
+#        return common.show_repr(
+#            data, head, foot,
+#            strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
+#    else:
+#        raise NotImplementedError

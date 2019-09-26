@@ -25,7 +25,7 @@ def makedag_main(args):
     # generate event set and evmap, and apply preprocessing
     # d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
     input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
-    _logger.info("pc input shape: {0}".format(input_df.shape))
+    _logger.info("{0} pc input shape: {1}".format(jobname, input_df.shape))
     evmap.dump(args)
     timer.lap("load-nodes")
 
@@ -57,34 +57,35 @@ def makedag_main(args):
     return ldag
 
 
-# def makedag_prune_test(args):
-#    jobname = arguments.args2name(args)
-#    conf, dt_range, area = args
-#
-#    _logger.info("makedag_prune job ({0}) start".format(jobname))
-#
-#    ci_func = conf.get("dag", "ci_func")
-#    binarize = is_binarize(ci_func)
-#    # generate event set and evmap, and apply preprocessing
-#    d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
-#    _logger.info("{0} nodes for pc input".format(len(d_input)))
-#    evmap.dump(args)
-#
-#    assert conf.getboolean("pc_prune", "do_pruning")
-#    from . import prune
-#    node_ids = evmap.eids()
-#    g = _complete_graph(node_ids)
-#    n_edges_before = g.number_of_edges()
-#    init_graph = prune.prune_graph(g, conf, evmap)
-#    n_edges_after = init_graph.number_of_edges()
-#    _logger.info("{0} DAG edge pruning: ".format(jobname) + \
-#                 "{0} -> {1}".format(n_edges_before, n_edges_after))
-#
-#    # record dag
-#    ldag = showdag.LogDAG(args, init_graph)
-#    ldag.dump()
-#    _logger.info("makedag_prune job ({0}) done, output {1}".format(
-#        jobname, arguments.ArgumentManager.dag_filepath(args)))
+def makedag_prune_test(args):
+    jobname = arguments.args2name(args)
+    conf, dt_range, area = args
+
+    ci_func = conf.get("dag", "ci_func")
+    binarize = is_binarize(ci_func)
+    input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
+    _logger.info("pc input shape: {0}".format(input_df.shape))
+    evmap.dump(args)
+
+    node_ids = evmap.eids()
+    g = _complete_graph(node_ids)
+    if conf.getboolean("pc_prune", "do_pruning"):
+        from . import prune
+        n_edges_before = g.number_of_edges()
+        init_graph = prune.prune_graph(g, conf, evmap)
+        n_edges_after = init_graph.number_of_edges()
+        _logger.info("{0} DAG edge pruning: ".format(jobname) + \
+                     "{0} -> {1}".format(n_edges_before, n_edges_after))
+    else:
+        n_edges = g.number_of_edges()
+        init_graph = g
+        _logger.info("{0} DAG edge candidates: ".format(jobname) + \
+                     "{0}".format(n_edges))
+
+    # record dag
+    ldag = showdag.LogDAG(args, init_graph)
+    ldag.dump()
+    return ldag
 
 
 def estimate_dag(conf, input_df, ci_func, init_graph=None):

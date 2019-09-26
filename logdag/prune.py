@@ -5,7 +5,7 @@ import json
 import networkx as nx
 
 
-class LogMultiLayerTopology():
+class MultiLayerTopology():
     _default_layer = "other"
 
     def __init__(self, d_topology_fp, d_rule):
@@ -95,7 +95,6 @@ def init_pruner(conf):
     from amulog import config
     l_pruner = []
     methods = config.getlist(conf, "pc_prune", "methods")
-    amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
     for method in methods:
         if method == "topology":
             fp = conf.get("pc_prune", "single_network_file")
@@ -110,7 +109,7 @@ def init_pruner(conf):
             for rule in rulestr:
                 group, layer = rule.split(":")
                 d_rule[group] = layer
-            l_pruner.append(LogMultiLayerTopology(d_fp, d_rule))
+            l_pruner.append(MultiLayerTopology(d_fp, d_rule))
         elif method == "independent":
             l_pruner.append(Independent())
         else:

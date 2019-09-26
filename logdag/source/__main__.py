@@ -18,10 +18,10 @@ DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
 
 
 def open_config(ns):
-    conf = configparser.ConfigParser()
-    conf.read(ns.conf_path)
-    config.set_common_logging(conf, logger_name = [__package__],
-                              lv = logging.INFO)
+    from logdag import arguments
+    conf = config.open_config(ns.conf_path, ex_defaults=[arguments.DEFAULT_CONFIG])
+    config.set_common_logging(conf, logger_name=[__package__],
+                              lv=logging.INFO)
     return conf
 
 
@@ -37,9 +37,9 @@ def make_evdb_log_all(ns):
     dry = ns.dry
 
     from . import evgen_log
-    el = evgen_log.LogEventLoader(conf, dry = dry)
+    el = evgen_log.LogEventLoader(conf, dry=dry)
     for term in _iter_evdb_term(conf):
-        el.read(term, dump_org = dump_org)
+        el.read(term, dump_org=dump_org)
 
 
 def make_evdb_snmp_all(ns):
@@ -48,22 +48,34 @@ def make_evdb_snmp_all(ns):
     dry = ns.dry
 
     from . import evgen_snmp
-    el = evgen_snmp.EventLoader(conf, dry = dry)
+    el = evgen_snmp.SNMPEventLoader(conf, dry=dry)
     for term in _iter_evdb_term(conf):
-        el.read(term, dump_org = dump_org)
+        el.store_all(term, dump_org=dump_org)
 
 
-def drop_feature(ns):
+def make_evdb_snmp(ns):
     conf = open_config(ns)
+    dump_org = ns.org
     dry = ns.dry
-    sources = ns.src
+    feature_name = ns.feature_name
+
+    from . import evgen_snmp
+    el = evgen_snmp.SNMPEventLoader(conf, dry=dry)
+    for term in _iter_evdb_term(conf):
+        el.store_feature(feature_name, term, dump_org=dump_org)
+
+
+def drop_features(ns):
+    conf = open_config(ns)
+    sources = ns.sources
     if sources is None:
         from . import evgen_common
         sources = evgen_common.source
 
+    from logdag import log2event
     for src in sources:
-        evg = log2event.init_evgen(conf, dry = dry)
-        evg.drop_feature()
+        el = log2event.init_evloader(conf, src)
+        el.drop_features()
 
 
 # common argument settings
@@ -80,20 +92,33 @@ OPT_ORG = [["-o", "--org"],
 OPT_DRY = [["-d", "--dry"],
            {"dest": "dry", "action": "store_true",
             "help": "do not write down to db (dry-run)"}]
+ARG_ARGNAME = [["argname"],
+               {"metavar": "TASKNAME", "action": "store",
+                "help": "argument name"}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "make-evdb-log": ["Load log data from amulog and output features",
+    "make-evdb-log-all": ["Load log data from amulog and output features",
                       [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY],
                       make_evdb_log_all],
-    "make-evdb-snmp": ["Load SNMP data from rrd and output features",
+    "make-evdb-snmp-all": ["Load telemetry data from rrd and output features",
                        [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY],
                        make_evdb_snmp_all],
-    "drop-feature": ["Drop feature data (except original data) in feature DB",
-                     [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY],
-                     make_evdb_snmp_all],
+    "make-evdb-snmp": ["Load telemetry data from rrd and output features",
+                       [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY,
+                        [["feature_name"],
+                         {"metavar": "FEATURE", "action": "store",
+                          "help": "feature name"}]],
+                       make_evdb_snmp],
+    "drop-features": ["Drop feature data (except original data) in feature DB",
+                      [OPT_CONFIG, OPT_DEBUG, OPT_ORG,
+                       [["sources"],
+                        {"metavar": "DATA_SOURCES", "action": "store",
+                         "nargs": "+",
+                         "help": "source names (like log, snmp)"}]],
+                      drop_features],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

@@ -8,6 +8,7 @@ from collections import defaultdict
 
 from . import arguments
 from . import log2event
+from . import showdag_filter
 from amulog import common
 
 fmt_int = lambda x: "{:,d}".format(x)
@@ -60,19 +61,19 @@ class LogDAG():
         temp_graph = graph.to_undirected()
         return temp_graph.number_of_edges()
 
-    def node_info(self, node):
+    def node_evdef(self, node):
         evmap = self._evmap()
         return evmap.evdef(node)
 
-    def info2node(self, evdef):
+    def evdef2node(self, evdef):
         evmap = self._evmap()
         return evmap.get_eid(evdef)
 
-    def edge_info(self, edge):
+    def edge_evdef(self, edge):
         evmap = self._evmap()
-        return [evmap.evdef(node) for node in edge]
+        return [evmap.evdef(node) for node in edge[0:2]]
 
-    def info2edge(self, t_evdef):
+    def evdef2edge(self, t_evdef):
         evmap = self._evmap()
         return [evmap.get_eid(evdef) for evdef in t_evdef]
 
@@ -135,7 +136,7 @@ class LogDAG():
         if graph is None:
             graph = self.graph
         for edge in graph.edges():
-            src_info, dst_info = self.edge_info(edge)
+            src_info, dst_info = self.edge_evdef(edge)
             if src_info.host == dst_info.host:
                 g_same.add_edge(*edge)
             else:
@@ -160,22 +161,20 @@ class LogDAG():
             return "{0} <-> {1}".format(src_str, dst_str)
 
     def node_str(self, node):
-        evdef = self.node_info(node)
-        return "[host = {0}, key={1}({2})]".format(evdef.host, evdef.key,
-                                                   evdef.group)
+        return str(self.node_evdef(node))
 
-    def edge_detail(self, edge, head, foot):
-        buf = ["## Edge {0}".format(self.edge_str(edge)), ]
-        for node in edge:
-            buf.append(self.node_detail(node, head, foot))
-        return "\n".join(buf)
-
-    def node_detail(self, node, head, foot):
-        evdef = self.node_info(node)
-        buf = ["# Node {0}:".format(self.node_str(node)),
-               log2event.evdef_detail(self.conf, evdef, self.dt_range,
-                                      head, foot, d_el=self._evloader())]
-        return "\n".join(buf)
+#    def edge_detail(self, edge, head, foot):
+#        buf = ["## Edge {0}".format(self.edge_str(edge)), ]
+#        for node in edge:
+#            buf.append(self.node_detail(node, head, foot))
+#        return "\n".join(buf)
+#
+#    def node_detail(self, node, head, foot):
+#        evdef = self.node_evdef(node)
+#        buf = ["# Node {0}:".format(self.node_str(node)),
+#               log2event.evdef_detail(self.conf, evdef, self.dt_range,
+#                                      head, foot, d_el=self._evloader())]
+#        return "\n".join(buf)
 
     def ate_prune(self, threshold, graph=None):
         """Prune edges with smaller ATE (average treatment effect).
@@ -209,24 +208,24 @@ class LogDAG():
 
         return ret
 
-    def relabel_graph(self, graph=None):
+    def relabel(self, graph=None):
         if graph is None:
             graph = self.graph
 
         mapping = {}
         for node in graph.nodes():
-            evdef = self.node_info(node)
+            evdef = self.node_evdef(node)
             #label = log2event.evdef_label(self.conf, evdef, d_el=self._evloader())
-            mapping[node] = "{0}({1}), {2}".format(evdef.key, evdef.group,
-                                                   evdef.host)
+            mapping[node] = str(evdef)
+            #mapping[node] = "{0}({1}), {2}".format(evdef.key, evdef.group,
+            #                                       evdef.host)
         return nx.relabel_nodes(graph, mapping, copy=True)
 
     def graph_nx(self, output, graph=None):
         if graph is None:
-            graph = self.graph
-        rgraph = self.relabel_graph(graph)
+            graph = self.relabel(self.graph)
 
-        ag = nx.nx_agraph.to_agraph(rgraph)
+        ag = nx.nx_agraph.to_agraph(graph)
         ag.draw(output, prog='circo')
         return output
 
@@ -238,7 +237,7 @@ def empty_dag():
     return nx.DiGraph()
 
 
-def iter_results(conf, src_dir=None, area=None):
+def iter_results(conf, area=None):
     am = arguments.ArgumentManager(conf)
     am.load()
     for args in am:
@@ -262,15 +261,30 @@ def isdirected(edge, graph):
             raise ValueError("Edge not found")
 
 
-# functions for presentation
+def apply_filter(ldag, l_filtername, th=None, graph=None):
+    from . import showdag_filter
+    if graph is None:
+        g = ldag.graph
+    else:
+        g = graph
 
-def show_edge_list(args):
-    l_buf = []
-    r = LogDAG(args)
-    r.load()
-    for edge in r.graph.edges():
-        l_buf.append(r.edge_str(edge))
-    return "\n".join(l_buf)
+    # make to_undirected the first filter
+    if "to_undirected" in l_filtername:
+        l_filtername.remove("to_undirected")
+        l_filtername = ["to_undirected"] + l_filtername
+
+    # make no_isolated the last filter
+    if "no_isolated" in l_filtername:
+        l_filtername.remove("no_isolated")
+        l_filtername.append("no_isolated")
+
+    for funcname in l_filtername:
+        assert funcname in showdag_filter.FUNCTIONS
+        g = eval("showdag_filter." + funcname)(graph=g, ldag=ldag, th=th)
+    return g
+
+
+# functions for presentation
 
 
 def show_edge_detail(args, head, tail):
@@ -283,84 +297,110 @@ def show_edge_detail(args, head, tail):
     return "\n\n".join(l_buf)
 
 
-def show_graph(conf, args, output, lib="networkx",
-               threshold=None, ignore_orphan=False):
-    if lib == "networkx":
-        r = LogDAG(args)
-        r.load()
-        if threshold is not None:
-            g = r.ate_prune(threshold)
+#def show_graph(conf, args, output, lib="networkx",
+#               threshold=None, ignore_orphan=False):
+#    if lib == "networkx":
+#        r = LogDAG(args)
+#        r.load()
+#        if threshold is not None:
+#            g = r.ate_prune(threshold)
+#        else:
+#            g = r.graph
+#        if ignore_orphan:
+#            g = r.graph_no_orphan(graph=g)
+#        r.relabel()
+#        fp = r.graph_nx(output, graph=g)
+#        return fp
+#    else:
+#        raise NotImplementedError
+
+
+def stat_groupby(conf, l_func, groupby=None, src_dir=None):
+    import numpy as np
+    from . import dtutil
+    d_group = defaultdict(list)
+    am = arguments.ArgumentManager(conf)
+    am.load()
+    for args in am:
+        if groupby is None:
+            key = arguments.args2name(args)
+        elif groupby == "day":
+            key = dtutil.shortstr(args[1][0])
+        elif groupby == "area":
+            key = args[2]
         else:
-            g = r.graph
-        if ignore_orphan:
-            g = r.graph_no_orphan(graph=g)
-        r.relabel_graph()
-        fp = r.graph_nx(output, graph=g)
-        return fp
-    else:
-        raise NotImplementedError
+            raise NotImplementedError
+        d_group[key].append(args)
+
+    for key, l_args in d_group.items():
+        data = []
+        for args in l_args:
+            ldag = LogDAG(args)
+            ldag.load()
+            data.append([func(ldag) for func in l_func])
+        yield key, l_args, np.sum(data, axis=0)
 
 
-def list_results(conf, src_dir=None):
-    table = [["datetime", "area", "nodes", "edges", "name"], ]
-    for r in iter_results(conf, src_dir):
-        c, dt_range, area = r.args
-        table.append([str(dt_range[0]), str(area),
-                      str(r.number_of_nodes()), str(r.number_of_edges()),
-                      r.name])
-    return common.cli_table(table)
+#def list_results(conf, src_dir=None):
+#    table = [["datetime", "area", "nodes", "edges", "name"], ]
+#    for r in iter_results(conf, src_dir):
+#        c, dt_range, area = r.args
+#        table.append([str(dt_range[0]), str(area),
+#                      str(r.number_of_nodes()), str(r.number_of_edges()),
+#                      r.name])
+#    return common.cli_table(table)
+#
+#
+#def list_results_byday(conf, src_dir=None):
+#    table = [["datetime", "nodes", "edges"], ]
+#    d_date = {}
+#    for r in iter_results(conf, src_dir):
+#        c, dt_range, area = r.args
+#        d = {"nodes": r.number_of_nodes(),
+#             "edges": r.number_of_edges()}
+#        if dt_range in d_date:
+#            for k in d:
+#                d_date[dt_range][k] += d[k]
+#        else:
+#            d_date[dt_range] = d
+#
+#    for k, v in sorted(d_date.items(), key=lambda x: x[0]):
+#        table.append([str(k[0]), v["nodes"], v["edges"]])
+#    return common.cli_table(table)
 
 
-def list_results_byday(conf, src_dir=None):
-    table = [["datetime", "nodes", "edges"], ]
-    d_date = {}
-    for r in iter_results(conf, src_dir):
-        c, dt_range, area = r.args
-        d = {"nodes": r.number_of_nodes(),
-             "edges": r.number_of_edges()}
-        if dt_range in d_date:
-            for k in d:
-                d_date[dt_range][k] += d[k]
-        else:
-            d_date[dt_range] = d
-
-    for k, v in sorted(d_date.items(), key=lambda x: x[0]):
-        table.append([str(k[0]), v["nodes"], v["edges"]])
-    return common.cli_table(table)
-
-
-def show_results_sum(conf, src_dir=None):
-    node_num = 0
-    edge_num = 0
-    di_num = 0
-    didiff_num = 0
-    nodi_num = 0
-    nodidiff_num = 0
-
-    for r in iter_results(conf):
-        c, dt_range, area = r.args
-        g_di, g_nodi = r.edges_directed()
-        node_num += r.number_of_nodes()
-        edge_num += r.number_of_edges()
-        di_num += r.number_of_edges(g_di)
-        didiff_num += r.number_of_edges(r.edges_across_host(g_di)[1])
-        nodi_num += r.number_of_edges(g_nodi)
-        nodidiff_num += r.number_of_edges(r.edges_across_host(g_nodi)[1])
-
-    table = []
-    table.append(["number of events (nodes)", fmt_int(node_num), ""])
-    table.append(["number of directed edges", fmt_int(di_num),
-                  fmt_ratio(100.0 * di_num / edge_num)])
-    table.append(["number of directed edges across hosts",
-                  fmt_int(didiff_num),
-                  fmt_ratio(100.0 * didiff_num / edge_num)])
-    table.append(["number of undirected edges", fmt_int(nodi_num),
-                  fmt_ratio(100.0 * nodi_num / edge_num)])
-    table.append(["number of undirected edges across hosts",
-                  fmt_int(nodidiff_num),
-                  fmt_ratio(100.0 * nodidiff_num / edge_num)])
-    table.append(["number of all edges", fmt_int(edge_num), ""])
-    return common.cli_table(table, align="right")
+#def show_stats(conf, src_dir=None):
+#    node_num = 0
+#    edge_num = 0
+#    di_num = 0
+#    didiff_num = 0
+#    nodi_num = 0
+#    nodidiff_num = 0
+#
+#    for r in iter_results(conf):
+#        c, dt_range, area = r.args
+#        g_di, g_nodi = r.edges_directed()
+#        node_num += r.number_of_nodes()
+#        edge_num += r.number_of_edges()
+#        di_num += r.number_of_edges(g_di)
+#        didiff_num += r.number_of_edges(r.edges_across_host(g_di)[1])
+#        nodi_num += r.number_of_edges(g_nodi)
+#        nodidiff_num += r.number_of_edges(r.edges_across_host(g_nodi)[1])
+#
+#    table = []
+#    table.append(["number of events (nodes)", fmt_int(node_num), ""])
+#    table.append(["number of directed edges", fmt_int(di_num),
+#                  fmt_ratio(100.0 * di_num / edge_num)])
+#    table.append(["number of directed edges across hosts",
+#                  fmt_int(didiff_num),
+#                  fmt_ratio(100.0 * didiff_num / edge_num)])
+#    table.append(["number of undirected edges", fmt_int(nodi_num),
+#                  fmt_ratio(100.0 * nodi_num / edge_num)])
+#    table.append(["number of undirected edges across hosts",
+#                  fmt_int(nodidiff_num),
+#                  fmt_ratio(100.0 * nodidiff_num / edge_num)])
+#    table.append(["number of all edges", fmt_int(edge_num), ""])
+#    return common.cli_table(table, align="right")
 
 
 def list_netsize(conf):

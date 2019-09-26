@@ -141,6 +141,10 @@ whole_term =
 # [log, snmp] are available
 source = log, snmp
 
+# used features in snmp data source
+# if empty, all features are used
+snmp_features =
+
 # Target areas of DAG construction
 # If "all" given, use whole hosts as 1 area named "all"
 # If "each" given, define each host as 1 area named with hostname
