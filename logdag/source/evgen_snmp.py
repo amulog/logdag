@@ -373,14 +373,14 @@ class SNMPEventLoader(evgen_common.EventLoader):
         return list(self._d_feature.keys())
 
     def load_org(self, measure, tags, dt_range):
-        sourcename = self._d_feature[measure]["src"]
-        return self.load_items(sourcename, tags, dt_range)
+        sourcename = self._d_feature[measure]["source"]
+        return self.load_orgdf(sourcename, tags, dt_range)
 
     def load_source(self, sourcename, seriesdef, dt_range):
         # for read_source
         if self._srcdb == "influx":
             tags = self._seriesdef2tags(seriesdef)
-            return self.source.load_orgdf(sourcename, tags, dt_range)
+            return self.load_orgdf(sourcename, tags, dt_range)
         else:
             assert seriesdef.get("type", "source") == "source"
             ret_df = None

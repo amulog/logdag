@@ -25,8 +25,16 @@ def norm_fillavg(sr):
     return ret
 
 
+def root_square_diff(sr):
+    ret = sr.diff()
+    ret[0] = float(0)
+    return ((ret ** 2) / sr) ** 0.5
+
+
 def diff_abs(sr):
-    return np.abs(sr.diff()[1:])
+    ret = sr.diff()
+    ret[0] = float(0)
+    return np.abs(ret)
 
 
 def getnan(sr):

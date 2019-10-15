@@ -34,7 +34,7 @@ class EventLoader(object):
 
     def load_orgdf(self, measure, tags, dt_range):
         ut_range = tuple(dt.timestamp() for dt in dt_range)
-        return self.evdb.get_df(measure, tags, self.fields, ut_range)
+        return self.evdb.get_df(measure, tags, None, ut_range)
 
     def load_items(self, measure, tags, dt_range):
         ut_range = tuple(dt.timestamp() for dt in dt_range)

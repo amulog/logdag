@@ -4,6 +4,8 @@
 import logging
 import pickle
 import pandas as pd
+import numpy as np
+from dateutil import tz
 from collections import namedtuple
 
 from . import dtutil
@@ -107,11 +109,18 @@ class AreaTest():
 
         if self._arearule == "all":
             self._testfunc = self._test_all
+        elif self._arearule == "each":
+            self._testfunc = self._test_each
+        else:
+            self.areas = config.gettuple(conf, "dag", "area")
+            self._testfunc = self._test_ingroup
 
-    def _test_all(self, area, host):
+    @staticmethod
+    def _test_all(area, host):
         return True
 
-    def _test_each(self, area, host):
+    @staticmethod
+    def _test_each(area, host):
         return area == host
 
     def _test_ingroup(self, area, host):
@@ -137,6 +146,56 @@ def init_evloaders(conf):
             for src in config.getlist(conf, "dag", "source")}
 
 
+def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
+               method, binarize, el):
+    if method == "sequential":
+        df = el.load(measure, tags, dt_range, ci_bin_size)
+        if df is None or df[el.fields[0]].sum() == 0:
+            _logger.debug("{0} is empty".format((measure, tags)))
+            return None
+        if binarize:
+            df[df > 0] = 1
+    elif method == "slide":
+        tmp_dt_range = (dt_range[0],
+                        max(dt_range[1],
+                            dt_range[1] + (ci_bin_size - ci_bin_diff)))
+        items = list(el.load_items(measure, tags, tmp_dt_range))
+        if len(items) == 0:
+            _logger.debug("{0} is empty".format((measure, tags)))
+            return None
+        l_dt = [e[0] for e in items]
+        l_array = np.vstack([e[1] for e in items])[:, 0]
+        data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
+                                       ci_bin_size, binarize,
+                                       l_dt_values=l_array)
+        l_dt_label = dtutil.range_dt(dt_range[0], dt_range[1], ci_bin_diff)
+        dtindex = pd.to_datetime(l_dt_label)
+        dtindex = dtindex.tz_localize(tz.tzlocal())
+        df = pd.DataFrame(data, index=dtindex)
+    elif method == "radius":
+        tmp_dt_range = (min(dt_range[0],
+                            dt_range[0] - 0.5 * (ci_bin_size - ci_bin_diff)),
+                        max(dt_range[1],
+                            dt_range[1] + 0.5 * (ci_bin_size - ci_bin_diff)))
+        items = list(el.load_items(measure, tags, tmp_dt_range))
+        if len(items) == 0:
+            _logger.debug("{0} is empty".format((measure, tags)))
+            return None
+        l_dt = [e[0] for e in items]
+        l_array = np.vstack([e[1] for e in items])[:, 0]
+        data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
+                                        0.5 * ci_bin_size, binarize,
+                                        l_dt_values=l_array)
+        l_dt_label = dtutil.range_dt(dt_range[0], dt_range[1], ci_bin_diff)
+        dtindex = pd.to_datetime(l_dt_label)
+        dtindex = dtindex.tz_localize(tz.tzlocal())
+        df = pd.DataFrame(data, index=dtindex)
+    else:
+        raise NotImplementedError
+
+    return df
+
+
 def load_event_log_all(conf, dt_range, area, binarize, d_el=None):
     if d_el is None:
         from .source import evgen_log
@@ -144,44 +203,16 @@ def load_event_log_all(conf, dt_range, area, binarize, d_el=None):
     else:
         el = d_el[SRCCLS_LOG]
 
-    areatest = AreaTest(conf)
     method = conf.get("dag", "ci_bin_method")
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
     for evdef in el.iter_evdef(dt_range, area):
         measure, tags = evdef.series()
-
-        if method == "sequential":
-            df = el.load(measure, tags, dt_range, ci_bin_size)
-            if df is None or df[el.fields[0]].sum() == 0:
-                _logger.debug("{0} is empty".format((measure, tags)))
-                continue
-            if binarize:
-                df[df > 0] = 1
-        elif method == "slide":
-            l_dt, l_array = zip(*el.load_items(measure, tags, dt_range))
-            data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
-                                           ci_bin_size, binarize,
-                                           l_dt_values=l_array)
-            df = pd.DataFrame(data, index=pd.to_datetime(l_dt))
-            if df is None or sum(df) == 0:
-                _logger.debug("{0} is empty".format((measure, tags)))
-                continue
-        elif method == "radius":
-            ci_bin_radius = 0.5 * ci_bin_size
-            l_dt, l_array = zip(*el.load_items(measure, tags, dt_range))
-            data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
-                                            ci_bin_radius, binarize,
-                                            l_dt_values=l_array)
-            df = pd.DataFrame(data, index=pd.to_datetime(l_dt))
-            if df is None or sum(df) == 0:
-                _logger.debug("{0} is empty".format((measure, tags)))
-                continue
-        else:
-            raise NotImplementedError
-
-        yield evdef, df
+        df = load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
+                        method, binarize, el)
+        if df is not None:
+            yield evdef, df
 
 
 def load_event_snmp_all(conf, dt_range, area, binarize, d_el=None):
@@ -191,23 +222,21 @@ def load_event_snmp_all(conf, dt_range, area, binarize, d_el=None):
     else:
         el = d_el["snmp"]
     areatest = AreaTest(conf)
+    method = conf.get("dag", "ci_bin_method")
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
+    ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
     l_feature_name = config.getlist(conf, "dag", "snmp_features")
     if len(l_feature_name) == 0:
         l_feature_name = el.all_feature()
-        # l_feature_name = None
     for evdef in el.iter_evdef(l_feature_name):
         measure, tags = evdef.series()
         if not areatest.test(area, tags["host"]):
             continue
-        df = el.load(measure, tags, dt_range, ci_bin_size)
-        if df is None or df[el.fields[0]].sum() == 0:
-            _logger.debug("{0} is empty".format((measure, tags)))
-            continue
-        if binarize:
-            df[df > 0] = 1
-        yield evdef, df
+        df = load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
+                        method, binarize, el)
+        if df is not None:
+            yield evdef, df
 
 
 def load_event_all(sources, conf, dt_range, area, binarize):

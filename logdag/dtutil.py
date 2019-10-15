@@ -4,10 +4,11 @@
 import datetime
 import logging
 import random
-import math
 import numpy as np
+import dateutil
 from collections import defaultdict
-#from itertools import chain
+
+# from itertools import chain
 
 TIMEFMT = "%Y-%m-%d %H:%M:%S"
 _logger = logging.getLogger(__package__)
@@ -15,7 +16,8 @@ _logger = logging.getLogger(__package__)
 
 def extdate(dt):
     """Return datetime representation of date component in given datetime."""
-    return datetime.datetime.combine(dt.date(), datetime.time())
+    ret = datetime.datetime.combine(dt.date(), datetime.time())
+    return ret.replace(tzinfo=dt.tzinfo)
 
 
 def is_intdate(arg):
@@ -24,21 +26,32 @@ def is_intdate(arg):
     if isinstance(arg, datetime.datetime):
         return extdate(arg) == arg
     elif isinstance(arg, datetime.timedelta):
-        return datetime.timedelta(days = arg.days) == arg
+        return datetime.timedelta(days=arg.days) == arg
     else:
         raise NotImplementedError
 
 
-def dtrange(top_dt, end_dt, duration, include_end = False):
+def range_dt(dts, dte, interval):
     """
+    Args:
+        dts (datetime.datetime): start time
+        dte (datetime.datetime): end time
+        interval (datetime.timedelta): size of time bins
+
+    Returns:
+        list of datetime.datetime
     """
-    temp_dt = top_dt
-    while temp_dt < end_dt or (include_end is True and temp_dt == end_dt):
-        yield temp_dt
-        temp_dt = temp_dt + duration
+
+    tmp = np.arange(dts.timestamp(), dte.timestamp(), interval.total_seconds())
+    return [datetime.datetime.fromtimestamp(ut) for ut in tmp]
+
+    # temp_dt = dt_range[0]
+    # while temp_dt < dt_range[1] or (include_end is True and temp_dt == dt_range[1]):
+    #    yield temp_dt
+    #    temp_dt = temp_dt + interval
 
 
-#def dtrange_term(top_dt, end_dt, duration):
+# def dtrange_term(top_dt, end_dt, duration):
 #    temp_top_dt = top_dt
 #    while temp_top_dt < end_dt:
 #        temp_end_dt = temp_top_dt + duration
@@ -47,7 +60,7 @@ def dtrange(top_dt, end_dt, duration, include_end = False):
 # -> iter_term
 
 
-def discretize(l_dt, l_term, dt_range, binarize, l_dt_values = None):
+def discretize(l_dt, l_term, dt_range, binarize, l_dt_values=None):
     """Convert list of datetime into numpy array.
     This function use mapping algorithm: split datetime space by change points
     (i.e., all ends of datetime terms) and iterate l_dt only once
@@ -95,7 +108,7 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values = None):
     # generate mapped change points
     l_cp = []
     temp_idxs = set()
-    for dt, changes in sorted(d_cp.items(), key = lambda x: x[0]):
+    for dt, changes in sorted(d_cp.items(), key=lambda x: x[0]):
         for idx, flag in changes:
             if flag:
                 temp_idxs.add(idx)
@@ -125,7 +138,7 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values = None):
                     key, l_rid = l_cp[-1]
                     next_key = None
                     break
-        # key <= dt < next_key because of assert and while
+        # following processed only if key <= dt < next_key
         if binarize:
             a_ret[np.array(l_rid)] = 1
         else:
@@ -135,7 +148,7 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values = None):
 
 
 def discretize_sequential(l_dt, dt_range, binsize,
-                          binarize = False, l_dt_values = None):
+                          binarize=False, l_dt_values=None):
     l_term = []
     top_dt, end_dt = dt_range
     temp_dt = top_dt
@@ -147,7 +160,7 @@ def discretize_sequential(l_dt, dt_range, binsize,
 
 
 def discretize_slide(l_dt, dt_range, bin_slide, binsize,
-                     binarize = False, l_dt_values = None):
+                     binarize=False, l_dt_values=None):
     l_term = []
     top_dt, end_dt = dt_range
     temp_dt = top_dt
@@ -159,7 +172,7 @@ def discretize_slide(l_dt, dt_range, bin_slide, binsize,
 
 
 def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
-                      binarize = False, l_dt_values = None):
+                      binarize=False, l_dt_values=None):
     l_label = []
     top_dt, end_dt = dt_range
     temp_dt = top_dt + 0.5 * bin_slide
@@ -171,8 +184,8 @@ def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
     return discretize(l_dt, l_term, dt_range, binarize)
 
 
-#old
-#def discretize(l_dt, l_label, method = "count", binarize = False):
+# old
+# def discretize(l_dt, l_label, method = "count", binarize = False):
 #    """
 #    Args:
 #        l_dt (List[datetime.datetime]): An input datetime sequence.
@@ -259,7 +272,7 @@ def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
 #    return ret
 
 
-#def auto_discretize(l_dt, binsize, dt_range = None, binarize = False):
+# def auto_discretize(l_dt, binsize, dt_range = None, binarize = False):
 #    """
 #    Args:
 #        l_dt (List[datetime.datetime])
@@ -277,7 +290,7 @@ def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
 #        return discretize(l_dt, l_label, binarize = binarize)
 #
 #
-#def auto_discretize_slide(l_dt, binsize, slide,
+# def auto_discretize_slide(l_dt, binsize, slide,
 #                          dt_range = None, method = "count", binarize = False):
 #    #assert slide <= binsize
 #    if dt_range is None:
@@ -318,20 +331,20 @@ def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
 #    return ret
 
 
-def periodic(dt_range, interval):
-    top_dt, end_dt = dt_range
-    l_label = []
-    #temp_dt = top_dt + duration
-    temp_dt = top_dt
-    while temp_dt < end_dt:
-        l_label.append(temp_dt)
-        temp_dt += interval
-    l_label.append(end_dt)
-    return l_label
+# def periodic(dt_range, interval):
+#    top_dt, end_dt = dt_range
+#    l_label = []
+#    #temp_dt = top_dt + duration
+#    temp_dt = top_dt
+#    while temp_dt < end_dt:
+#        l_label.append(temp_dt)
+#        temp_dt += interval
+#    l_label.append(end_dt)
+#    return l_label
 
 
-def label(dt_range, duration):
-    return periodic(dt_range, duration)
+# def label(dt_range, duration):
+#    return periodic(dt_range, duration)
 
 
 def is_sep(dt, duration):
@@ -347,7 +360,7 @@ def adj_sep(dt, duration):
         return dt
     else:
         return date + duration * int(diff.total_seconds() // \
-                                  duration.total_seconds())
+                                     duration.total_seconds())
 
 
 def radj_sep(dt, duration):
@@ -359,6 +372,7 @@ def radj_sep(dt, duration):
 
 def shortstr(dt):
     date = datetime.datetime.combine(dt.date(), datetime.time())
+    date.tzinfo = dt.tzinfo
     if date == dt:
         return dt.strftime("%Y%m%d")
     else:
@@ -367,23 +381,24 @@ def shortstr(dt):
 
 def shortstr2dt(dtstr):
     if "_" in dtstr:
-        return datetime.datetime.strptime(dtstr, "%Y%m%d_%H%M%S")
+        dt = datetime.datetime.strptime(dtstr, "%Y%m%d_%H%M%S")
+        return dt.replace(tzinfo=dateutil.tz.tzlocal())
     else:
         return datetime.datetime.strptime(dtstr, "%Y%m%d")
 
 
-def iter_term(whole_term, term_length, term_diff = None):
+def iter_term(whole_term, term_length, term_diff=None):
     # whole_term : tuple(datetime.datetime, datetime.datetime)
     # term_length : datetime.timedelta
     # term_diff : datetime.timedelta
     if term_diff is None:
         term_diff = term_length
-    w_top_dt, w_end_dt = whole_term
-    top_dt = w_top_dt
-    while top_dt < w_end_dt:
-        end_dt = top_dt + term_length
-        yield (top_dt, end_dt)
-        top_dt = top_dt + term_diff
+    w_dts, w_dte = whole_term
+    dts = w_dts
+    while dts < w_dte:
+        dte = dts + term_length
+        yield (dts, dte)
+        dts = dts + term_diff
 
 
 def separate_periodic_dup(data, dur, err):
@@ -403,6 +418,7 @@ def separate_periodic_dup(data, dur, err):
             periodic timestamp sequences.
     
     """
+
     def _separate_same(target_dt, l_dt, err_dur):
         # return same, others
         for cnt, dt in enumerate(l_dt):
@@ -412,7 +428,6 @@ def separate_periodic_dup(data, dur, err):
         else:
             # all dt in l_dt are (almost) same
             return l_dt, []
-
 
     def _has_adjacent(target_dt, l_dt, max_dur, min_dur):
         for cnt, dt in enumerate(l_dt):
@@ -430,7 +445,7 @@ def separate_periodic_dup(data, dur, err):
             return None
 
     ret = []
-    err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
+    err_dur = datetime.timedelta(seconds=int(dur.total_seconds() * err))
     max_dur = dur + err_dur
     min_dur = dur - err_dur
 
@@ -457,12 +472,12 @@ def separate_periodic_dup(data, dur, err):
             else:
                 seq.append(target_dt)
                 cand = l_dt[:adj]
-                    # Candidate of same dt (no adjacent dt in cand)
+                # Candidate of same dt (no adjacent dt in cand)
                 l_same, l_others = _separate_same(target_dt, cand, err_dur)
                 seq += l_same
                 remain_dt += l_others
                 l_dt = l_dt[adj:]
-        
+
         assert len(seq) + len(remain_dt) == length
         if len(seq) == 0:
             break
@@ -489,8 +504,10 @@ def separate_periodic(data, dur, err):
             periodic timestamp sequences.
     
     """
+
     def _adjacents(target_dt, l_dt, max_dur, min_dur):
-        top_id = None; end_id = None
+        top_id = None;
+        end_id = None
         for cnt, dt in enumerate(l_dt):
             if target_dt + max_dur < dt:
                 end_id = cnt
@@ -510,11 +527,11 @@ def separate_periodic(data, dur, err):
         if len(l_adj) == 1:
             return l_adj[0][0]
         else:
-            return min(l_adj, key = lambda x: abs(
+            return min(l_adj, key=lambda x: abs(
                 (target_dt + dur - x[1]).total_seconds()))[0]
 
     ret = []
-    err_dur = datetime.timedelta(seconds = int(dur.total_seconds() * err))
+    err_dur = datetime.timedelta(seconds=int(dur.total_seconds() * err))
     max_dur = dur + err_dur
     min_dur = dur - err_dur
 
@@ -536,7 +553,7 @@ def separate_periodic(data, dur, err):
                     seq.append(target_dt)
                     remain_dt += l_dt
                     break
-            else:            
+            else:
                 seq.append(target_dt)
                 adj = _adj_small_err(target_dt, l_adj, dur)
                 remain_dt += l_dt[:adj]
@@ -561,7 +578,7 @@ def convert_binsize(array, org_binsize, new_binsize):
     l = []
     i = 0
     while i < array.size:
-        l.append(array[i:i+ratio].sum())
+        l.append(array[i:i + ratio].sum())
         i += ratio
     return np.array(l)
 
@@ -584,7 +601,7 @@ def rand_uniform(top_dt, end_dt, lambd):
     times = int(np.random.poisson(avtimes))
     for i in range(times):
         deltasec = int(total_dt.total_seconds() * random.random())
-        dt = top_dt + datetime.timedelta(seconds = deltasec)
+        dt = top_dt + datetime.timedelta(seconds=deltasec)
         ret.append(dt)
     return ret
 
@@ -610,108 +627,105 @@ def rand_exp(top_dt, end_dt, lambd):
 
 
 def rand_next_exp(dt, lambd):
-    return dt + datetime.timedelta(seconds = 1) * int(
-            24 * 60 * 60 * random.expovariate(lambd))
+    return dt + datetime.timedelta(seconds=1) * int(
+        24 * 60 * 60 * random.expovariate(lambd))
 
-
-def test_discretize():
-    test_data = [
-            "2112-07-16 00:00:00",
-            "2112-07-16 00:00:00",
-            "2112-07-16 00:00:01",
-            "2112-07-16 00:57:18",
-            "2112-07-16 01:57:18",
-            "2112-07-16 02:57:17",
-            "2112-07-16 02:57:18",
-            "2112-07-16 03:57:18",
-            "2112-07-16 04:57:18",
-            "2112-07-16 15:17:01",
-            "2112-07-16 16:17:01",
-            "2112-07-16 18:17:01",
-            "2112-07-16 19:17:01",
-            "2112-07-16 20:17:01",
-            "2112-07-16 20:17:01",
-            "2112-07-16 20:17:02",
-            "2112-07-16 20:17:21",
-            "2112-07-16 21:00:00",
-            "2112-07-16 21:17:01",
-            "2112-07-16 22:17:01",
-            "2112-07-16 23:17:01",
-            "2112-07-17 00:00:00",
-            "2112-07-17 00:00:04"]
-    l_dt = [datetime.datetime.strptime(i, '%Y-%m-%d %H:%M:%S')
-            for i in test_data]
-    binsize = datetime.timedelta(hours = 1)
-    top_dt = adj_sep(min(l_dt), binsize)
-    end_dt = radj_sep(max(l_dt), binsize)
-    l_label = label((top_dt, end_dt), binsize)
-    #data = discretize(l_dt, l_label, binarize = False)
-    data = auto_discretize_slide(l_dt,
-                                 binsize + datetime.timedelta(minutes = 30),
-                                 #binsize,
-                                 binsize,
-                                 dt_range = (top_dt, end_dt),
-                                 method = "count")
-    print("result")
-    for l, cnt in zip(l_label, data):
-        print(l, cnt)
-
-
-def test_separate_periodic():
-    test_data = [
-            "2112-07-16 00:00:00",
-            "2112-07-16 00:00:00",
-            "2112-07-16 00:00:01",
-            "2112-07-16 00:57:18",
-            "2112-07-16 01:57:18",
-            "2112-07-16 02:57:17",
-            "2112-07-16 02:57:18",
-            "2112-07-16 03:57:18",
-            "2112-07-16 04:57:18",
-            "2112-07-16 15:17:01",
-            "2112-07-16 16:17:01",
-            "2112-07-16 18:17:01",
-            "2112-07-16 19:17:01",
-            "2112-07-16 20:17:01",
-            "2112-07-16 20:17:01",
-            "2112-07-16 20:17:02",
-            "2112-07-16 20:17:21",
-            "2112-07-16 20:18:00",
-            "2112-07-16 21:17:01",
-            "2112-07-16 22:17:01",
-            "2112-07-16 23:17:01",
-            "2112-07-17 00:00:00",
-            "2112-07-17 00:00:04"]
-    data = [datetime.datetime.strptime(i, '%Y-%m-%d %H:%M:%S')
-            for i in test_data]
-    dur = datetime.timedelta(hours = 1)
-    err = 0.01 # 1hour -> err 36sec
-    l_seq, remain_dt = separate_periodic(data, dur, err)
-    #l_seq, remain_dt = separate_periodic_dup(data, dur, err)
-    for cnt, seq in enumerate(l_seq):
-        print("sequence", cnt)
-        for dt in seq:
-            print(dt)
-        print()
-    print("remains")
-    for dt in remain_dt:
-        print(dt)
-
-
-def test_randlog_exp():
-    top_dt = datetime.datetime.strptime("2112-07-16 00:00:00", TIMEFMT)
-    end_dt = datetime.datetime.strptime("2112-07-17 00:00:00", TIMEFMT)
-    lambd = 10000.0
-    for i in range(10):
-        print("exp 1")
-        for dt in rand_exp(top_dt, end_dt, lambd):
-            print(dt)
-        print()
-
-
-if __name__ == "__main__":
-    #test_separate_periodic()
-    test_discretize()
-    #test_randlog_exp()
-
-
+# def test_discretize():
+#    test_data = [
+#            "2112-07-16 00:00:00",
+#            "2112-07-16 00:00:00",
+#            "2112-07-16 00:00:01",
+#            "2112-07-16 00:57:18",
+#            "2112-07-16 01:57:18",
+#            "2112-07-16 02:57:17",
+#            "2112-07-16 02:57:18",
+#            "2112-07-16 03:57:18",
+#            "2112-07-16 04:57:18",
+#            "2112-07-16 15:17:01",
+#            "2112-07-16 16:17:01",
+#            "2112-07-16 18:17:01",
+#            "2112-07-16 19:17:01",
+#            "2112-07-16 20:17:01",
+#            "2112-07-16 20:17:01",
+#            "2112-07-16 20:17:02",
+#            "2112-07-16 20:17:21",
+#            "2112-07-16 21:00:00",
+#            "2112-07-16 21:17:01",
+#            "2112-07-16 22:17:01",
+#            "2112-07-16 23:17:01",
+#            "2112-07-17 00:00:00",
+#            "2112-07-17 00:00:04"]
+#    l_dt = [datetime.datetime.strptime(i, '%Y-%m-%d %H:%M:%S')
+#            for i in test_data]
+#    binsize = datetime.timedelta(hours = 1)
+#    top_dt = adj_sep(min(l_dt), binsize)
+#    end_dt = radj_sep(max(l_dt), binsize)
+#    l_label = label((top_dt, end_dt), binsize)
+#    #data = discretize(l_dt, l_label, binarize = False)
+#    data = auto_discretize_slide(l_dt,
+#                                 binsize + datetime.timedelta(minutes = 30),
+#                                 #binsize,
+#                                 binsize,
+#                                 dt_range = (top_dt, end_dt),
+#                                 method = "count")
+#    print("result")
+#    for l, cnt in zip(l_label, data):
+#        print(l, cnt)
+#
+#
+# def test_separate_periodic():
+#    test_data = [
+#            "2112-07-16 00:00:00",
+#            "2112-07-16 00:00:00",
+#            "2112-07-16 00:00:01",
+#            "2112-07-16 00:57:18",
+#            "2112-07-16 01:57:18",
+#            "2112-07-16 02:57:17",
+#            "2112-07-16 02:57:18",
+#            "2112-07-16 03:57:18",
+#            "2112-07-16 04:57:18",
+#            "2112-07-16 15:17:01",
+#            "2112-07-16 16:17:01",
+#            "2112-07-16 18:17:01",
+#            "2112-07-16 19:17:01",
+#            "2112-07-16 20:17:01",
+#            "2112-07-16 20:17:01",
+#            "2112-07-16 20:17:02",
+#            "2112-07-16 20:17:21",
+#            "2112-07-16 20:18:00",
+#            "2112-07-16 21:17:01",
+#            "2112-07-16 22:17:01",
+#            "2112-07-16 23:17:01",
+#            "2112-07-17 00:00:00",
+#            "2112-07-17 00:00:04"]
+#    data = [datetime.datetime.strptime(i, '%Y-%m-%d %H:%M:%S')
+#            for i in test_data]
+#    dur = datetime.timedelta(hours = 1)
+#    err = 0.01 # 1hour -> err 36sec
+#    l_seq, remain_dt = separate_periodic(data, dur, err)
+#    #l_seq, remain_dt = separate_periodic_dup(data, dur, err)
+#    for cnt, seq in enumerate(l_seq):
+#        print("sequence", cnt)
+#        for dt in seq:
+#            print(dt)
+#        print()
+#    print("remains")
+#    for dt in remain_dt:
+#        print(dt)
+#
+#
+# def test_randlog_exp():
+#    top_dt = datetime.datetime.strptime("2112-07-16 00:00:00", TIMEFMT)
+#    end_dt = datetime.datetime.strptime("2112-07-17 00:00:00", TIMEFMT)
+#    lambd = 10000.0
+#    for i in range(10):
+#        print("exp 1")
+#        for dt in rand_exp(top_dt, end_dt, lambd):
+#            print(dt)
+#        print()
+#
+#
+# if __name__ == "__main__":
+#    #test_separate_periodic()
+#    test_discretize()
+#    #test_randlog_exp()

@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import pandas as pd
 import influxdb
+from dateutil import tz
 
 _logger = logging.getLogger(__package__)
 
@@ -17,10 +18,11 @@ class InfluxDB(object):
         self._rpolicy = "autogen"
         self._precision = 'n'
         self._batch_size = batch_size
+        self.verbose = False
         # self._protocol = protocol
         inf_kwargs["database"] = dbname
         self.client = influxdb.InfluxDBClient(**inf_kwargs)
-        if not dbname in list(self._list_database()):
+        if dbname not in list(self._list_database()):
             raise IOError("No database {0}".format(dbname))
             # self.client.create_database(dbname)
 
@@ -41,6 +43,8 @@ class InfluxDB(object):
         #    iql += " WHERE time >= {0}s AND time < {1}s".format(
         #        int(ut_range[0]), int(ut_range[1]))
 
+        if self.verbose:
+            print(iql)
         _logger.debug("influxql query: {0}".format(iql))
         rs = self.client.query(iql, epoch=self._precision,
                                database=self.dbname)
@@ -51,6 +55,18 @@ class InfluxDB(object):
                     name, _, tag = s.partition("=")
                     d[name] = tag
             ret.append(d)
+        return ret
+
+    def list_fields(self, measure):
+        iql = "SHOW FIELD KEYS FROM \"{0}\"".format(measure)
+        if self.verbose:
+            print(iql)
+        _logger.debug("influxql query: {0}".format(iql))
+        rs = self.client.query(iql, epoch=self._precision,
+                               database=self.dbname)
+        ret = []
+        for p in rs.get_points():
+            ret.append(p["fieldKey"])
         return ret
 
     def add(self, measure, d_tags, d_input, columns):
@@ -78,7 +94,9 @@ class InfluxDB(object):
 
     def get(self, measure, d_tags, fields, ut_range,
             str_bin=None, func=None, fill=None, limit=None):
-        if func is None:
+        if fields is None:
+            s_fields = "*"
+        elif func is None:
             s_fields = ", ".join(["\"{0}\"".format(s) for s in fields])
         else:
             s_fields = ", ".join(["{0}(\"{1}\") as \"{1}\"".format(func, s)
@@ -104,6 +122,10 @@ class InfluxDB(object):
             s_fields, s_from, s_where)
         iql += s_gb + s_lm
 
+        if self.verbose:
+            print(iql)
+        else:
+            print("verbose disabled")
         _logger.debug("influxql query: {0}".format(iql))
         ret = self.client.query(iql, epoch=self._precision,
                                 database=self.dbname)
@@ -114,6 +136,8 @@ class InfluxDB(object):
 
         for p in rs.get_points():
             dt = pd.to_datetime(p["time"])
+            dt = dt.tz_localize(tz.tzutc())
+            dt = dt.tz_convert(tz.tzlocal())
             array = np.array([p[f] for f in fields])
             yield (dt, array)
 
@@ -123,15 +147,19 @@ class InfluxDB(object):
 
     def get_df(self, measure, d_tags, fields, ut_range,
                str_bin=None, func=None, fill=None):
+        if fields is None:
+            fields = self.list_fields(measure)
         rs = self.get(measure, d_tags, fields, ut_range,
                       str_bin, func, fill)
         if len(rs) == 0:
             return None
 
-        l_dt = pd.to_datetime([p["time"] for p in rs.get_points()])
+        dtindex = pd.to_datetime([p["time"] for p in rs.get_points()])
+        dtindex = dtindex.tz_localize(tz.tzutc())
+        dtindex = dtindex.tz_convert(tz.tzlocal())
         l_array = [np.array([p[f] for f in fields])
                    for p in rs.get_points()]
-        return pd.DataFrame(l_array, index=l_dt, columns=fields)
+        return pd.DataFrame(l_array, index=dtindex, columns=fields)
 
     def drop_measurement(self, measure):
         self.client.drop_measurement(measure)
