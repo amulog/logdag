@@ -9,6 +9,7 @@ evdb_whole_term =
 
 # Length of unit terms to generate evdb
 evdb_unit_term = 24h
+evdb_unit_diff = 24h
 
 evdb_args_fn = evdb_args
 
@@ -52,6 +53,7 @@ username = root
 passwd = root
 log_dbname = log
 snmp_dbname = snmp
+snmp_source_dbname = snmp
 batch_size = 1000
 protocol = line
 
@@ -204,6 +206,24 @@ evmap_dir =
 
 # Found DAG object data
 output_dir = pc_output
+
+
+[pc_prune]
+# If true, pruning the initial graph of pc algorithm
+do_pruning = false
+
+# List of pruning methods
+# [topology, multi-topology]
+methods = multi-topology
+
+# Specify if using "topology"
+# network file: networkx graph file in json format
+single_network_file = def_topology.json
+
+# Specify if using "multi-topology"
+multi_network_file = l2:l2.json, l3:l3.json
+# group name is same as that of lt_label in amulog
+multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
 
 
 [eval]
