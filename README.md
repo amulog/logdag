@@ -18,9 +18,26 @@ This project was partially ported from repository LogCausalAnaysis.
 * citestfz https://github.com/cpflat/citestfz
 * NetworkX https://networkx.github.io
 
-## Related article
+## Reference
 
-http://ieeexplore.ieee.org/document/8122062/
+This project is evaluated in some papers ([TNSM2018](https://doi.org/10.1109/TNSM.2017.2778096) and CNSM2019).
+If you use this code, please consider citing:
+```
+@article{Kobayashi2018,
+  author = {Kobayashi, Satoru and Otomo, Kazuki and Fukuda, Kensuke and Esaki, Hiroshi},
+  journal = {IEEE Transactions on Network and Service Management},
+  volume = {15},
+  number = {1},
+  pages = {53-67},
+  title = {Mining causes of network events in log data with causal inference},
+  year = {2018}
+}
+
+```
+
+## License
+
+3-Clause BSD license
 
 ## Author
 
