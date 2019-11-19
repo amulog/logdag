@@ -21,8 +21,7 @@ def norm_fillavg(sr):
         ret = sr - avg
     else:
         ret = (sr - avg) / std
-    ret.fillna(0)
-    return ret
+    return ret.fillna(0)
 
 
 def root_square_diff(sr):
@@ -38,7 +37,7 @@ def diff_abs(sr):
 
 
 def getnan(sr):
-    return sr.isnull() * 1.0
+    return sr.isnull() * 1
 
 
 def outlier(sr, th=2.0):
@@ -46,5 +45,8 @@ def outlier(sr, th=2.0):
     ret[sr > np.median(sr) + th] = 1
     return ret
 
+
+def slice_index(sr, start, stop):
+    return sr[start:stop]
 
 

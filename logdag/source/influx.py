@@ -77,7 +77,7 @@ class InfluxDB(object):
             if len(fields) == 0:
                 continue
             d = {'measurement': measure,
-                 'time': t,
+                 'time': t.tz_convert(None).tz_localize(None),
                  'tags': d_tags,
                  'fields': fields}
             data.append(d)
@@ -124,8 +124,6 @@ class InfluxDB(object):
 
         if self.verbose:
             print(iql)
-        else:
-            print("verbose disabled")
         _logger.debug("influxql query: {0}".format(iql))
         ret = self.client.query(iql, epoch=self._precision,
                                 database=self.dbname)

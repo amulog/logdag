@@ -85,3 +85,11 @@ class AmulogLoader(object):
         if gid is None:
             return self.conf["visual"]["ltlabel_default_group"]
         return self._ll.get_ltg_group(gid, self._ld.ltg_members(gid))
+
+
+def init_amulogloader(conf, dt_range):
+    args = [dt_range,
+            conf["database_amulog"]["source_conf"],
+            conf["database_amulog"]["event_gid"]]
+    return AmulogLoader(*args)
+

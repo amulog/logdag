@@ -1,4 +1,4 @@
-# !/usr/bin/env python
+    # !/usr/bin/env python
 # coding: utf-8
 
 import json
@@ -7,10 +7,12 @@ import pandas as pd
 import logging
 from collections import defaultdict
 
+from amulog import config
 from amulog import host_alias
 from logdag import log2event
+from logdag import dtutil
+from amulog import mproc_queue
 from . import evgen_common
-from . import evpost
 
 _logger = logging.getLogger(__package__)
 
@@ -85,8 +87,9 @@ class SNMPEventLoader(evgen_common.EventLoader):
     vsource_key = "all"
     fields = ["val", ]
 
-    def __init__(self, conf, dry=False):
+    def __init__(self, conf, parallel=None, dry=False):
         self.conf = conf
+        self.parallel = parallel
         self.dry = dry
         self._srcdb = conf["general"]["snmp_source"]
         if self._srcdb == "rrd":
@@ -129,6 +132,13 @@ class SNMPEventLoader(evgen_common.EventLoader):
                  "column": self._d_feature[name]["column"],
                  "func_list": self._d_feature[name]["func_list"]}
             self._d_rfeature[src].append(d)
+
+        self._feature_unit_term = config.getdur(conf,
+                                                "general", "evdb_unit_term")
+        self._feature_unit_diff = config.getdur(conf,
+                                                "general", "evdb_unit_diff")
+        self._feature_bin_size = config.getdur(conf, "general", "evdb_binsize")
+        self._mproc = None
 
     def _init_vsource(self):
         self._d_vsource = defaultdict(list)
@@ -194,7 +204,8 @@ class SNMPEventLoader(evgen_common.EventLoader):
     def _read_vsource_hostsum(self, name, dt_range, dump_org):
         if self._srcdb == "influx":
             for seriesdef in self._d_vsource[name]:
-                yield self.source.load_source(name, seriesdef, dt_range)
+                vsource_tags = self._seriesdef2tags(seriesdef)
+                yield vsource_tags, self.load_source(name, seriesdef, dt_range)
         else:
             orgname = self._d_vsourcedef[name]["src"]
             ret_df = None
@@ -217,9 +228,9 @@ class SNMPEventLoader(evgen_common.EventLoader):
                         ret_df = ret_df.add(df.fillna(0), fill_value=0)
                 yield vsource_tags, ret_df
 
-        #orgname = self._d_vsource[name]["src"]
-        #s_host = {d["host"] for d in self._d_source[orgname]}
-        #for host in s_host:
+        # orgname = self._d_vsource[name]["src"]
+        # s_host = {d["host"] for d in self._d_source[orgname]}
+        # for host in s_host:
         #    vsource_tags = {"host": host,
         #                    "key": VSOURCE_KEY}
         #    if self._srcdb == "influx":
@@ -251,10 +262,42 @@ class SNMPEventLoader(evgen_common.EventLoader):
 
     @staticmethod
     def isallnan(df):
-        tmp = df.values.flatten()
+        tmp = df.astype(float).values.flatten()
         return sum(np.isnan(tmp)) == len(tmp)
 
+    def store_all_source(self, dt_range, dump_vsource_org=False):
+        """Store source data into db, without storing features."""
+        all_sourcename = set(self._d_source.keys()) | \
+                         set(self._d_vsource.keys())
+        for sourcename in all_sourcename:
+            if sourcename in self._d_source:
+                _logger.info("loading source {0}".format(sourcename))
+                for tags, df in self._read_source(sourcename, dt_range):
+                    if df is None or self.isallnan(df):
+                        _logger.info("source {0} {1} is empty".format(
+                            sourcename, tags))
+                        return
+                    self.dump(sourcename, tags, df)
+                    _logger.info("added org {0} size {1}".format(
+                        tags, df.shape))
+            elif sourcename in self._d_vsourcedef:
+                _logger.info("loading vsource {0}".format(sourcename))
+                func = self._d_vsourcedef[sourcename]["func"]
+                for tags, df in self._read_vsource(sourcename, dt_range,
+                                                   func, dump_vsource_org):
+                    if df is None or self.isallnan(df):
+                        _logger.info("source {0} {1} is empty".format(
+                            sourcename, tags))
+                        return
+                    self.dump(sourcename, tags, df)
+                    _logger.info("added org {0} size {1}".format(
+                        tags, df.shape))
+            else:
+                raise ValueError("undefined source {0}".format(sourcename))
+
     def store_all(self, dt_range, dump_org=False):
+        """Store data of all defined features with all source data."""
+        self._init_mproc_manager()
         # reverse resolution by sourcenames to avoid duplicated load
         all_sourcename = set(self._d_source.keys()) | \
                          set(self._d_vsource.keys())
@@ -262,15 +305,15 @@ class SNMPEventLoader(evgen_common.EventLoader):
             if sourcename in self._d_source:
                 _logger.info("loading source {0}".format(sourcename))
                 for tags, df in self._read_source(sourcename, dt_range):
-                    self._make_source(sourcename, l_feature_def, tags, df,
-                                      dump_org)
+                    self._make_feature_source(sourcename, l_feature_def,
+                                              tags, df, dt_range, dump_org)
             elif sourcename in self._d_vsourcedef:
                 _logger.info("loading vsource {0}".format(sourcename))
                 func = self._d_vsourcedef[sourcename]["func"]
                 for tags, df in self._read_vsource(sourcename, dt_range,
                                                    func, dump_org):
-                    self._make_source(sourcename, l_feature_def, tags, df,
-                                      dump_org)
+                    self._make_feature_source(sourcename, l_feature_def,
+                                              tags, df, dt_range, dump_org)
                 orgsourcename = self._d_vsourcedef[sourcename]["src"]
                 all_sourcename.remove(orgsourcename)
             else:
@@ -286,35 +329,42 @@ class SNMPEventLoader(evgen_common.EventLoader):
             if sourcename in self._d_source:
                 _logger.info("loading source {0}".format(sourcename))
                 for tags, df in self._read_source(sourcename, dt_range):
-                    self._make_source(sourcename, [], tags, df, dump_org)
+                    self._make_feature_source(sourcename, [], tags, df,
+                                              dt_range, dump_org)
             elif sourcename in self._d_vsourcedef:
                 _logger.info("loading vsource {0}".format(sourcename))
                 func = self._d_vsourcedef[sourcename]["func"]
                 for tags, df in self._read_vsource(sourcename, dt_range,
                                                    func, dump_org):
-                    self._make_source(sourcename, [], tags, df, dump_org)
+                    self._make_feature_source(sourcename, [], tags, df,
+                                              dt_range, dump_org)
             else:
                 raise ValueError("undefined source {0}".format(sourcename))
+        self._close_mproc_manager()
 
     def store_feature(self, featurename, dt_range, dump_org=False):
+        """Store data of a specified feature with all source data."""
+        self._init_mproc_manager()
         sourcename = self._d_feature[featurename]["source"]
         l_feature_def = [self._d_feature[featurename], ]
         if sourcename in self._d_source:
             for tags, df in self._read_source(sourcename, dt_range):
                 _logger.info("loading source {0}".format(sourcename))
-                self._make_source(sourcename, l_feature_def, tags, df,
-                                  dump_org)
+                self._make_feature_source(sourcename, l_feature_def, tags, df,
+                                          dt_range, dump_org)
         elif sourcename in self._d_vsourcedef:
             _logger.info("loading vsource {0}".format(sourcename))
             func = self._d_vsourcedef[sourcename]["func"]
             for tags, df in self._read_vsource(sourcename, dt_range,
                                                func, dump_org):
-                self._make_source(sourcename, l_feature_def, tags, df,
-                                  dump_org)
+                self._make_feature_source(sourcename, l_feature_def, tags, df,
+                                          dt_range, dump_org)
         else:
             raise ValueError("undefined source {0}".format(sourcename))
+        self._close_mproc_manager()
 
-    def _make_source(self, sourcename, l_feature_def, tags, df, dump_org):
+    def _make_feature_source(self, sourcename, l_feature_def, tags, df,
+                             dt_range, dump_org):
         if df is None or self.isallnan(df):
             _logger.info("source {0} {1} is empty".format(
                 sourcename, tags))
@@ -324,34 +374,95 @@ class SNMPEventLoader(evgen_common.EventLoader):
             _logger.info("added org {0} size {1}".format(
                 tags, df.shape))
         for feature_def in l_feature_def:
-            self._make_feature(feature_def, tags, df)
+            self._make_feature(feature_def, tags, df, dt_range)
 
-    def _make_feature(self, feature_def, tags, df):
-        data = self._calc_feature(df, feature_def)
-        if data is None or self.isallnan(data):
+    def _make_feature(self, feature_def, tags, df, dt_range):
+        data = self._calc_feature(df, feature_def, dt_range)
+        if data is None:
+            return
+        dump_data = data.query("{0} > 0".format(self.fields[0]))
+        if dump_data.shape[0] == 0:
             _logger.info("feature {0} {1} is empty".format(
                 feature_def["name"], tags))
         else:
-            self.dump_feature(feature_def["name"], tags, data)
+            self.dump(feature_def["name"], tags, dump_data, fields=self.fields)
             _logger.info("added feature {0} {1} size {2}".format(
-                feature_def["name"], tags, data.shape))
+                feature_def["name"], tags, dump_data.shape))
 
-    def _calc_feature(self, df, feature_def):
+    def _init_mproc_manager(self):
+
+        def apply_postfunc(task, *args, **kwargs):
+            # sense_term: datetime range of filtering target
+            # data_term: datetime range of returned values
+            func_list, input_sr, sense_term, data_term = task
+
+            # insert nan into sr to make filtered results time-series
+            interval = kwargs["interval"]
+            ind = pd.to_datetime(dtutil.range_dt(sense_term[0], sense_term[1],
+                                                 interval))
+            sr = input_sr.reindex(ind).astype(float)
+
+            # apply filtering functions
+            from . import evpost
+            for postfunc in func_list:
+                sr = eval("evpost.{0}".format(postfunc))(sr)
+            return sr[data_term[0]:data_term[1]]
+
+        input_kwargs = {"interval": self._feature_bin_size}
+        self._mproc = mproc_queue.Manager(target=apply_postfunc,
+                                          n_proc=self.parallel,
+                                          kwargs=input_kwargs)
+
+    def _close_mproc_manager(self):
+        if self._mproc is not None:
+            self._mproc.close()
+
+    def _calc_feature(self, df, feature_def, dt_range):
+
+        def _iter_feature_terms(input_dt_range):
+            for dts, dte in dtutil.iter_term(input_dt_range,
+                                             self._feature_unit_diff):
+                sense_dts = max(input_dt_range[0],
+                                dte - self._feature_unit_term)
+                yield (dts, dte), (sense_dts, dte)
+
         column = feature_def["column"]
-        if column in df.columns:
-            sr = df[column]
-        else:
-            return None
-        if self.isallnan(sr):
+        if column not in df.columns:
             return None
 
-        for postfunc in feature_def["func_list"]:
-            sr = eval("evpost.{0}".format(postfunc))(sr)
+        _logger.debug("calculating feature {0}".format(feature_def))
+        # mapped function: see apply_postfunc in self._init_mproc_manager
+        func_list = feature_def["func_list"]
+        l_task = []
+        for data_term, sense_term in _iter_feature_terms(dt_range):
+            sr = df.loc[sense_term[0]:sense_term[1], column]
+            # as df includes NaN term, sr can be empty
+            if len(sr.dropna()) > 0:
 
-        if len(sr) == 0 or self.isallnan(sr):
-            return None
+                #ind = pd.to_datetime(dtutil.range_dt(sense_term[0], sense_term[1],
+                #                                     self._feature_bin_size))
+                #tmp_sr = sr.reindex(ind).astype(float)
+                #import warnings; warnings.filterwarnings('error')
+                #try:
+                #    import numpy as np
+                #    a = np.nanmean(tmp_sr)
+                #except RuntimeWarning:
+                #    import pdb; pdb.set_trace()
 
-        ret = pd.DataFrame(sr)
+                task = (func_list, sr, sense_term, data_term)
+                l_task.append(task)
+                _logger.debug("task: {0}".format(sense_term))
+        self._mproc.add_from(l_task)
+        self._mproc.join()
+        import queue
+        try:
+            l_sr = [self._mproc.get(True, 1) for _ in l_task]
+        except queue.Empty:
+            import pdb; pdb.set_trace()
+        self._mproc.is_clean()
+        _logger.debug("calculating feature {0} done".format(feature_def))
+
+        ret = pd.DataFrame(pd.concat(l_sr, axis=0), dtype=int)
         ret.columns = self.fields
         return ret
 
@@ -365,10 +476,6 @@ class SNMPEventLoader(evgen_common.EventLoader):
         self.evdb.add(measure, tags, data, fields)
         self.evdb.commit()
 
-    def dump_feature(self, measure, tags, df):
-        return self.dump(measure, tags, df[df > 0].dropna(),
-                         fields=self.fields)
-
     def all_feature(self):
         return list(self._d_feature.keys())
 
@@ -380,7 +487,8 @@ class SNMPEventLoader(evgen_common.EventLoader):
         # for read_source
         if self._srcdb == "influx":
             tags = self._seriesdef2tags(seriesdef)
-            return self.load_orgdf(sourcename, tags, dt_range)
+            ut_range = tuple(dt.timestamp() for dt in dt_range)
+            return self.source.get_df(sourcename, tags, None, ut_range)
         else:
             assert seriesdef.get("type", "source") == "source"
             ret_df = None
@@ -411,3 +519,7 @@ class SNMPEventLoader(evgen_common.EventLoader):
     @staticmethod
     def instruction(evdef):
         return str(evdef)
+
+    def terminate(self):
+        self._close_mproc_manager()
+

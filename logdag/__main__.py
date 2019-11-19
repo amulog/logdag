@@ -305,6 +305,10 @@ OPT_DIRNAME = [["-d", "--dirname"],
                {"dest": "dirname", "metavar": "DIRNAME", "action": "store",
                 "default": ".",
                 "help": "directory name for output"}]
+OPT_THRESHOLD = [["-t", "--threshold"],
+                 {"dest": "threshold", "metavar": "THRESHOLD", "action": "store",
+                  "type": float, "default": None,
+                  "help": "threshold for filter ate_prune"}]
 OPT_GID = [["-g", "--gid"],
            {"dest": "gid", "metavar": "GID", "action": "store",
             "type": int, "default": None,
@@ -392,7 +396,7 @@ DICT_ARGSET = {
                           ARG_ARGNAME],
                          show_edge_detail],
     "show-list": ["Show abstracted results of DAG generation",
-                  [OPT_CONFIG, OPT_DEBUG, OPT_GROUPBY],
+                  [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_GROUPBY],
                   show_list],
     "show-stats": ["Show sum of nodes and edges",
                    [OPT_CONFIG, OPT_DEBUG],
@@ -404,7 +408,7 @@ DICT_ARGSET = {
                           [OPT_CONFIG, OPT_DEBUG],
                           show_netsize_list],
     "plot-dag": ["Generate causal DAG view",
-                 [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME,
+                 [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME, OPT_THRESHOLD,
                   ARG_ARGNAME, ARG_FILTER],
                  plot_dag],
 }

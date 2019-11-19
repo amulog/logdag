@@ -20,15 +20,21 @@ DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
 def open_config(ns):
     from logdag import arguments
     conf = config.open_config(ns.conf_path, ex_defaults=[arguments.DEFAULT_CONFIG])
-    config.set_common_logging(conf, logger_name=[__package__],
-                              lv=logging.INFO)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger_name=[__package__, "amulog"],
+                              lv=lv)
     return conf
 
 
-def _iter_evdb_term(conf):
-    w_term = config.getterm(conf, "general", "evdb_whole_term")
-    term = config.getdur(conf, "general", "evdb_unit_term")
-    return dtutil.iter_term(w_term, term)
+def _whole_term(conf):
+    return config.getterm(conf, "general", "evdb_whole_term")
+
+
+# def _iter_evdb_term(conf):
+#     # TODO to be removed
+#     w_term = config.getterm(conf, "general", "evdb_whole_term")
+#     term = config.getdur(conf, "general", "evdb_unit_diff")
+#     return dtutil.iter_term(w_term, term)
 
 
 def make_evdb_log_all(ns):
@@ -38,31 +44,50 @@ def make_evdb_log_all(ns):
 
     from . import evgen_log
     el = evgen_log.LogEventLoader(conf, dry=dry)
-    for term in _iter_evdb_term(conf):
-        el.read(term, dump_org=dump_org)
+    el.store_all(_whole_term(conf), dump_org=dump_org)
 
 
 def make_evdb_snmp_all(ns):
     conf = open_config(ns)
     dump_org = ns.org
     dry = ns.dry
+    parallel = ns.parallel
 
     from . import evgen_snmp
-    el = evgen_snmp.SNMPEventLoader(conf, dry=dry)
-    for term in _iter_evdb_term(conf):
-        el.store_all(term, dump_org=dump_org)
+    el = evgen_snmp.SNMPEventLoader(conf, parallel=parallel, dry=dry)
+    try:
+        el.store_all(_whole_term(conf), dump_org=dump_org)
+    except KeyboardInterrupt as e:
+        el.terminate()
 
 
 def make_evdb_snmp(ns):
     conf = open_config(ns)
     dump_org = ns.org
     dry = ns.dry
+    parallel = ns.parallel
     feature_name = ns.feature_name
 
     from . import evgen_snmp
-    el = evgen_snmp.SNMPEventLoader(conf, dry=dry)
-    for term in _iter_evdb_term(conf):
-        el.store_feature(feature_name, term, dump_org=dump_org)
+    el = evgen_snmp.SNMPEventLoader(conf, parallel=parallel, dry=dry)
+    try:
+        el.store_feature(feature_name, _whole_term(conf), dump_org=dump_org)
+    except KeyboardInterrupt as e:
+        el.terminate()
+
+
+def make_evdb_snmp_org(ns):
+    conf = open_config(ns)
+    dump_vsource_org = ns.org
+    dry = ns.dry
+    parallel = ns.parallel
+
+    from . import evgen_snmp
+    el = evgen_snmp.SNMPEventLoader(conf, parallel=parallel, dry=dry)
+    try:
+        el.store_all_source(_whole_term(conf), dump_vsource_org)
+    except KeyboardInterrupt as e:
+        el.terminate()
 
 
 def drop_features(ns):
@@ -86,6 +111,10 @@ OPT_CONFIG = [["-c", "--config"],
               {"dest": "conf_path", "metavar": "CONFIG", "action": "store",
                "default": None,
                "help": "configuration file path for amulog"}]
+OPT_PARALLEL = [["-p", "--parallel"],
+                {"dest": "parallel", "metavar": "PARALLEL", "action": "store",
+                 "default": 1, "type": int,
+                 "help": "parallel processing for calculating features"}]
 OPT_ORG = [["-o", "--org"],
            {"dest": "org", "action": "store_true",
             "help": "output original data to evdb"}]
@@ -100,18 +129,21 @@ ARG_ARGNAME = [["argname"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "make-evdb-log-all": ["Load log data from amulog and output features",
-                      [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY],
-                      make_evdb_log_all],
-    "make-evdb-snmp-all": ["Load telemetry data from rrd and output features",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY],
-                       make_evdb_snmp_all],
-    "make-evdb-snmp": ["Load telemetry data from rrd and output features",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY,
+    "make-evdb-log-all": ["Load log data from amulog and store features",
+                          [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY],
+                          make_evdb_log_all],
+    "make-evdb-snmp-all": ["Load telemetry data from rrd and store features",
+                           [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL,],
+                           make_evdb_snmp_all],
+    "make-evdb-snmp": ["Load telemetry data from rrd and store features",
+                       [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL,
                         [["feature_name"],
                          {"metavar": "FEATURE", "action": "store",
                           "help": "feature name"}]],
                        make_evdb_snmp],
+    "make-evdb-snmp-org": ["Load telemetry data from rrd and store",
+                           [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL],
+                           make_evdb_snmp_org],
     "drop-features": ["Drop feature data (except original data) in feature DB",
                       [OPT_CONFIG, OPT_DEBUG, OPT_ORG,
                        [["sources"],
@@ -125,7 +157,7 @@ USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
                             for key, val in sorted(DICT_ARGSET.items())])
 USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
          "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
-    "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0])
+        "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0])
 
 if __name__ == "__main__":
     if len(sys.argv) < 1:
@@ -136,11 +168,9 @@ if __name__ == "__main__":
     commandline = sys.argv[2:]
 
     desc, l_argset, func = DICT_ARGSET[mode]
-    ap = argparse.ArgumentParser(prog = " ".join(sys.argv[0:2]),
-                                 description = desc)
+    ap = argparse.ArgumentParser(prog=" ".join(sys.argv[0:2]),
+                                 description=desc)
     for args, kwargs in l_argset:
         ap.add_argument(*args, **kwargs)
-    ns = ap.parse_args(commandline)
-    func(ns)
-
-
+    command_ns = ap.parse_args(commandline)
+    func(command_ns)

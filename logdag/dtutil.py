@@ -42,11 +42,13 @@ def range_dt(dts, dte, interval):
         list of datetime.datetime
     """
 
+    tzinfo = dts.tzinfo
     tmp = np.arange(dts.timestamp(), dte.timestamp(), interval.total_seconds())
-    return [datetime.datetime.fromtimestamp(ut) for ut in tmp]
+    return [datetime.datetime.fromtimestamp(ut).replace(tzinfo=tzinfo)
+            for ut in tmp]
 
-    # temp_dt = dt_range[0]
-    # while temp_dt < dt_range[1] or (include_end is True and temp_dt == dt_range[1]):
+    #temp_dt = dt_range[0]
+    #while temp_dt < dt_range[1] or (include_end is True and temp_dt == dt_range[1]):
     #    yield temp_dt
     #    temp_dt = temp_dt + interval
 

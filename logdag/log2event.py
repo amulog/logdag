@@ -64,14 +64,14 @@ class EventDefinitionMap(object):
     def add_evdef(self, evdef):
         eid = self._next_eid()
         self._emap[eid] = evdef
-        self._ermap[evdef] = eid
+        self._ermap[str(evdef)] = eid
         return eid
 
     def has_eid(self, eid):
         return eid in self._emap
 
     def has_evdef(self, evdef):
-        return evdef in self._ermap
+        return str(evdef) in self._ermap
 
     def evdef(self, eid):
         return self._emap[eid]
@@ -79,14 +79,15 @@ class EventDefinitionMap(object):
     def items(self):
         return self._emap.items()
 
-    def get_eid(self, info):
-        return self._ermap[info]
+    def get_eid(self, evdef):
+        return self._ermap[str(evdef)]
 
     def iter_eid(self):
         return self._emap.keys()
 
     def iter_evdef(self):
-        return self._ermap.keys()
+        for eid in self.iter_eid():
+            yield self._emap[eid]
 
     def dump(self, args):
         fp = arguments.ArgumentManager.evdef_filepath(args)

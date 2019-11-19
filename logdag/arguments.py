@@ -162,6 +162,11 @@ def open_logdag_config(ns):
     return conf
 
 
+def open_amulog_config(conf):
+    conf_fn = conf["database_amulog"]["source_conf"]
+    return config.open_config(conf_fn)
+
+
 def all_args(conf):
     amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
     from amulog import log_db

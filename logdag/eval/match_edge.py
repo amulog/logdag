@@ -13,7 +13,7 @@ def separate_args(conf, tr):
     am = arguments.ArgumentManager(conf)
     am.load()
     from amulog import log_db
-    ld = log_db.LogData(conf)
+    ld = log_db.LogData(arguments.open_amulog_config(conf))
 
     d_args = defaultdict(list)
     for lid in tr.data["message"]:
@@ -25,12 +25,12 @@ def separate_args(conf, tr):
             for name, l_lm in d_args.items()]
 
 
-def match_edges(conf, tr, rule = "all", cond = None):
+def match_edges(conf, tr, rule="all", cond=None):
 
-    def _match_edge(input_evdef, edgeinfo, rule):
-        src_evdef, dst_evdef = edgeinfo
-        src_bool = src_evdef in input_evdef
-        dst_bool = dst_evdef in input_evdef
+    def _match_edge(s_evdef, edge_evdef, rule):
+        src_evdef, dst_evdef = edge_evdef
+        src_bool = str(src_evdef) in s_evdef
+        dst_bool = str(dst_evdef) in s_evdef
 
         if rule == "all":
             return src_bool or dst_bool
@@ -41,26 +41,29 @@ def match_edges(conf, tr, rule = "all", cond = None):
         else:
             raise ValueError
 
-    def _pass_condition(edgeinfo, cond):
+    def _pass_condition(edge_evdef, cond):
         if cond is None:
             return True
         elif cond == "xhost":
-            src_evdef, dst_evdef = edgeinfo
+            src_evdef, dst_evdef = edge_evdef
             return not src_evdef.host == dst_evdef.host
         else:
             raise NotImplementedError
 
-    def _lm2ev(l_lm, gid_name):
-        d = defaultdict(list)
-        for lm in l_lm:
-            gid = lm.lt.get(gid_name)
-            host = lm.host
-            d[(gid, host)].append(lm)
-        return d
+    def _lm2ev(lm, gid_name):
+        gid = lm.lt.get(gid_name)
+        d = {"source": "log",
+             "gid": gid,
+             "host": lm.host,
+             "group": al.label(gid)}
+        return evgen_log.LogEventDefinition(**d)
 
-    from amulog import log_db
-    ld = log_db.LogData(conf)
-    gid_name = conf.get("dag", "event_gid")
+    from amulog import config
+    from logdag.source import source_amulog
+    from logdag.source import evgen_log
+    dt_range = config.getterm(conf, "dag", "whole_term")
+    al = source_amulog.init_amulogloader(conf, dt_range)
+    gid_name = conf.get("database_amulog", "event_gid")
 
     d = defaultdict(list)
     for args, l_lm in separate_args(conf, tr):
@@ -68,14 +71,15 @@ def match_edges(conf, tr, rule = "all", cond = None):
         r.load()
         g = r.graph.to_undirected()
         for edge in g.edges():
-            edgeinfo = r.edge_evdef(edge)
-            if not _pass_condition(edgeinfo, cond):
+            edevdef = r.edge_evdef(edge)
+            if not _pass_condition(edevdef, cond):
                 continue
-            l_evdef = [evdef for evdef in _lm2ev(l_lm, gid_name).keys()]
-            if _match_edge(l_evdef, edgeinfo, rule):
+
+            s_evdef = {str(_lm2ev(lm, gid_name)) for lm in l_lm}
+            if _match_edge(s_evdef, edevdef, rule):
                 d[r.name].append(edge)
 
     return d
 
 
-
+# TODO log and snmp match
