@@ -15,8 +15,13 @@ from amulog import common
 _logger = logging.getLogger(__package__)
 
 
+def open_logdag_config(ns):
+    from logdag import arguments
+    return arguments.open_logdag_config(ns.conf_path, debug=ns.debug)
+
+
 def search_gid(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     gid = ns.gid
 
     from . import edge_search

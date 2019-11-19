@@ -5,10 +5,12 @@
 from collections import defaultdict
 
 from logdag import showdag
-from logdag.eval import trouble
 
 
 def separate_args(conf, tr):
+    """Some troubles appear among multiple days.
+    This function separates DAG arguments and corresponding logs.
+    """
     from logdag import arguments
     am = arguments.ArgumentManager(conf)
     am.load()
@@ -25,21 +27,27 @@ def separate_args(conf, tr):
             for name, l_lm in d_args.items()]
 
 
+def _match_edge(s_evdef, edge_evdef, rule):
+    src_evdef, dst_evdef = edge_evdef
+    src_bool = str(src_evdef) in s_evdef
+    dst_bool = str(dst_evdef) in s_evdef
+
+    if rule == "all":
+        return src_bool or dst_bool
+    elif rule == "both":
+        return src_bool and dst_bool
+    elif rule == "either":
+        return (src_bool or dst_bool) and not (src_bool and dst_bool)
+    elif rule == "log-snmp":
+        from logdag import log2event
+        src_bool_snmp = (src_evdef.source == log2event.SRCCLS_SNMP)
+        dst_bool_snmp = (dst_evdef.source == log2event.SRCCLS_SNMP)
+        return (src_bool and dst_bool_snmp) or (src_bool_snmp and dst_bool)
+    else:
+        raise ValueError
+
+
 def match_edges(conf, tr, rule="all", cond=None):
-
-    def _match_edge(s_evdef, edge_evdef, rule):
-        src_evdef, dst_evdef = edge_evdef
-        src_bool = str(src_evdef) in s_evdef
-        dst_bool = str(dst_evdef) in s_evdef
-
-        if rule == "all":
-            return src_bool or dst_bool
-        elif rule == "both":
-            return src_bool and dst_bool
-        elif rule == "either":
-            return (src_bool or dst_bool) and not (src_bool and dst_bool)
-        else:
-            raise ValueError
 
     def _pass_condition(edge_evdef, cond):
         if cond is None:
@@ -80,6 +88,3 @@ def match_edges(conf, tr, rule="all", cond=None):
                 d[r.name].append(edge)
 
     return d
-
-
-# TODO log and snmp match

@@ -40,14 +40,30 @@ class LogDAG():
         return self._d_el
 
     def dump(self):
-        fp = arguments.ArgumentManager.dag_filepath(self.args)
-        with open(fp, 'wb') as f:
-            pickle.dump(self.graph, f)
+        dag_format = self.conf["dag"]["output_dag_format"]
+        fp = arguments.ArgumentManager.dag_path(self.conf, self.args,
+                                                ext=dag_format)
+        if dag_format == "pickle":
+            with open(fp, 'wb') as f:
+                pickle.dump(self.graph, f)
+        elif dag_format == "json":
+            import json
+            with open(fp, 'w', encoding='utf-8') as f:
+                obj = nx.node_link_data(self.graph)
+                json.dump(obj, f)
 
     def load(self):
-        fp = arguments.ArgumentManager.dag_filepath(self.args)
-        with open(fp, 'rb') as f:
-            self.graph = pickle.load(f)
+        dag_format = self.conf["dag"]["output_dag_format"]
+        fp = arguments.ArgumentManager.dag_path(self.conf, self.args,
+                                                ext=dag_format)
+        if dag_format == "pickle":
+            with open(fp, 'rb') as f:
+                self.graph = pickle.load(f)
+        elif dag_format == "json":
+            import json
+            with open(fp, 'r', encoding='utf-8') as f:
+                obj = json.load(f)
+                self.graph = nx.node_link_graph(obj)
 
     def number_of_nodes(self, graph=None):
         if graph is None:

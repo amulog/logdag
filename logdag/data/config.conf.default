@@ -207,6 +207,7 @@ evmap_dir =
 
 # Found DAG object data
 output_dir = pc_output
+output_dag_format = pickle
 
 
 [pc_prune]

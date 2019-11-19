@@ -17,38 +17,34 @@ DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
                            "data/loader.conf.default"))
 
 
-def open_config(ns):
+def open_logdag_config(ns):
     from logdag import arguments
-    conf = config.open_config(ns.conf_path, ex_defaults=[arguments.DEFAULT_CONFIG])
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger_name=[__package__, "amulog"],
-                              lv=lv)
-    return conf
+    return arguments.open_logdag_config(ns.conf_path, debug=ns.debug)
 
 
 def _whole_term(conf):
     return config.getterm(conf, "general", "evdb_whole_term")
 
 
-# def _iter_evdb_term(conf):
-#     # TODO to be removed
-#     w_term = config.getterm(conf, "general", "evdb_whole_term")
-#     term = config.getdur(conf, "general", "evdb_unit_diff")
-#     return dtutil.iter_term(w_term, term)
+def _iter_evdb_term(conf):
+    w_term = config.getterm(conf, "general", "evdb_whole_term")
+    term = config.getdur(conf, "general", "evdb_unit_diff")
+    return dtutil.iter_term(w_term, term)
 
 
 def make_evdb_log_all(ns):
-    conf = open_config(ns)
+    conf = open_logdag_config(ns)
     dump_org = ns.org
     dry = ns.dry
 
     from . import evgen_log
     el = evgen_log.LogEventLoader(conf, dry=dry)
-    el.store_all(_whole_term(conf), dump_org=dump_org)
+    for dt_range in _iter_evdb_term(conf):
+        el.read(dt_range, dump_org=dump_org)
 
 
 def make_evdb_snmp_all(ns):
-    conf = open_config(ns)
+    conf = open_logdag_config(ns)
     dump_org = ns.org
     dry = ns.dry
     parallel = ns.parallel
@@ -62,7 +58,7 @@ def make_evdb_snmp_all(ns):
 
 
 def make_evdb_snmp(ns):
-    conf = open_config(ns)
+    conf = open_logdag_config(ns)
     dump_org = ns.org
     dry = ns.dry
     parallel = ns.parallel
@@ -77,7 +73,7 @@ def make_evdb_snmp(ns):
 
 
 def make_evdb_snmp_org(ns):
-    conf = open_config(ns)
+    conf = open_logdag_config(ns)
     dump_vsource_org = ns.org
     dry = ns.dry
     parallel = ns.parallel
@@ -91,7 +87,7 @@ def make_evdb_snmp_org(ns):
 
 
 def drop_features(ns):
-    conf = open_config(ns)
+    conf = open_logdag_config(ns)
     sources = ns.sources
     if sources is None:
         from . import evgen_common

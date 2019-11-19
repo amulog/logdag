@@ -89,14 +89,14 @@ class EventDefinitionMap(object):
         for eid in self.iter_eid():
             yield self._emap[eid]
 
-    def dump(self, args):
-        fp = arguments.ArgumentManager.evdef_filepath(args)
+    def dump(self, conf, args):
+        fp = arguments.ArgumentManager.evdef_path(conf, args)
         obj = (self._emap, self._ermap)
         with open(fp, "wb") as f:
             pickle.dump(obj, f)
 
-    def load(self, args):
-        fp = arguments.ArgumentManager.evdef_filepath(args)
+    def load(self, conf, args):
+        fp = arguments.ArgumentManager.evdef_path(conf, args)
         with open(fp, "rb") as f:
             obj = pickle.load(f)
         self._emap, self._ermap = obj

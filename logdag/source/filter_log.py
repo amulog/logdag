@@ -17,22 +17,22 @@ class LogFilter():
     """Filter log time-series and record their periodicity."""
 
     defaults = {"pre_count": 5,
-                "pre_term": datetime.timedelta(hours = 6),
-                "fourier_sample_rule": [(datetime.timedelta(days = 1),
-                                         datetime.timedelta(seconds = 10)),
-                                        (datetime.timedelta(days = 7),
-                                         datetime.timedelta(minutes = 1)),],
+                "pre_term": datetime.timedelta(hours=6),
+                "fourier_sample_rule": [(datetime.timedelta(days=1),
+                                         datetime.timedelta(seconds=10)),
+                                        (datetime.timedelta(days=7),
+                                         datetime.timedelta(minutes=1)), ],
                 "fourier_th_spec": 0.4,
                 "fourier_th_eval": 0.1,
                 "fourier_th_restore": 0.5,
                 "fourier_peak_order": 200,
-                "corr_sample_rule": [(datetime.timedelta(days = 1),
-                                      datetime.timedelta(seconds = 10)),],
+                "corr_sample_rule": [(datetime.timedelta(days=1),
+                                      datetime.timedelta(seconds=10)), ],
                 "corr_th": 0.5,
-                "corr_diff": [datetime.timedelta(hours = 1),
-                              datetime.timedelta(days = 1),],
-                "linear_sample_rule": [(datetime.timedelta(days = 1),
-                                        datetime.timedelta(seconds = 10)),],
+                "corr_diff": [datetime.timedelta(hours=1),
+                              datetime.timedelta(days=1), ],
+                "linear_sample_rule": [(datetime.timedelta(days=1),
+                                        datetime.timedelta(seconds=10)), ],
                 "linear_count": 10,
                 "linear_th": 0.5,
                 }
@@ -62,10 +62,10 @@ class LogFilter():
         elif dt_length > sample_dt_length:
             new_dt_range = (dt_range[1] - sample_dt_length, dt_range[1])
             new_l_dt = [dt >= new_dt_range[0] for dt in l_dt]
-            return new_lt_dt
+            return new_l_dt
         else:
             add_dt_range = (dt_range[1] - sample_dt_length, dt_range[0])
-            add_dt = self._source.load(evdef, dt_range = add_dt_range)
+            add_dt = self._source.load(evdef, dt_range=add_dt_range)
             return sorted(add_dt + l_dt)
 
     @staticmethod
@@ -78,13 +78,13 @@ class LogFilter():
                 dt = top_dt + i * binsize
                 l_dt += [dt] * int(val)
         return l_dt
-        #return [top_dt + i * binsize for i, val in enumerate(a_cnt) if val > 0]
+        # return [top_dt + i * binsize for i, val in enumerate(a_cnt) if val > 0]
 
     def filter_periodic(self, l_dt, dt_range, evdef):
         for sample_dt_length, binsize in self._fourier_sample_rule:
             tmp_l_dt = self._resize_input(l_dt, dt_range, sample_dt_length, evdef)
             a_cnt = dtutil.discretize_sequential(tmp_l_dt, dt_range,
-                                                 binsize, binarize = False)
+                                                 binsize, binarize=False)
             args = (a_cnt, binsize, self._fourier_th_spec,
                     self._fourier_th_eval, self._fourier_th_restore,
                     self._fourier_peak_order)
@@ -100,7 +100,7 @@ class LogFilter():
         for sample_dt_length, binsize in self._fourier_sample_rule:
             tmp_l_dt = self._resize_input(l_dt, dt_range, sample_dt_length, evdef)
             a_cnt = dtutil.discretize_sequential(tmp_l_dt, dt_range,
-                                                 binsize, binarize = False)
+                                                 binsize, binarize=False)
             args = (a_cnt, binsize, self._fourier_th_spec,
                     self._fourier_th_eval, self._fourier_peak_order)
             is_periodic, interval = period.fourier_remove(*args)
@@ -115,9 +115,9 @@ class LogFilter():
         for sample_dt_length, binsize in self._corr_sample_rule:
             tmp_l_dt = self._resize_input(l_dt, dt_range, sample_dt_length, evdef)
             a_cnt = dtutil.discretize_sequential(tmp_l_dt, dt_range,
-                                                 binsize, binarize = False)
+                                                 binsize, binarize=False)
             args = (a_cnt, binsize, self._corr_th, self._corr_diff)
-            is_periodic, interval = period.periodic_corr(*args) 
+            is_periodic, interval = period.periodic_corr(*args)
             if is_periodic:
                 l = ("remove_corr", (sample_dt_length, binsize), interval)
                 self._log[(dt_range, evdef)] = l
@@ -141,7 +141,7 @@ class LogFilter():
                 assert cnt < len(a_stat)
                 a_stat[cnt:] += 1
 
-            a_linear = np.linspace(0, len(l_dt), bins, endpoint = False)
+            a_linear = np.linspace(0, len(l_dt), bins, endpoint=False)
             val = sum((a_stat - a_linear) ** 2) / (bins * len(l_dt))
             if val < self._linear_th:
                 l = ("remove_linear", (sample_dt_length, binsize), None)
@@ -149,6 +149,7 @@ class LogFilter():
                 return None
         else:
             return l_dt
+
 
 def init_logfilter(conf, source):
     kwargs = dict(conf["filter"])
@@ -179,4 +180,3 @@ def init_logfilter(conf, source):
     kwargs["linear_th"] = conf.getfloat("filter", "linear_th")
 
     return LogFilter(source, **kwargs)
-

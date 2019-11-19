@@ -13,8 +13,13 @@ from logdag import arguments
 _logger = logging.getLogger(__package__)
 
 
+def open_logdag_config(ns):
+    from logdag import arguments
+    return arguments.open_logdag_config(ns.conf_path, debug=ns.debug)
+
+
 def add_trouble(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import trouble
     dirname = conf.get("eval", "path")
@@ -25,7 +30,7 @@ def add_trouble(ns):
 
 
 def add_lids(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import trouble
     dirname = conf.get("eval", "path")
@@ -35,7 +40,7 @@ def add_lids(ns):
 
 
 def add_lids_stdin(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import trouble
     dirname = conf.get("eval", "path")
@@ -46,7 +51,7 @@ def add_lids_stdin(ns):
 
 
 def label_trouble(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import trouble
     dirname = conf.get("eval", "path")
@@ -56,7 +61,7 @@ def label_trouble(ns):
 
 
 def list_trouble(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import trouble
     dirname = conf.get("eval", "path")
@@ -67,7 +72,7 @@ def list_trouble(ns):
 
 
 def list_group(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     from . import trouble
     dirname = conf.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
@@ -90,7 +95,7 @@ def list_group(ns):
 
 
 def show_lids(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     tid = ns.tid
 
     from . import trouble
@@ -103,7 +108,7 @@ def show_lids(ns):
 
 
 def show_trouble(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     tid = ns.tid
 
     from . import trouble
@@ -118,7 +123,7 @@ def show_trouble(ns):
 
 
 def show_trouble_info(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     tid = ns.tid
 
     from . import trouble
@@ -146,7 +151,7 @@ def show_trouble_info(ns):
 
 
 def list_trouble_label(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     from . import trouble
     dirname = conf.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
@@ -169,7 +174,7 @@ def list_trouble_label(ns):
 
 
 def list_trouble_stat(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     from . import trouble
     dirname = conf.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
@@ -207,7 +212,7 @@ def list_trouble_stat(ns):
 
 
 def show_match(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     from . import trouble
     dirname = conf.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
@@ -227,7 +232,7 @@ def show_match(ns):
 
 
 def show_match_all(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     from . import trouble
     dirname = conf.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
@@ -291,7 +296,7 @@ def show_match_diff(ns):
 
 
 def show_match_info(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     from . import trouble
     dirname = conf.get("eval", "path")
     tm = trouble.TroubleManager(dirname)
@@ -321,7 +326,7 @@ def show_match_info(ns):
 
 
 def search_trouble(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     d = parse_condition(ns.conditions)
     from . import trouble
     dirname = conf.get("eval", "path")

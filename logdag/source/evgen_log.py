@@ -66,6 +66,8 @@ class LogEventLoader(evgen_common.EventLoader):
             raise NotImplementedError
 
         self._lf = filter_log.init_logfilter(conf, self.source)
+        self._feature_unit_diff = config.getdur(conf,
+                                                "general", "evdb_unit_diff")
 
     def _evdef(self, host, gid, group):
         d = {"source": log2event.SRCCLS_LOG,
@@ -81,6 +83,7 @@ class LogEventLoader(evgen_common.EventLoader):
             tmp_l_dt = getattr(self._lf, method)(*args)
             if method == "sizetest" and tmp_l_dt is None:
                 # sizetest failure means skipping later tests
+                # and leave all events
                 return l_dt
             elif tmp_l_dt is None or len(tmp_l_dt) == 0:
                 msg = "event {0} removed with {1}".format(ev, method)

@@ -26,7 +26,7 @@ def makedag_main(args):
     # d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
     input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
     _logger.info("{0} pc input shape: {1}".format(jobname, input_df.shape))
-    evmap.dump(args)
+    evmap.dump(conf, args)
     timer.lap("load-nodes")
 
     node_ids = evmap.eids()
@@ -52,7 +52,7 @@ def makedag_main(args):
     ldag = showdag.LogDAG(args, graph)
     ldag.dump()
     _logger.info("makedag job ({0}) output {1}".format(
-        jobname, arguments.ArgumentManager.dag_filepath(args)))
+        jobname, arguments.ArgumentManager.dag_path(conf, args)))
     timer.stop()
     return ldag
 
@@ -65,7 +65,7 @@ def makedag_prune_test(args):
     binarize = is_binarize(ci_func)
     input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
     _logger.info("pc input shape: {0}".format(input_df.shape))
-    evmap.dump(args)
+    evmap.dump(conf, args)
 
     node_ids = evmap.eids()
     g = _complete_graph(node_ids)

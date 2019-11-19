@@ -13,9 +13,14 @@ _logger = logging.getLogger(__package__)
 SUBLIB = ["source", "visual", "eval", "label"]
 
 
+def open_logdag_config(ns):
+    from . import arguments
+    return arguments.open_logdag_config(ns.conf_path, debug=ns.debug)
+
+
 def test_makedag(ns):
     from . import makedag
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -25,7 +30,7 @@ def test_makedag(ns):
 
 def make_tsdb(ns):
     from . import tsdb
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     term = config.getdur(conf, "database_ts", "unit_term")
     diff = config.getdur(conf, "database_ts", "unit_diff")
     l_args = arguments.all_terms(conf, term, diff)
@@ -44,12 +49,12 @@ def make_tsdb(ns):
 
 def reload_area(ns):
     from . import tsdb
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     tsdb.reload_area(conf)
 
 
 def make_args(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -75,7 +80,7 @@ def make_dag(ns):
             pool.map(makedag.makedag_main, am)
         timer.stop()
 
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.generate(arguments.all_args)
@@ -92,7 +97,7 @@ def make_dag(ns):
 def make_dag_stdin(ns):
     from . import makedag
 
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.init_dirs(conf)
@@ -107,21 +112,21 @@ def make_dag_stdin(ns):
 
 # def show_event(ns):
 #    from . import tsdb
-#    conf = arguments.open_logdag_config(ns)
+#    conf = open_logdag_config(ns)
 #    d = parse_condition(ns.conditions)
 #    print(tsdb.show_event(conf, **d))
 #
 #
 # def show_ts(ns):
 #    from . import tsdb
-#    conf = arguments.open_logdag_config(ns)
+#    conf = open_logdag_config(ns)
 #    d = parse_condition(ns.conditions)
 #    print(tsdb.show_ts(conf, **d))
 #
 #
 # def show_ts_compare(ns):
 #    from . import tsdb
-#    conf = arguments.open_logdag_config(ns)
+#    conf = open_logdag_config(ns)
 #    d = parse_condition(ns.conditions)
 #    print(tsdb.show_ts_compare(conf, **d))
 
@@ -129,7 +134,7 @@ def make_dag_stdin(ns):
 def make_dag_prune(ns):
     from . import makedag
 
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     am.init_dirs(conf)
@@ -144,13 +149,13 @@ def make_dag_prune(ns):
 
 # def show_filterlog(ns):
 #    from . import tsdb
-#    conf = arguments.open_logdag_config(ns)
+#    conf = open_logdag_config(ns)
 #    d = parse_condition(ns.conditions)
 #    print(tsdb.show_filterlog(conf, **d))
 
 
 def show_args(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
     try:
@@ -164,7 +169,7 @@ def show_args(ns):
 
 def show_edge_list(ns):
     from . import showdag
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     args = arguments.name2args(ns.argname, conf)
 
     l_buf = []
@@ -178,7 +183,7 @@ def show_edge_list(ns):
 
 def show_edge_detail(ns):
     from . import showdag
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
     args = arguments.name2args(ns.argname, conf)
     head = ns.head
     tail = ns.tail
@@ -188,7 +193,7 @@ def show_edge_detail(ns):
 
 def show_list(ns):
     from . import showdag
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     l_func = [lambda r: r.graph.number_of_nodes(),
               lambda r: r.graph.number_of_edges()]
@@ -201,7 +206,7 @@ def show_list(ns):
 def show_stats(ns):
     import numpy as np
     from . import showdag
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     msg = ["number of events (nodes)",
            "number of directed edges",
@@ -224,14 +229,14 @@ def show_stats(ns):
 
 def show_netsize(ns):
     from . import showdag
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     print(showdag.show_netsize_dist(conf))
 
 
 def show_netsize_list(ns):
     from . import showdag
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     print(showdag.list_netsize(conf))
 
@@ -239,7 +244,7 @@ def show_netsize_list(ns):
 def plot_dag(ns):
     from . import showdag
     # from . import showdag_filter
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     args = arguments.name2args(ns.argname, conf)
     output = ns.filename

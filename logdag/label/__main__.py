@@ -14,8 +14,13 @@ from amulog import common
 _logger = logging.getLogger(__package__)
 
 
+def open_logdag_config(ns):
+    from logdag import arguments
+    return arguments.open_logdag_config(ns.conf_path, debug=ns.debug)
+
+
 def count_ts_label(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import tslabel
     d_cnt = tslabel.count_ts_label(conf, agg_group = True)
@@ -25,7 +30,7 @@ def count_ts_label(ns):
 
 
 def count_event_label(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import tslabel
     d_cnt = tslabel.count_event_label(conf, agg_group = True)
@@ -35,7 +40,7 @@ def count_event_label(ns):
 
 
 def count_node_label(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import edgelabel
     d_cnt = edgelabel.count_node_label(conf)
@@ -45,7 +50,7 @@ def count_node_label(ns):
 
 
 def count_edge_label(ns):
-    conf = arguments.open_logdag_config(ns)
+    conf = open_logdag_config(ns)
 
     from . import edgelabel
     d_cnt = edgelabel.count_edge_label(conf)

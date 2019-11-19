@@ -15,14 +15,20 @@ _amulog_logger = logging.getLogger("amulog")
 
 
 class ArgumentManager(object):
+    _args_filename = "args"
 
     def __init__(self, conf):
-        self.conf = conf
-        self.args_filename = conf.get("dag", "args_fn")
+        self._conf = conf
+        output_dir = self._output_dir(conf)
+        common.mkdir(output_dir)
+        self.args_path = "{0}/{1}".format(output_dir,
+                                          self._args_filename)
         self.l_args = []
-        if self.args_filename.strip() == "":
-            confname = conf.get("general", "base_filename").split("/")[-1]
-            self.args_filename = "args_{0}".format(confname)
+        # self.args_filename = conf.get("dag", "args_fn")
+        # self.l_args = []
+        # if self.args_filename.strip() == "":
+        #    confname = conf.get("general", "base_filename").split("/")[-1]
+        #    self.args_filename = "args_{0}".format(confname)
 
     def __iter__(self):
         return self.l_args.__iter__()
@@ -34,7 +40,7 @@ class ArgumentManager(object):
         return len(self.l_args)
 
     def generate(self, func):
-        self.l_args = func(self.conf)
+        self.l_args = func(self._conf)
 
     def add(self, args):
         self.l_args.append(args)
@@ -51,40 +57,37 @@ class ArgumentManager(object):
     def args_from_time(self, dt):
         for args in self.l_args:
             dts, dte = args[1]
-            if dts <= dt and dt < dte:
+            if dts <= dt < dte:
                 yield args
 
     def show(self):
-        table = []
-        table.append(["name", "datetime", "area"])
+        table = [["name", "datetime", "area"]]
         for args in self.l_args:
             conf, dt_range, area = args
-            temp = []
-            temp.append(self.jobname(args))
-            temp.append("{0} - {1}".format(dt_range[0], dt_range[1]))
-            temp.append(area)
+            temp = [self.jobname(args),
+                    "{0} - {1}".format(dt_range[0], dt_range[1]), area]
             table.append(temp)
-        return common.cli_table(table, spl = " | ")
+        return common.cli_table(table, spl=" | ")
 
     def dump(self):
-        with open(self.args_filename, 'w') as f:
+        with open(self.args_path, 'w') as f:
             f.write("\n".join([self.jobname(args) for args in self.l_args]))
 
     def load(self):
         self.l_args = []
-        with open(self.args_filename, 'r') as f:
+        with open(self.args_path, 'r') as f:
             for line in f:
-                args = self.jobname2args(line.rstrip(), self.conf)
+                args = self.jobname2args(line.rstrip(), self._conf)
                 self.l_args.append(args)
 
     @staticmethod
     def jobname(args):
-        def dt_filename(dt_range):
-            top_dt, end_dt = dt_range
-            if dtutil.is_intdate(top_dt) and dtutil.is_intdate(end_dt):
-                return top_dt.strftime("%Y%m%d")
+        def dt_filename(tmp_dt_range):
+            dts, dte = tmp_dt_range
+            if dtutil.is_intdate(dts) and dtutil.is_intdate(dte):
+                return dts.strftime("%Y%m%d")
             else:
-                return top_dt.strftime("%Y%m%d_%H%M%S")
+                return dts.strftime("%Y%m%d_%H%M%S")
 
         conf, dt_range, area = args
         return "_".join([area, dt_filename(dt_range)])
@@ -92,51 +95,75 @@ class ArgumentManager(object):
     @staticmethod
     def jobname2args(name, conf):
         area, dtstr = name.split("_", 1)
-        top_dt = dtutil.shortstr2dt(dtstr)
+        dts = dtutil.shortstr2dt(dtstr)
         term = config.getdur(conf, "dag", "unit_term")
-        end_dt = top_dt + term
-        return conf, (top_dt, end_dt), area
-
-    @classmethod
-    def output_filename(cls, dirname, args):
-        return "{0}/{1}".format(dirname, cls.jobname(args))
+        dte = dts + term
+        return conf, (dts, dte), area
 
     @staticmethod
-    def evdef_dir(conf):
-        dirname = conf.get("dag", "evmap_dir")
-        if dirname == "":
-            dirname = conf.get("dag", "output_dir")
-        else:
-            common.mkdir(dirname)
-
-    @classmethod
-    def evdef_filepath(cls, args):
-        conf, dt_range, area = args
-        dirname = conf.get("dag", "evmap_dir")
-        filename = cls.jobname(args)
-        if dirname == "":
-            dirname = conf.get("dag", "output_dir")
-            filename = filename + "_def"
-        else:
-            common.mkdir(dirname)
-        return "{0}/{1}".format(dirname, filename)
+    def _output_dir(conf):
+        return conf.get("dag", "output_dir")
 
     @staticmethod
-    def dag_dir(conf):
-        dirname = conf.get("dag", "output_dir")
-        common.mkdir(dirname)
+    def _arg_dirname(output_dir, argname):
+        return "{0}/{1}".format(output_dir, argname)
 
     @classmethod
-    def dag_filepath(cls, args):
-        conf, dt_range, area = args
-        dirname = conf.get("dag", "output_dir")
+    def dag_path(cls, conf, args, ext="pickle"):
+        dirname = cls._arg_dirname(cls._output_dir(conf),
+                                   cls.jobname(args))
         common.mkdir(dirname)
-        filename = cls.jobname(args)
-        return "{0}/{1}".format(dirname, filename)
+        return dirname + "/dag.{0}".format(ext)
+
+    @classmethod
+    def evdef_path(cls, conf, args):
+        dirname = cls._arg_dirname(cls._output_dir(conf),
+                                   cls.jobname(args))
+        common.mkdir(dirname)
+        return dirname + "/evdef.pickle"
+
+    #@classmethod
+    #def output_filename(cls, dirname, args):
+    #    return "{0}/{1}".format(dirname, cls.jobname(args))
+
+    #@staticmethod
+    #def evdef_dir(conf):
+    #    dirname = conf.get("dag", "evmap_dir")
+    #    if dirname == "":
+    #        dirname = conf.get("dag", "output_dir")
+    #    else:
+    #        common.mkdir(dirname)
+
+    #@classmethod
+    #def evdef_filepath(cls, args):
+    #    conf, dt_range, area = args
+    #    dirname = conf.get("dag", "evmap_dir")
+    #    filename = cls.jobname(args)
+    #    if dirname == "":
+    #        dirname = conf.get("dag", "output_dir")
+    #        filename = filename + "_def"
+    #    else:
+    #        common.mkdir(dirname)
+    #    return "{0}/{1}".format(dirname, filename)
+
+    #@staticmethod
+    #def dag_dir(conf):
+    #    dirname = conf.get("dag", "output_dir")
+    #    common.mkdir(dirname)
+
+    #@classmethod
+    #def dag_filepath(cls, args):
+    #    conf, dt_range, area = args
+    #    dirname = conf.get("dag", "output_dir")
+    #    common.mkdir(dirname)
+    #    filename = cls.jobname(args)
+    #    return "{0}/{1}".format(dirname, filename)
 
     def init_dirs(self, conf):
-        self.evdef_dir(conf)
-        self.dag_dir(conf)
+        # TODO for compatibility
+        pass
+        #self.evdef_dir(conf)
+        #self.dag_dir(conf)
 
     def iter_dt_range(self):
         s = set()
@@ -153,12 +180,11 @@ def name2args(name, conf):
     return ArgumentManager.jobname2args(name, conf)
 
 
-def open_logdag_config(ns):
-    fp = ns.conf_path if ns is not None else None
-    conf = config.open_config(ns.conf_path, ex_defaults = [DEFAULT_CONFIG])
-    lv = logging.DEBUG if ns.debug else logging.INFO
+def open_logdag_config(conf_path, debug=False):
+    conf = config.open_config(conf_path, ex_defaults=[DEFAULT_CONFIG])
+    lv = logging.DEBUG if debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf, logger=[_logger, am_logger], lv=lv)
     return conf
 
 
@@ -182,7 +208,7 @@ def all_args(conf):
         l_area = config.getlist(conf, "dag", "area")
         if "each" in l_area:
             l_area.pop(l_area.index("each"))
-            l_area += ["host_" + host for host 
+            l_area += ["host_" + host for host
                        in ld.whole_host(top_dt, end_dt)]
         for area in l_area:
             l_args.append((conf, (top_dt, end_dt), area))
@@ -190,7 +216,7 @@ def all_args(conf):
     return l_args
 
 
-def all_terms(conf, term, diff, w_term = None):
+def all_terms(conf, term, diff, w_term=None):
     w_top_dt, w_end_dt = config.getterm(conf, "dag", "whole_term")
 
     l_args = []
@@ -200,5 +226,3 @@ def all_terms(conf, term, diff, w_term = None):
         l_args.append((conf, (top_dt, end_dt)))
         top_dt = top_dt + diff
     return l_args
-
-
