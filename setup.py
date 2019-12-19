@@ -24,7 +24,7 @@ setup(name='logdag',
       author_email='sat@hongo.wide.ad.jp',
       url='https://github.com/cpflat/logdag/',
       install_requires=['numpy>=1.12.1', 'scipy>=1.0.0', 'pandas>=0.24.2',
-                        'python-dateutil>=2.8.0',
+                        'scikit-learn>=0.20.2', 'python-dateutil>=2.8.0',
                         'pcalg>=0.1.9', 'gsq>=0.1.6', 'networkx>=2.1'],
       classifiers=[
           'Development Status :: 4 - Beta',
@@ -38,6 +38,6 @@ setup(name='logdag',
       license='The 3-Clause BSD License',
 
       packages=['logdag'],
-      package_data={'logdag' : data_files},
+      package_data={'logdag': data_files},
       #test_suite = "suite.suite"
       )

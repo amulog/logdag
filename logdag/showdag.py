@@ -30,7 +30,7 @@ class LogDAG():
     def _evmap(self):
         if self._evmap_obj is None:
             evmap = log2event.EventDefinitionMap()
-            evmap.load(self.args)
+            evmap.load(self.conf, self.args)
             self._evmap_obj = evmap
         return self._evmap_obj
 
@@ -56,14 +56,20 @@ class LogDAG():
         dag_format = self.conf["dag"]["output_dag_format"]
         fp = arguments.ArgumentManager.dag_path(self.conf, self.args,
                                                 ext=dag_format)
-        if dag_format == "pickle":
+        try:
+            if dag_format == "pickle":
+                with open(fp, 'rb') as f:
+                    self.graph = pickle.load(f)
+            elif dag_format == "json":
+                import json
+                with open(fp, 'r', encoding='utf-8') as f:
+                    obj = json.load(f)
+                    self.graph = nx.node_link_graph(obj, directed=True)
+        except:
+            # compatibility
+            fp = arguments.ArgumentManager.dag_path_old(self.args)
             with open(fp, 'rb') as f:
                 self.graph = pickle.load(f)
-        elif dag_format == "json":
-            import json
-            with open(fp, 'r', encoding='utf-8') as f:
-                obj = json.load(f)
-                self.graph = nx.node_link_graph(obj)
 
     def number_of_nodes(self, graph=None):
         if graph is None:

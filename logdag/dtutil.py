@@ -14,6 +14,10 @@ TIMEFMT = "%Y-%m-%d %H:%M:%S"
 _logger = logging.getLogger(__package__)
 
 
+def empty_timedelta():
+    return datetime.timedelta(seconds=0)
+
+
 def extdate(dt):
     """Return datetime representation of date component in given datetime."""
     ret = datetime.datetime.combine(dt.date(), datetime.time())

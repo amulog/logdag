@@ -42,7 +42,8 @@ def _match_edge(s_evdef, edge_evdef, rule):
         from logdag import log2event
         src_bool_snmp = (src_evdef.source == log2event.SRCCLS_SNMP)
         dst_bool_snmp = (dst_evdef.source == log2event.SRCCLS_SNMP)
-        return (src_bool and dst_bool_snmp) or (src_bool_snmp and dst_bool)
+        return (src_bool and dst_bool) or (src_bool and dst_bool_snmp) or\
+               (src_bool_snmp and dst_bool)
     else:
         raise ValueError
 

@@ -112,14 +112,23 @@ class ArgumentManager(object):
     def dag_path(cls, conf, args, ext="pickle"):
         dirname = cls._arg_dirname(cls._output_dir(conf),
                                    cls.jobname(args))
-        common.mkdir(dirname)
+        # try <- compatibility
+        try:
+            common.mkdir(dirname)
+        except OSError:
+            return
         return dirname + "/dag.{0}".format(ext)
 
     @classmethod
-    def evdef_path(cls, conf, args):
+    def evdef_path(cls, args):
+        conf, dt_range, area = args
         dirname = cls._arg_dirname(cls._output_dir(conf),
                                    cls.jobname(args))
-        common.mkdir(dirname)
+        # try <- compatibility
+        try:
+            common.mkdir(dirname)
+        except OSError:
+            return
         return dirname + "/evdef.pickle"
 
     #@classmethod
@@ -134,30 +143,30 @@ class ArgumentManager(object):
     #    else:
     #        common.mkdir(dirname)
 
-    #@classmethod
-    #def evdef_filepath(cls, args):
-    #    conf, dt_range, area = args
-    #    dirname = conf.get("dag", "evmap_dir")
-    #    filename = cls.jobname(args)
-    #    if dirname == "":
-    #        dirname = conf.get("dag", "output_dir")
-    #        filename = filename + "_def"
-    #    else:
-    #        common.mkdir(dirname)
-    #    return "{0}/{1}".format(dirname, filename)
+    @classmethod
+    def evdef_path_old(cls, args):
+        conf, dt_range, area = args
+        dirname = conf.get("dag", "evmap_dir")
+        filename = cls.jobname(args)
+        if dirname == "":
+            dirname = conf.get("dag", "output_dir")
+            filename = filename + "_def"
+        else:
+            common.mkdir(dirname)
+        return "{0}/{1}".format(dirname, filename)
 
     #@staticmethod
     #def dag_dir(conf):
     #    dirname = conf.get("dag", "output_dir")
     #    common.mkdir(dirname)
 
-    #@classmethod
-    #def dag_filepath(cls, args):
-    #    conf, dt_range, area = args
-    #    dirname = conf.get("dag", "output_dir")
-    #    common.mkdir(dirname)
-    #    filename = cls.jobname(args)
-    #    return "{0}/{1}".format(dirname, filename)
+    @classmethod
+    def dag_path_old(cls, args):
+        conf, dt_range, area = args
+        dirname = conf.get("dag", "output_dir")
+        common.mkdir(dirname)
+        filename = cls.jobname(args)
+        return "{0}/{1}".format(dirname, filename)
 
     def init_dirs(self, conf):
         # TODO for compatibility

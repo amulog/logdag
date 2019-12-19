@@ -159,6 +159,15 @@ class InfluxDB(object):
                    for p in rs.get_points()]
         return pd.DataFrame(l_array, index=dtindex, columns=fields)
 
+    def get_count(self, measure, d_tags, fields, ut_range):
+        func = "count"
+        rs = self.get(measure, d_tags, fields, ut_range,
+                      func=func)
+        if len(rs) == 0:
+            return None
+        count = rs.get_points().__next__()["val"]
+        return count
+
     def drop_measurement(self, measure):
         self.client.drop_measurement(measure)
 

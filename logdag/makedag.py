@@ -51,8 +51,6 @@ def makedag_main(args):
     # record dag
     ldag = showdag.LogDAG(args, graph)
     ldag.dump()
-    _logger.info("makedag job ({0}) output {1}".format(
-        jobname, arguments.ArgumentManager.dag_path(conf, args)))
     timer.stop()
     return ldag
 

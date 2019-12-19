@@ -11,6 +11,8 @@ evdb_whole_term =
 evdb_unit_term = 24h
 evdb_unit_diff = 24h
 evdb_binsize = 1m
+# if convolve_radius is x, convolve window size is 2x+1
+evdb_convolve_radius = 2
 
 evdb_args_fn = evdb_args
 
@@ -111,26 +113,6 @@ linear_th = 0.5
 corr_sample_rule = 1d_10s
 corr_th = 0.5
 corr_diff = 1h, 1d
-
-
-[snmp_source]
-all = rt_if, rt_info,
-rt_if = list_rt_if
-rt_info = list_rt_info
-
-
-[snmp_vsource]
-all = rt_if_hostsum, sw_if_hostsum
-rt_if_hostsum = rt_if, hostsum
-
-
-[snmp_feature]
-rt_cpu_data = rt_info, cpu, norm_fillavg, outlier
-rt_cpu_nan = rt_info, cpu, getnan
-rt_temp_data = rt_info, temp, norm_fillavg, outlier
-rt_temp_nan = rt_info, temp, getnan
-rt_inucast_sum = rt_if_hostsum, inucast, norm_fillavg, outlier
-rt_outucast_sum = rt_if_hostsum, outucast, norm_fillavg, outlier
 
 
 [dag]

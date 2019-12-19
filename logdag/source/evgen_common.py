@@ -40,6 +40,11 @@ class EventLoader(object):
         ut_range = tuple(dt.timestamp() for dt in dt_range)
         return self.evdb.get_items(measure, tags, self.fields, ut_range)
 
+    def load_cnt(self, measure, tags, dt_range):
+        ut_range = tuple(dt.timestamp() for dt in dt_range)
+        return self.evdb.get(measure, tags, self.fields, ut_range,
+                             func="count")
+
     #def has_data(self, measure, host, key, dt_range):
     #    d_tags = {"host": host, "key": key}
     #    ut_range = tuple(dt.timestamp() for dt in dt_range)

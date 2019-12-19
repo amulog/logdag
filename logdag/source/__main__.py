@@ -53,7 +53,9 @@ def make_evdb_snmp_all(ns):
     el = evgen_snmp.SNMPEventLoader(conf, parallel=parallel, dry=dry)
     try:
         el.store_all(_whole_term(conf), dump_org=dump_org)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
+        pass
+    finally:
         el.terminate()
 
 
@@ -68,7 +70,9 @@ def make_evdb_snmp(ns):
     el = evgen_snmp.SNMPEventLoader(conf, parallel=parallel, dry=dry)
     try:
         el.store_feature(feature_name, _whole_term(conf), dump_org=dump_org)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
+        pass
+    finally:
         el.terminate()
 
 
@@ -82,8 +86,52 @@ def make_evdb_snmp_org(ns):
     el = evgen_snmp.SNMPEventLoader(conf, parallel=parallel, dry=dry)
     try:
         el.store_all_source(_whole_term(conf), dump_vsource_org)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
+        pass
+    finally:
         el.terminate()
+
+
+def make_evdb_snmp_test(ns):
+    conf = open_logdag_config(ns)
+    dump_vsource_org = ns.org
+    dry = ns.dry
+    parallel = ns.parallel
+    feature_name = ns.feature_name
+    tags = {name: val for name, _, val
+            in [s.partition("=") for s in ns.tags]}
+
+    from . import evgen_snmp
+    el = evgen_snmp.SNMPEventLoader(conf, parallel=parallel, dry=dry)
+    try:
+        el.test_store_feature(feature_name, tags,
+                              _whole_term(conf), dump_vsource_org)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        el.terminate()
+
+
+def show_snmp_stats(ns):
+    conf = open_logdag_config(ns)
+    dt_range = _whole_term(conf)
+
+    from . import evgen_snmp
+    el = evgen_snmp.SNMPEventLoader(conf)
+    d_host, d_measure = evgen_snmp.survey_snmp_stats(el, dt_range)
+
+    import numpy as np
+    table = [["measure", "average"]]
+    for measure, l_cnt in sorted(d_measure.items()):
+        avg = int(np.average(l_cnt) + 0.5)
+        table.append([measure, avg])
+    print(common.cli_table(table))
+    #print()
+    #table = [["host", "average"]]
+    #for host, l_cnt in sorted(d_host.items()):
+    #    avg = int(np.average(l_cnt) + 0.5)
+    #    table.append([host, avg])
+    #print(common.cli_table(table))
 
 
 def drop_features(ns):
@@ -117,6 +165,12 @@ OPT_ORG = [["-o", "--org"],
 OPT_DRY = [["-d", "--dry"],
            {"dest": "dry", "action": "store_true",
             "help": "do not write down to db (dry-run)"}]
+ARG_FEATURE = [["feature_name"],
+               {"metavar": "FEATURE", "action": "store",
+                "help": "feature_name"}]
+ARG_TAGS = [["tags"],
+            {"metavar": "TAG", "action": "store", "nargs": 2,
+             "help": "tags, like \"host=host1\" \"key=key2\"..."}]
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
@@ -133,13 +187,18 @@ DICT_ARGSET = {
                            make_evdb_snmp_all],
     "make-evdb-snmp": ["Load telemetry data from rrd and store features",
                        [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL,
-                        [["feature_name"],
-                         {"metavar": "FEATURE", "action": "store",
-                          "help": "feature name"}]],
+                        ARG_FEATURE],
                        make_evdb_snmp],
     "make-evdb-snmp-org": ["Load telemetry data from rrd and store",
                            [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL],
                            make_evdb_snmp_org],
+    "make-evdb-snmp-test": ["Store 1 feature from a specified source",
+                            [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL,
+                             ARG_FEATURE, ARG_TAGS],
+                            make_evdb_snmp_test],
+    "show-snmp-stats": ["Show event counts in telemetry features",
+                        [OPT_CONFIG, OPT_DEBUG],
+                        show_snmp_stats],
     "drop-features": ["Drop feature data (except original data) in feature DB",
                       [OPT_CONFIG, OPT_DEBUG, OPT_ORG,
                        [["sources"],

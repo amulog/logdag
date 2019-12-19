@@ -16,17 +16,15 @@ def _set_of_term(am):
     s_term = set()
     for args in am:
         dt_range = args[1]
-        s_term.add(dt_ragne)
+        s_term.add(dt_range)
     return s_term
 
 
 def _add_nodes(evmap, r):
     for node in r.graph.nodes():
         evdef = r.node_evdef(node)
-        if evmap.has_evdef(evdef):
-            eid = evmap.get_eid(evdef)
-        else:
-            eid = evmap.add_evdef(evdef)
+        if not evmap.has_evdef(evdef):
+            evmap.add_evdef(evdef)
     return evmap
 
 
@@ -44,13 +42,12 @@ def _add_edges(evmap, cgraph, r):
 
 
 def edge_set_common(conf1, conf2, dt_range):
-    gid_name = conf1.get("dag", "event_gid")
     am1 = arguments.ArgumentManager(conf1)
     am1.load()
     am2 = arguments.ArgumentManager(conf2)
     am2.load()
 
-    temp_cevmap = log2event.EventDefinitionMap(gid_name)
+    temp_cevmap = log2event.EventDefinitionMap()
     temp_cgraph = nx.Graph()
     for args in am1.args_in_time(dt_range):
         r1 = showdag.LogDAG(args)
@@ -58,7 +55,7 @@ def edge_set_common(conf1, conf2, dt_range):
         temp_cevmap = _add_nodes(temp_cevmap, r1)
         temp_cgraph = _add_edges(temp_cevmap, temp_cgraph, r1)
 
-    cevmap = log2event.EventDefinitionMap(gid_name)
+    cevmap = log2event.EventDefinitionMap()
     cgraph = nx.Graph()
     for args in am2.args_in_time(dt_range):
         r2 = showdag.LogDAG(args)
@@ -84,13 +81,12 @@ def edge_set_common(conf1, conf2, dt_range):
 
 
 def edge_set_lor(conf1, conf2, dt_range):
-    gid_name = conf1.get("dag", "event_gid")
     am1 = arguments.ArgumentManager(conf1)
     am1.load()
     am2 = arguments.ArgumentManager(conf2)
     am2.load()
 
-    cevmap = log2event.EventDefinitionMap(gid_name)
+    cevmap = log2event.EventDefinitionMap()
     cgraph = nx.Graph()
     for args in am1.args_in_time(dt_range):
         r1 = showdag.LogDAG(args)
@@ -106,23 +102,25 @@ def edge_set_lor(conf1, conf2, dt_range):
     return cevmap, cgraph
 
 
-def edge_set_diff(conf1, conf2, dt_range, lor = None):
+def edge_set_diff(conf1, conf2, dt_range, lor=None):
     """Edges exist in conf1, but not in conf2"""
+    # cgraph_lor: A or B
     if lor is None:
         cevmap, cgraph_lor = edge_set_lor(conf1, conf2, dt_range)
     else:
         cevmap, cgraph_lor = lor
 
-    gid_name = conf1.get("dag", "event_gid")
     am2 = arguments.ArgumentManager(conf2)
     am2.load()
 
+    # cgraph2: B
     cgraph2 = nx.Graph()
     for args in am2.args_in_time(dt_range):
         r2 = showdag.LogDAG(args)
         r2.load()
         cgraph2 = _add_edges(cevmap, cgraph2, r2)
 
+    # cgraph_diff: A and not B = (A or B) - B = cgraph_lor - cgraph2
     cgraph_diff = nx.Graph()
     for edge in cgraph_lor.edges():
         if cgraph2.has_edge(*edge):
@@ -166,8 +164,8 @@ def edge_diff_gid_search(conf1, conf2, gid):
 def edge_direction_diff(conf1, conf2, dt_range):
 
     def _get_direction(am, ev1, ev2, dt_range):
-        for args in am.args_in_time(dt_range):
-            r = showdag.LogDAG(args)
+        for tmp_args in am.args_in_time(dt_range):
+            r = showdag.LogDAG(tmp_args)
             r.load()
             if not r._evmap().has_evdef(ev1):
                 continue
@@ -187,7 +185,6 @@ def edge_direction_diff(conf1, conf2, dt_range):
                 ev1, ev2, r.name))
 
     ret = []
-    gid_name = conf1.get("dag", "event_gid")
     am1 = arguments.ArgumentManager(conf1)
     am1.load()
     am2 = arguments.ArgumentManager(conf2)

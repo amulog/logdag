@@ -90,17 +90,23 @@ class EventDefinitionMap(object):
             yield self._emap[eid]
 
     def dump(self, conf, args):
-        fp = arguments.ArgumentManager.evdef_path(conf, args)
+        fp = arguments.ArgumentManager.evdef_path(args)
         obj = (self._emap, self._ermap)
         with open(fp, "wb") as f:
             pickle.dump(obj, f)
 
     def load(self, conf, args):
-        fp = arguments.ArgumentManager.evdef_path(conf, args)
-        with open(fp, "rb") as f:
-            obj = pickle.load(f)
-        self._emap, self._ermap = obj
-
+        fp = arguments.ArgumentManager.evdef_path(args)
+        try:
+            with open(fp, "rb") as f:
+                obj = pickle.load(f)
+            self._emap, self._ermap = obj
+        except:
+            # compatibility
+            fp = arguments.ArgumentManager.evdef_path_old(args)
+            with open(fp, "rb") as f:
+                obj = pickle.load(f)
+            self._emap, self._ermap = obj
 
 class AreaTest():
 

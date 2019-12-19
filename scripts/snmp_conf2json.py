@@ -17,8 +17,7 @@ if __name__ == "__main__":
     conf.read(sys.argv[1])
 
     root = {}
-    amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
-    ha = host_alias.init_hostalias(amulog_conf)
+    ha = host_alias.HostAlias(conf["general"]["host_alias_filename"])
 
     l_source = []
     for srcname in config.getlist(conf, "snmp_source", "all"):

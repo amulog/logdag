@@ -176,7 +176,7 @@ def show_edge_list(ns):
     r = showdag.LogDAG(args)
     r.load()
     g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
-    for edge in r.graph.edges():
+    for edge in g.edges():
         l_buf.append(r.edge_str(edge))
     print("\n".join(l_buf))
 
@@ -386,7 +386,8 @@ DICT_ARGSET = {
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],
     "show-edge-list": ["Show edges in a DAG",
-                       [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME, ARG_FILTER],
+                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
+                        ARG_ARGNAME, ARG_FILTER],
                        show_edge_list],
     "show-edge-detail": ["Show logs of detected edges in a DAG",
                          [OPT_CONFIG, OPT_DEBUG,

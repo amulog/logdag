@@ -398,7 +398,7 @@ OPT_LID = [["-l", "--lid"],
 OPT_RULE = [["-r", "--rule"],
             {"dest": "rule", "action": "store",
              "type": str, "default": "all",
-             "help": "one of [all, either, both]"}]
+             "help": "one of [all, either, both, log-snmp]"}]
 OPT_CONDITION = [["-e", "--edge-condition"],
                  {"dest": "cond", "action": "store",
                   "type": str, "default": None,
