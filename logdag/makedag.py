@@ -109,6 +109,14 @@ def estimate_dag(conf, input_df, ci_func, init_graph=None):
                 _logger.warning("init_graph not used in lingam")
             from . import lingam_input
             return lingam_input.estimate(input_df)
+        elif cause_algorithm == "mixedlingam":
+            skel_method = conf.get("dag", "skeleton_method")
+            skel_th = conf.getfloat("dag", "skeleton_threshold")
+            skel_depth = conf.getint("dag", "skeleton_depth")
+            skel_verbose = conf.getboolean("dag", "skeleton_verbose")
+            return mixedlingam_input.estimate(input_df, skel_th, ci_func,
+                                              skel_method, skel_depth,
+                                              skel_verbose, init_graph)
     else:
         _logger.info("input too small({0} nodes), return empty dag".format(
             input_df.shape[1]))
