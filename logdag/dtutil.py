@@ -162,7 +162,8 @@ def discretize_sequential(l_dt, dt_range, binsize,
         l_term.append((temp_dt, temp_dt + binsize))
         temp_dt += binsize
 
-    return discretize(l_dt, l_term, dt_range, binarize)
+    return discretize(l_dt, l_term, dt_range, binarize,
+                      l_dt_values=l_dt_values)
 
 
 def discretize_slide(l_dt, dt_range, bin_slide, binsize,
@@ -174,7 +175,8 @@ def discretize_slide(l_dt, dt_range, bin_slide, binsize,
         l_term.append((temp_dt, temp_dt + binsize))
         temp_dt += bin_slide
 
-    return discretize(l_dt, l_term, dt_range, binarize)
+    return discretize(l_dt, l_term, dt_range, binarize,
+                      l_dt_values=l_dt_values)
 
 
 def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
@@ -187,7 +189,8 @@ def discretize_radius(l_dt, dt_range, bin_slide, bin_radius,
         temp_dt += bin_slide
     l_term = [(dt - bin_radius, dt + bin_radius) for dt in l_label]
 
-    return discretize(l_dt, l_term, dt_range, binarize)
+    return discretize(l_dt, l_term, dt_range, binarize,
+                      l_dt_values=l_dt_values)
 
 
 # old

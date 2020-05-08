@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import pandas as pd
 import logging
 
 from amulog import config
@@ -120,9 +121,15 @@ class LogEventLoader(evgen_common.EventLoader):
         if self.dry:
             return
         d_tags = {"host": host, "key": gid}
-        data = {k: [v, ] for k, v in self.source.timestamp2dict(l_dt).items()}
+        data = {}
+        for dt, cnt in self.source.timestamp2dict(l_dt).items():
+            t = pd.to_datetime(dt)
+            data[t] = [cnt, ]
+        #data = {dt: [cnt, ] for dt, cnt in self.source.timestamp2dict(l_dt).items()}
         self.evdb.add(measure, d_tags, data, self.fields)
         self.evdb.commit()
+        #data = {k: v for k, v
+        #        in zip(df.index, df.itertuples(index=False, name=None))}
 
     def all_feature(self):
         return [FEATURE_MEASUREMENT, ]

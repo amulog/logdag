@@ -5,7 +5,7 @@ import json
 import networkx as nx
 
 
-class MultiLayerTopology():
+class MultiLayerTopology:
     _default_layer = "other"
 
     def __init__(self, d_topology_fp, d_rule):
@@ -54,7 +54,7 @@ class MultiLayerTopology():
         return g_ret
 
 
-class SingleLayerTopology():
+class SingleLayerTopology:
 
     def __init__(self, topology_fp):
         self._topology = self._load_graph(topology_fp)
@@ -76,7 +76,7 @@ class SingleLayerTopology():
         return g_ret
 
 
-class Independent():
+class Independent:
 
     def __init__(self):
         pass
@@ -87,6 +87,25 @@ class Independent():
         for edge in g_base.edges():
             src_host, dst_host = [evmap.evdef(node).host for node in edge]
             if src_host == dst_host:
+                g_ret.add_edge(*edge)
+        return g_ret
+
+
+class ExternalSource:
+
+    def __init__(self):
+        pass
+
+    def prune(self, g_base, evmap):
+        from . import log2event
+        g_ret = nx.Graph()
+        g_ret.add_nodes_from(g_base.nodes())
+        for edge in g_base.edges():
+            src_source, dst_source = [evmap.evdef(node).source for node in edge]
+            if src_source == log2event.SRCCLS_SNMP and \
+                    dst_source == log2event.SRCCLS_SNMP:
+                pass
+            else:
                 g_ret.add_edge(*edge)
         return g_ret
 
@@ -112,6 +131,8 @@ def init_pruner(conf):
             l_pruner.append(MultiLayerTopology(d_fp, d_rule))
         elif method == "independent":
             l_pruner.append(Independent())
+        elif method == "ext-source":
+            l_pruner.append(ExternalSource())
         else:
             raise NotImplementedError("invalid method {0}".format(method))
 

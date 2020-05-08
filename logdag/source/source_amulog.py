@@ -2,6 +2,7 @@
 # coding: utf-8
 
 from collections import defaultdict
+from dateutil.tz import tzlocal
 
 from amulog import config
 from amulog import log_db
@@ -38,7 +39,8 @@ class AmulogLoader(object):
 
     def iter_dt(self, ev, dt_range=None):
         for lm in self._iter_lines(ev, dt_range):
-            yield lm.dt
+            dt = lm.dt.replace(tzinfo=tzlocal())
+            yield dt
 
     @staticmethod
     def timestamp2dict(iterable):
@@ -66,7 +68,8 @@ class AmulogLoader(object):
 
     def load_org(self, ev, dt_range):
         for lm in self._iter_lines(ev, dt_range):
-            yield (lm.dt, lm.host, lm.restore_message())
+            dt = lm.dt.replace(tzinfo=tzlocal())
+            yield (dt, lm.host, lm.restore_message())
 
     def gid_instruction(self, gid):
         if self._gid_name == "ltid":

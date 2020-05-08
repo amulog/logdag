@@ -55,6 +55,13 @@ def makedag_main(args):
     return ldag
 
 
+def make_input(args, binarize):
+    conf, dt_range, area = args
+    input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
+    evmap.dump(conf, args)
+    return input_df, evmap
+
+
 def makedag_prune_test(args):
     jobname = arguments.args2name(args)
     conf, dt_range, area = args

@@ -28,23 +28,23 @@ def test_makedag(ns):
     makedag.makedag_main(am[0])
 
 
-def make_tsdb(ns):
-    from . import tsdb
-    conf = open_logdag_config(ns)
-    term = config.getdur(conf, "database_ts", "unit_term")
-    diff = config.getdur(conf, "database_ts", "unit_diff")
-    l_args = arguments.all_terms(conf, term, diff)
-
-    timer = common.Timer("mk-tsdb task", output=_logger)
-    timer.start()
-    p = ns.parallel
-    if p > 1:
-        for args in l_args:
-            tsdb.log2ts_pal(*args, pal=p)
-    else:
-        for args in l_args:
-            tsdb.log2ts(*args)
-    timer.stop()
+#def make_tsdb(ns):
+#    from . import tsdb
+#    conf = open_logdag_config(ns)
+#    term = config.getdur(conf, "database_ts", "unit_term")
+#    diff = config.getdur(conf, "database_ts", "unit_diff")
+#    l_args = arguments.all_terms(conf, term, diff)
+#
+#    timer = common.Timer("mk-tsdb task", output=_logger)
+#    timer.start()
+#    p = ns.parallel
+#    if p > 1:
+#        for args in l_args:
+#            tsdb.log2ts_pal(*args, pal=p)
+#    else:
+#        for args in l_args:
+#            tsdb.log2ts(*args)
+#    timer.stop()
 
 
 def reload_area(ns):
@@ -153,6 +153,40 @@ def make_dag_prune(ns):
 #    d = parse_condition(ns.conditions)
 #    print(tsdb.show_filterlog(conf, **d))
 
+def dump_input(ns):
+    from . import makedag
+
+    conf = open_logdag_config(ns)
+    binarize = ns.binary
+
+    am = arguments.ArgumentManager(conf)
+    am.init_dirs(conf)
+    args = am.jobname2args(ns.argname, conf)
+
+    input_df, _ = makedag.make_input(args, binarize)
+    input_df.to_csv(ns.filename)
+
+
+def dump_events(ns):
+    from . import log2event
+    conf = open_logdag_config(ns)
+
+    am = arguments.ArgumentManager(conf)
+    am.init_dirs(conf)
+    args = am.jobname2args(ns.argname, conf)
+
+    evmap = log2event.EventDefinitionMap()
+    evmap.load(conf, args)
+
+    if len(evmap) == 0:
+        from . import makedag
+        ci_func = conf.get("dag", "ci_func")
+        binarize = makedag.is_binarize(ci_func)
+        input_df, evmap = makedag.make_input(args, binarize)
+
+    for eid, evdef in evmap.items():
+        print("eid {0}: {1}".format(eid, evdef))
+
 
 def show_args(ns):
     conf = open_logdag_config(ns)
@@ -215,12 +249,12 @@ def show_stats(ns):
            "number of undirected edges across hosts",
            "number of all edges"]
     l_func = [
-        lambda r: r.graph.number_of_nodes(),
+        lambda r: r.number_of_nodes(),
         lambda r: showdag.apply_filter(r, ["directed"]).number_of_edges(),
         lambda r: showdag.apply_filter(r, ["directed", "across_host"]).number_of_edges(),
         lambda r: showdag.apply_filter(r, ["undirected"]).number_of_edges(),
         lambda r: showdag.apply_filter(r, ["undirected", "across_host"]).number_of_edges(),
-        lambda r: r.graph.number_of_edges()
+        lambda r: r.number_of_edges()
     ]
     data = [v for _, _, v in showdag.stat_groupby(conf, l_func)]
     agg_data = np.sum(data, axis=0)
@@ -352,9 +386,9 @@ DICT_ARGSET = {
     "test": ["Generate DAG",
              [OPT_CONFIG, OPT_DEBUG],
              test_makedag],
-    "make-tsdb": ["Generate time-series DB for make-dag input",
-                  [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
-                  make_tsdb],
+    #"make-tsdb": ["Generate time-series DB for make-dag input",
+    #              [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
+    #              make_tsdb],
     "make-args": ["Initialize arguments for pc algorithm",
                   [OPT_CONFIG, OPT_DEBUG],
                   make_args],
@@ -367,6 +401,16 @@ DICT_ARGSET = {
     "make-dag-prune": ["Show pruned DAGs before PC algorithm",
                        [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_prune],
+    "dump-input": ["Output causal analysis input in pandas csv format",
+                   [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME,
+                    [["-b", "--binary"],
+                     {"dest": "binary", "action": "store_true",
+                      "help": "dump binarized dataframe csv"}],
+                    ARG_ARGNAME],
+                   dump_input],
+    "dump-events": ["Output event node definition in readable format",
+                    [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
+                    dump_events],
     #    "reload-area": ["Reload area definition for time-series DB",
     #                    [OPT_CONFIG, OPT_DEBUG],
     #                    reload_area],
