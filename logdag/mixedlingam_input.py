@@ -39,6 +39,27 @@ def estimate(data, skel_th, ci_func, skel_method, pc_depth,
 
     return g
 
+def prune(graph:MixedGraph,data:DataFrame):
+	lone = list(nx.isolates(graph))
+	graph.remove_nodes_from(lone)
+	mapping = dict(zip(graph.nodes(),range(len(graph.nodes()))))
+	graph = nx.relabel_nodes(graph,mapping)
+	data = data.drop(data.columns[lone],axis=1)
+	data.columns = [str(n) for n in graph.nodes()]
+	return (graph, data, mapping)
+
+def adjust(data,graph,subgraph):
+	d = data
+	g = graph.copy()
+	c = 0
+	for N in graph.nodes():
+		if N not in subgraph:
+			g.remove_node(N)
+			d = d.drop(d.columns[N-c],axis=1)
+			c += 1
+	m = dict(zip(g.nodes(),range(len(g.nodes()))))
+	g = nx.relabel_nodes(g,m)
+	return d,g,m
 
 def pc_fisherz(data, threshold, skel_method, pc_depth=None,
 
