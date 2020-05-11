@@ -24,9 +24,18 @@ def estimate(data, skel_th, ci_func, skel_method, pc_depth,
         args["init_graph"] = init_graph
     (g, sep_set) = pcalg.estimate_skeleton(**args)
 
-    # TODO: to replace something with mixedlingam
+    # TODO: Finish implementation (prune,adjust,select,relabel)
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
-    # end
+    # g,data,m1 = prune(g,data)
+    # subgraphs = nx.weakly_connected_components(g)
+    # for nodes in subgraphs:
+
+		# d,subgraph,m2 = adjust(data,graph,nodes)
+		# best = select(subgraph,d)
+		# best = relabel(best,m2)
+		# r = nx.disjoint_union(r,best)
+
+    # return r
 
     return g
 
