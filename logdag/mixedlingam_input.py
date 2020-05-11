@@ -4,6 +4,7 @@
 import logging
 import numpy as np
 import networkx as nx
+# import mixedlingam as mx
 
 _logger = logging.getLogger(__package__)
 
@@ -31,8 +32,8 @@ def estimate(data, skel_th, ci_func, skel_method, pc_depth,
     # for nodes in subgraphs:
 
 		# d,subgraph,m2 = adjust(data,graph,nodes)
-		# best = select(subgraph,d)
-		# best = relabel(best,m2)
+		# best = mx.select(subgraph,d)
+		# best = relabel(best,m1,m2)
 		# r = nx.disjoint_union(r,best)
 
     # return r
@@ -60,6 +61,14 @@ def adjust(data,graph,subgraph):
 	m = dict(zip(g.nodes(),range(len(g.nodes()))))
 	g = nx.relabel_nodes(g,m)
 	return d,g,m
+
+def relabel(graph,map1,map2):
+	inv_map1 = {v: k for k, v in map1.items()}
+	inv_map2 = {v: k for k, v in map2.items()}
+	m = {k: inv_map1[inv_map2[k]] for k in graph.nodes()}
+	g = nx.relabel_nodes(graph,m)
+	return g
+	
 
 def pc_fisherz(data, threshold, skel_method, pc_depth=None,
 
