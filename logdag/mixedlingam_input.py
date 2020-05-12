@@ -4,10 +4,11 @@
 import logging
 import numpy as np
 import networkx as nx
-# import mixedlingam as mx
+import mixedlingam.bcause as mx
 
 _logger = logging.getLogger(__package__)
 
+print("first mixedlingam path test")
 
 def estimate(data, skel_th, ci_func, skel_method, pc_depth,
              skel_verbose, init_graph):
