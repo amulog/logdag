@@ -7,6 +7,7 @@ from itertools import combinations
 from . import arguments
 from . import log2event
 from . import pc_input
+from . import mixedlingam_input
 from . import showdag
 from amulog import common
 

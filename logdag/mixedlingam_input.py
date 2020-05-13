@@ -4,80 +4,71 @@
 import logging
 import numpy as np
 import networkx as nx
-import mixedlingam.bcause as mx
+
+# from mixedlingam import select
+
+# from bcause import bcause as mx
 
 _logger = logging.getLogger(__package__)
 
-print("first mixedlingam path test")
 
-def estimate(data, skel_th, ci_func, skel_method, pc_depth,
-             skel_verbose, init_graph):
+def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_graph):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
-    pc_args = {"indep_test_func": ci_test_bin,
-               "data_matrix": data.values,
-               "alpha": skel_th,
-               "method": skel_method,
-               "verbose": skel_verbose}
+    pc_args = {
+        "indep_test_func": ci_test_bin,
+        "data_matrix": data.values,
+        "alpha": skel_th,
+        "method": skel_method,
+        "verbose": skel_verbose,
+    }
     if pc_depth is not None and pc_depth >= 0:
-        args["max_reach"] = pc_depth
+        pc_args["max_reach"] = pc_depth
     if init_graph is not None:
-        args["init_graph"] = init_graph
+        pc_args["init_graph"] = init_graph
     (g, sep_set) = pcalg.estimate_skeleton(**args)
 
-    # TODO: Finish implementation (prune,adjust,select,relabel)
+    # TODO: MixedLiNGAM integration (select function)
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
-    # g,data,m1 = prune(g,data)
-    # subgraphs = nx.weakly_connected_components(g)
-    # for nodes in subgraphs:
+    g, data, m1 = prune(g, data)
+    subgraphs = nx.weakly_connected_components(g)
+    for nodes in subgraphs:
+        d, subgraph, m2 = adjust(data, graph, nodes)
+        best = subgraph  # mx.select(subgraph,d)
+        best = relabel(best, m1, m2)
+        r = nx.disjoint_union(r, best)
 
-		# d,subgraph,m2 = adjust(data,graph,nodes)
-		# best = mx.select(subgraph,d)
-		# best = relabel(best,m1,m2)
-		# r = nx.disjoint_union(r,best)
+    return r
 
-    # return r
 
+def prune(graph, data):
+    lone = list(nx.isolates(graph))
+    graph.remove_nodes_from(lone)
+    mapping = dict(zip(graph.nodes(), range(len(graph.nodes()))))
+    graph = nx.relabel_nodes(graph, mapping)
+    data = data.drop(data.columns[lone], axis=1)
+    data.columns = [str(n) for n in graph.nodes()]
+    return (graph, data, mapping)
+
+
+def adjust(data, graph, subgraph):
+    d = data
+    g = graph.copy()
+    c = 0
+    for N in graph.nodes():
+        if N not in subgraph:
+            g.remove_node(N)
+            d = d.drop(d.columns[N - c], axis=1)
+            c += 1
+    m = dict(zip(g.nodes(), range(len(g.nodes()))))
+    g = nx.relabel_nodes(g, m)
+    return d, g, m
+
+
+def relabel(graph, map1, map2):
+    inv_map1 = {v: k for k, v in map1.items()}
+    inv_map2 = {v: k for k, v in map2.items()}
+    m = {k: inv_map1[inv_map2[k]] for k in graph.nodes()}
+    g = nx.relabel_nodes(graph, m)
     return g
-
-def prune(graph:MixedGraph,data:DataFrame):
-	lone = list(nx.isolates(graph))
-	graph.remove_nodes_from(lone)
-	mapping = dict(zip(graph.nodes(),range(len(graph.nodes()))))
-	graph = nx.relabel_nodes(graph,mapping)
-	data = data.drop(data.columns[lone],axis=1)
-	data.columns = [str(n) for n in graph.nodes()]
-	return (graph, data, mapping)
-
-def adjust(data,graph,subgraph):
-	d = data
-	g = graph.copy()
-	c = 0
-	for N in graph.nodes():
-		if N not in subgraph:
-			g.remove_node(N)
-			d = d.drop(d.columns[N-c],axis=1)
-			c += 1
-	m = dict(zip(g.nodes(),range(len(g.nodes()))))
-	g = nx.relabel_nodes(g,m)
-	return d,g,m
-
-def relabel(graph,map1,map2):
-	inv_map1 = {v: k for k, v in map1.items()}
-	inv_map2 = {v: k for k, v in map2.items()}
-	m = {k: inv_map1[inv_map2[k]] for k in graph.nodes()}
-	g = nx.relabel_nodes(graph,m)
-	return g
-	
-
-def pc_fisherz(data, threshold, skel_method, pc_depth=None,
-
-
-
-    lingam = lingam_fast.LiNGAM()
-    ret = lingam.fit(data, use_sklearn = True, algorithm="fast",
-                     reg_type = "lasso")
-    graph = lingam.visualize(lib = "networkx")
-    return graph
-
