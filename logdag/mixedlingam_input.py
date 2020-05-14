@@ -5,12 +5,10 @@ import logging
 import numpy as np
 import networkx as nx
 
-# from mixedlingam import select
-
-# from bcause import bcause as mx
+from .bcause.bcause import select
+from .bcause.graph.mixed_graph import MixedGraph
 
 _logger = logging.getLogger(__package__)
-
 
 def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_graph):
     import pcalg
@@ -27,22 +25,23 @@ def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_g
         pc_args["max_reach"] = pc_depth
     if init_graph is not None:
         pc_args["init_graph"] = init_graph
-    (g, sep_set) = pcalg.estimate_skeleton(**args)
+    (g, sep_set) = pcalg.estimate_skeleton(**pc_args)
 
     # TODO: MixedLiNGAM integration (select function)
-    g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
+    g = MixedGraph(pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set))
     g, data, m1 = prune(g, data)
+    r = MixedGraph()
     subgraphs = nx.weakly_connected_components(g)
     for nodes in subgraphs:
-        d, subgraph, m2 = adjust(data, graph, nodes)
-        best = subgraph  # mx.select(subgraph,d)
+        d, subgraph, m2 = adjust(data, g, nodes)
+        best = select(subgraph,d)
         best = relabel(best, m1, m2)
         r = nx.disjoint_union(r, best)
 
     return r
 
 
-def prune(graph, data):
+def prune(graph: MixedGraph, data):
     lone = list(nx.isolates(graph))
     graph.remove_nodes_from(lone)
     mapping = dict(zip(graph.nodes(), range(len(graph.nodes()))))
@@ -52,7 +51,7 @@ def prune(graph, data):
     return (graph, data, mapping)
 
 
-def adjust(data, graph, subgraph):
+def adjust(data, graph: MixedGraph, subgraph):
     d = data
     g = graph.copy()
     c = 0
@@ -66,7 +65,7 @@ def adjust(data, graph, subgraph):
     return d, g, m
 
 
-def relabel(graph, map1, map2):
+def relabel(graph: MixedGraph, map1, map2) -> MixedGraph:
     inv_map1 = {v: k for k, v in map1.items()}
     inv_map2 = {v: k for k, v in map2.items()}
     m = {k: inv_map1[inv_map2[k]] for k in graph.nodes()}
