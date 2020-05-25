@@ -178,7 +178,11 @@ class LogDAG():
         src_str = self.node_str(src_node)
         dst_str = self.node_str(dst_node)
         if self.edge_isdirected(edge, graph):
-            return "{0} -> {1}".format(src_str, dst_str)
+            if self.graph[src_str][dst_str]['label'] is not None:
+                a = self.graph[src_str][dst_str]['label']
+                return "{0} -{2}-> {1}".format(src_str, dst_str, a)
+            else:
+                return "{0} -> {1}".format(src_str, dst_str)
         else:
             return "{0} <-> {1}".format(src_str, dst_str)
 
