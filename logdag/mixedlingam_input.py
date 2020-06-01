@@ -10,6 +10,7 @@ from .bcause.graph.mixed_graph import MixedGraph
 
 _logger = logging.getLogger(__package__)
 
+
 def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_graph):
     import pcalg
     from gsq.ci_tests import ci_test_bin
@@ -28,17 +29,28 @@ def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_g
     (g, sep_set) = pcalg.estimate_skeleton(**pc_args)
 
     # TODO: MixedLiNGAM integration (select function)
-    g = MixedGraph(pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set))
-    g, data, m1 = prune(g, data)
-    r = MixedGraph()
-    subgraphs = nx.weakly_connected_components(g)
-    for nodes in subgraphs:
-        d, subgraph, m2 = adjust(data, g, nodes)
-        best = select(subgraph,d)
-        best = relabel(best, m1, m2)
-        r = nx.disjoint_union(r, best)
+    graph = MixedGraph(pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set))
+    mapping = {k: v for k, v in zip(graph.nodes(), data.columns.astype(int))}
+    graph = nx.relabel_nodes(graph, mapping)
+    subgraphs = [
+        graph.subgraph(nodes)
+        for nodes in nx.weakly_connected_components(graph)
+        if len(nodes) > 1
+    ]
+    graph_final = MixedGraph()
+    for sub in subgraphs:
+        graph_n = MixedGraph(sub)
+        data_n = data[data.columns[graph_n.nodes()]]
+        graph_n, data_n, mapping_n = prune(graph_n, data_n)
+        graph_n = select(graph_n, data_n)
+        invmap_n = {v: k for k, v in mapping_n.items()}
+        graph_n = nx.relabel_nodes(graph_n, invmap_n)
+        graph_final = nx.compose(graph_final, graph_n)
 
-    return r
+    graph_final.add_nodes_from(
+        nx.isolates(graph)
+    )  # Remove this line if you want to prune isolates
+    return graph_final
 
 
 def prune(graph: MixedGraph, data):
