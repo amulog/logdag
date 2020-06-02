@@ -49,11 +49,8 @@ def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_g
 
 
 def normalize(graph: MixedGraph, data):
-    lone = list(nx.isolates(graph))
-    graph.remove_nodes_from(lone)
     mapping = dict(zip(graph.nodes(), range(len(graph.nodes()))))
     graph = nx.relabel_nodes(graph, mapping)
-    data = data.drop(data.columns[lone], axis=1)
     data.columns = [str(n) for n in graph.nodes()]
     return (graph, data, mapping)
 
