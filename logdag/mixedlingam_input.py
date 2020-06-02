@@ -47,9 +47,6 @@ def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_g
         graph_n = nx.relabel_nodes(graph_n, invmap_n)
         graph_final = nx.compose(graph_final, graph_n)
 
-    graph_final.add_nodes_from(
-        nx.isolates(graph)
-    )  # Remove this line if you want to prune isolates
     return graph_final
 
 
