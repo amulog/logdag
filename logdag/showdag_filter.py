@@ -5,7 +5,7 @@ import networkx as nx
 
 FUNCTIONS = ["no_isolated", "to_undirected",
              "directed", "undirected",
-             "across_host", "witin_host",
+             "across_host", "within_host",
              "subgraph_with_log", "subgraph_with_snmp",
              "ate_prune"]
 

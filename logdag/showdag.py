@@ -206,7 +206,7 @@ class LogDAG():
         ret = graph.copy()
 
         try:
-            edge_label = {(u, v): d["label"]
+            edge_label = {(u, v): d["weight"]
                           for (u, v, d) in graph.edges(data=True)}
             for (src, dst), val in edge_label.items():
                 if float(val) < threshold:
@@ -309,14 +309,14 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
 # functions for presentation
 
 
-def show_edge_detail(args, head, tail):
-    conf, dt_range, area = args
-    l_buf = []
-    r = LogDAG(args)
-    r.load()
-    for edge in r.graph.edges():
-        l_buf.append(r.edge_detail(edge, head, tail))
-    return "\n\n".join(l_buf)
+#def show_edge_detail(args, head, tail):
+#    conf, dt_range, area = args
+#    l_buf = []
+#    r = LogDAG(args)
+#    r.load()
+#    for edge in r.graph.edges():
+#        l_buf.append(r.edge_detail(edge, head, tail))
+#    return "\n\n".join(l_buf)
 
 
 #def show_graph(conf, args, output, lib="networkx",
