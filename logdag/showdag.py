@@ -178,7 +178,8 @@ class LogDAG():
         src_str = self.node_str(src_node)
         dst_str = self.node_str(dst_node)
         if self.edge_isdirected(edge, graph):
-            return "{0} -> {1}".format(src_str, dst_str)
+            a = get_coefficient(edge, graph)
+            return "{0} -{2}-> {1}".format(src_str, dst_str, a)
         else:
             return "{0} <-> {1}".format(src_str, dst_str)
 
@@ -451,3 +452,9 @@ def show_netsize_dist(conf):
             d_size[len(net)] += 1
     return "\n".join(["{0} {1}".format(size, cnt)
                       for size, cnt in d_size.items()])
+
+def get_coefficient(edge, graph):
+    a = ''
+    if 'label' in graph.edges[edge]:
+        a = graph.edges[edge]['label']
+    return a
