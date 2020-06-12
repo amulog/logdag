@@ -21,8 +21,9 @@ def makedag_main(args):
     timer = common.Timer("makedag job({0})".format(jobname), output=_logger)
     timer.start()
 
+    input_format = conf.get("dag", "input_format")
     ci_func = conf.get("dag", "ci_func")
-    binarize = is_binarize(ci_func)
+    binarize = is_binarize(input_format, ci_func)
     # generate event set and evmap, and apply preprocessing
     # d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
     input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
@@ -67,8 +68,9 @@ def makedag_prune_test(args):
     jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
+    input_format = conf.get("dag", "input_format")
     ci_func = conf.get("dag", "ci_func")
-    binarize = is_binarize(ci_func)
+    binarize = is_binarize(input_format, ci_func)
     input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
     _logger.info("pc input shape: {0}".format(input_df.shape))
     evmap.dump(conf, args)
@@ -124,17 +126,22 @@ def estimate_dag(conf, input_df, ci_func, init_graph=None):
         return showdag.empty_dag()
 
 
-def is_binarize(ci_func):
-    if ci_func == "fisherz":
-        return False
-    elif ci_func == "fisherz_bin":
-        return True
-    elif ci_func == "gsq":
-        return True
-    elif ci_func == "gsq_rlib":
+def is_binarize(input_format, ci_func):
+    if input_format == "auto":
+        if ci_func == "fisherz":
+            return False
+        elif ci_func == "fisherz_bin":
+            return True
+        elif ci_func == "gsq":
+            return True
+        elif ci_func == "gsq_rlib":
+            return True
+        else:
+            raise NotImplementedError
+    elif input_format == "binary":
         return True
     else:
-        raise NotImplementedError
+        return False
 
 
 def _complete_graph(node_ids):

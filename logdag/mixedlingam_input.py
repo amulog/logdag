@@ -11,7 +11,7 @@ from .bcause.graph.mixed_graph import MixedGraph
 _logger = logging.getLogger(__package__)
 
 
-def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_graph):
+def estimate(data, skel_th, skel_method, pc_depth, skel_verbose, init_graph):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
@@ -52,6 +52,5 @@ def normalize(graph: MixedGraph, data):
     mapping = dict(zip(graph.nodes(), range(len(graph.nodes()))))
     graph = nx.relabel_nodes(graph, mapping)
     data.columns = [str(n) for n in graph.nodes()]
-    return (graph, data, mapping)
->>>>>>> 73eaf9cd0328a0574619edf3b5aa628a85f08ae1
+    return graph, data, mapping
 
