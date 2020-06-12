@@ -47,7 +47,7 @@ def makedag_main(args):
                      "{0}".format(n_edges))
     timer.lap("prune-dag")
 
-    graph = estimate_dag(conf, input_df, ci_func, init_graph)
+    graph = estimate_dag(conf, input_df, ci_func, binarize, init_graph)
     timer.lap("estimate-dag")
 
     # record dag
@@ -96,7 +96,7 @@ def makedag_prune_test(args):
     return ldag
 
 
-def estimate_dag(conf, input_df, ci_func, init_graph=None):
+def estimate_dag(conf, input_df, ci_func, binarize, init_graph=None):
     if input_df.shape[1] >= 2:
         cause_algorithm = conf.get("dag", "cause_algorithm")
         if cause_algorithm == "pc":
@@ -119,7 +119,8 @@ def estimate_dag(conf, input_df, ci_func, init_graph=None):
             skel_verbose = conf.getboolean("dag", "skeleton_verbose")
             return mixedlingam_input.estimate(input_df, skel_th,
                                               skel_method, skel_depth,
-                                              skel_verbose, init_graph)
+                                              skel_verbose, init_graph,
+                                              binarize)
     else:
         _logger.info("input too small({0} nodes), return empty dag".format(
             input_df.shape[1]))
