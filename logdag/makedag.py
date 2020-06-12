@@ -117,7 +117,7 @@ def estimate_dag(conf, input_df, ci_func, init_graph=None):
             skel_th = conf.getfloat("dag", "skeleton_threshold")
             skel_depth = conf.getint("dag", "skeleton_depth")
             skel_verbose = conf.getboolean("dag", "skeleton_verbose")
-            return mixedlingam_input.estimate(input_df, skel_th, ci_func,
+            return mixedlingam_input.estimate(input_df, skel_th,
                                               skel_method, skel_depth,
                                               skel_verbose, init_graph)
     else:
