@@ -53,5 +53,4 @@ def normalize(graph: MixedGraph, data):
     graph = nx.relabel_nodes(graph, mapping)
     data.columns = [str(n) for n in graph.nodes()]
     return (graph, data, mapping)
->>>>>>> 73eaf9cd0328a0574619edf3b5aa628a85f08ae1
 
