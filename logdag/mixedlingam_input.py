@@ -11,13 +11,17 @@ from .bcause.graph.mixed_graph import MixedGraph
 _logger = logging.getLogger(__package__)
 
 
-def estimate(data, skel_th, ci_func, skel_method, pc_depth, skel_verbose, init_graph):
+def estimate(data, skel_th, skel_method, pc_depth, skel_verbose, init_graph, binary=True):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
+    pc_data_matrix = data.values
+    if binary is False:
+        pc_data_matrix = pc_data_matrix[pc_data_matrix > 0].astype(int)
+
     pc_args = {
         "indep_test_func": ci_test_bin,
-        "data_matrix": data.values,
+        "data_matrix": pc_data_matrix,
         "alpha": skel_th,
         "method": skel_method,
         "verbose": skel_verbose,

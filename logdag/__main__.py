@@ -180,8 +180,9 @@ def dump_events(ns):
 
     if len(evmap) == 0:
         from . import makedag
+        input_format = conf.get("dag", "input_format")
         ci_func = conf.get("dag", "ci_func")
-        binarize = makedag.is_binarize(ci_func)
+        binarize = makedag.is_binarize(input_format, ci_func)
         input_df, evmap = makedag.make_input(args, binarize)
 
     for eid, evdef in evmap.items():
