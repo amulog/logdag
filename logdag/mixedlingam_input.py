@@ -31,14 +31,21 @@ def estimate(data, skel_th, skel_method, pc_depth, skel_verbose, init_graph, bin
     if init_graph is not None:
         pc_args["init_graph"] = init_graph
 
+    # 1.a Create graph skeleton -- gives non-connex components
     (graph, sep_set) = pcalg.estimate_skeleton(**pc_args)
+    
+    # 1.b Renaming the variables according to column numbers
     mapping = {k: v for k, v in zip(graph.nodes(), data.columns.astype(int))}
     graph = MixedGraph(nx.relabel_nodes(graph, mapping))
+    
+    # 2. Get the connex subgraphs and filter out lones
     subgraphs = [
         graph.subgraph(nodes)
         for nodes in nx.weakly_connected_components(graph)
         if len(nodes) > 1
     ]
+    
+    # 3. Apply MixedLiNGAM onto every subgraph
     graph_final = MixedGraph()
     for sub in subgraphs:
         graph_n = MixedGraph(sub)
