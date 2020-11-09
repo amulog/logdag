@@ -46,11 +46,11 @@ class LogEventLoader(evgen_common.EventLoader):
         self.dry = dry
         src = conf["general"]["log_source"]
         if src == "amulog":
-            from . import source_amulog
+            from . import src_amulog
             args = [config.getterm(conf, "general", "evdb_whole_term"),
                     conf["database_amulog"]["source_conf"],
                     conf["database_amulog"]["event_gid"]]
-            self.source = source_amulog.AmulogLoader(*args)
+            self.source = src_amulog.AmulogLoader(*args)
         else:
             raise NotImplementedError
         self._filter_rules = config.getlist(conf, "filter", "rules")
@@ -148,4 +148,4 @@ class LogEventLoader(evgen_common.EventLoader):
             yield LogEventDefinition(**d)
 
     def instruction(self, evdef):
-        return "{0}: {1}".format(evdef.host, self.source.gid_instruction(evdef.gid))
+        return "{0}: {1}".format(evdef._host, self.source.gid_instruction(evdef.gid))

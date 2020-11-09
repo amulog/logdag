@@ -75,7 +75,7 @@ def _sep_across_host(graph, ldag=None, **kwargs):
     g_diff = nx.DiGraph()
     for edge in graph.edges(data=True):
         src_evdef, dst_evdef = ldag.edge_evdef(edge)
-        if src_evdef.host == dst_evdef.host:
+        if src_evdef._host == dst_evdef._host:
             g_same.add_edges_from([edge])
         else:
             g_diff.add_edges_from([edge])

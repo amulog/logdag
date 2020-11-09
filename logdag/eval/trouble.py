@@ -141,7 +141,7 @@ def event_stat(tr, ld, gid_name):
     for lid in tr.get():
         lm = ld.get_line(lid)
         gid = lm.lt.get(gid_name)
-        host = lm.host
+        host = lm._host
         d_gid[gid] += 1
         d_host[host] += 1
         d_ev[(gid, host)] += 1

@@ -1,4 +1,4 @@
-            # !/usr/bin/env python
+# !/usr/bin/env python
 # coding: utf-8
 
 import json
@@ -93,8 +93,8 @@ class SNMPEventLoader(evgen_common.EventLoader):
         self.dry = dry
         self._srcdb = conf["general"]["snmp_source"]
         if self._srcdb == "rrd":
-            from . import rrd
-            self.source = rrd.RRDLoader(conf)
+            from . import src_rrd
+            self.source = src_rrd.RRDLoader(conf)
         elif self._srcdb == "influx":
             source_dbname = conf["database_influx"]["snmp_source_dbname"]
             from . import influx
@@ -593,8 +593,7 @@ class SNMPEventLoader(evgen_common.EventLoader):
 
     def load_feature_count(self, measure, tags, dt_range):
         fields = self.fields
-        ut_range = tuple(dt.timestamp() for dt in dt_range)
-        return self.evdb.get_count(measure, tags, fields, ut_range)
+        return self.evdb.get_count(measure, tags, fields, dt_range)
 
     def iter_evdef(self, l_feature_name=None):
         for featuredef in self._d_feature:
@@ -642,7 +641,7 @@ def survey_snmp_stats(el, dt_range):
         measure, tags = evdef.series()
         cnt = el.load_feature_count(measure, tags, dt_range)
         if cnt is not None:
-            d_host[evdef.host].append(cnt)
+            d_host[evdef._host].append(cnt)
             d_measure[evdef.measure].append(cnt)
 
     return d_host, d_measure

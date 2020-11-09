@@ -55,7 +55,7 @@ def match_edges(conf, tr, rule="all", cond=None):
             return True
         elif cond == "xhost":
             src_evdef, dst_evdef = edge_evdef
-            return not src_evdef.host == dst_evdef.host
+            return not src_evdef._host == dst_evdef._host
         else:
             raise NotImplementedError
 
@@ -63,15 +63,15 @@ def match_edges(conf, tr, rule="all", cond=None):
         gid = lm.lt.get(gid_name)
         d = {"source": "log",
              "gid": gid,
-             "host": lm.host,
+             "host": lm._host,
              "group": al.label(gid)}
         return evgen_log.LogEventDefinition(**d)
 
     from amulog import config
-    from logdag.source import source_amulog
+    from logdag.source import src_amulog
     from logdag.source import evgen_log
     dt_range = config.getterm(conf, "dag", "whole_term")
-    al = source_amulog.init_amulogloader(conf, dt_range)
+    al = src_amulog.init_amulogloader(conf, dt_range)
     gid_name = conf.get("database_amulog", "event_gid")
 
     d = defaultdict(list)

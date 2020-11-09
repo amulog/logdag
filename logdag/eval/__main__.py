@@ -351,7 +351,7 @@ def search_trouble(ns):
             for lid in tr.data["message"]:
                 lm = ld.get_line(lid)
                 gid = lm.lt.get(gid_name)
-                host = lm.host
+                host = lm._host
                 if (search_gid is None or search_gid == gid) and \
                         (search_host is None or search_host == host):
                     ret.append(tr)

@@ -27,28 +27,27 @@ class EventLoader(object):
 
     def load(self, measure: str, tags: dict,
              dt_range: tuple, binsize: datetime.timedelta) -> pd.DataFrame:
-        ut_range = tuple(dt.timestamp() for dt in dt_range)
         str_bin = config.dur2str(binsize)
         return self.evdb.get_df(measure, tags, self.fields,
-                                ut_range, str_bin=str_bin, func="sum", fill=0)
+                                dt_range, str_bin=str_bin, func="sum", fill=0)
 
     def load_orgdf(self, measure, tags, dt_range):
-        ut_range = tuple(dt.timestamp() for dt in dt_range)
-        return self.evdb.get_df(measure, tags, None, ut_range)
+        return self.evdb.get_df(measure, tags, None, dt_range)
 
     def load_items(self, measure, tags, dt_range):
-        ut_range = tuple(dt.timestamp() for dt in dt_range)
-        return self.evdb.get_items(measure, tags, self.fields, ut_range)
+        return self.evdb.get_items(measure, tags, self.fields, dt_range)
 
     def load_cnt(self, measure, tags, dt_range):
-        ut_range = tuple(dt.timestamp() for dt in dt_range)
-        return self.evdb.get(measure, tags, self.fields, ut_range,
+        return self.evdb.get(measure, tags, self.fields, dt_range,
                              func="count")
 
     #def has_data(self, measure, host, key, dt_range):
     #    d_tags = {"host": host, "key": key}
     #    ut_range = tuple(dt.timestamp() for dt in dt_range)
     #    return self.evdb.has_data(measure, d_tags, self.fields, ut_range)
+
+    def all_feature(self):
+        raise NotImplementedError
 
     def drop_features(self):
         for measure in self.all_feature():

@@ -24,13 +24,13 @@ class TimeSeriesDB():
         db_type = conf.get("database_ts", "database")
         if db_type == "sqlite3":
             dbpath = conf.get("database_ts", "sqlite3_filename")
-            self.db = db_common.sqlite3(dbpath)
+            self.db = db_common.Sqlite3(dbpath)
         elif db_type == "mysql":
             host = conf.get("database_ts", "mysql_host")
             dbname = conf.get("database_ts", "mysql_dbname")
             user = conf.get("database_ts", "mysql_user")
             passwd = conf.get("database_ts", "mysql_passwd")
-            self.db = db_common.mysql(host, dbname, user, passwd)
+            self.db = db_common.Mysql(host, dbname, user, passwd)
         else:
             raise ValueError("invalid database type ({0})".format(
                     db_type))

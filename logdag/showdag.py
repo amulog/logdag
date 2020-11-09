@@ -159,7 +159,7 @@ class LogDAG():
             graph = self.graph
         for edge in graph.edges():
             src_info, dst_info = self.edge_evdef(edge)
-            if src_info.host == dst_info.host:
+            if src_info._host == dst_info._host:
                 g_same.add_edge(*edge)
             else:
                 g_diff.add_edge(*edge)

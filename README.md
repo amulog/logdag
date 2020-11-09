@@ -20,10 +20,20 @@ This project was partially ported from repository LogCausalAnaysis.
 
 ## Reference
 
-This project is evaluated in some papers ([TNSM2018](https://doi.org/10.1109/TNSM.2017.2778096) and CNSM2019).
+This project is evaluated in some papers ([CNSM2019](https://doi.org/10.23919/CNSM46954.2019.9012718) and [TNSM2018](https://doi.org/10.1109/TNSM.2017.2778096)).  
 If you use this code, please consider citing:
+
 ```
-@article{Kobayashi2018,
+@inproceedings{Kobayashi_CNSM2019,
+  author = {Kobayashi, Satoru and Otomo, Kazuki and Fukuda, Kensuke and Esaki, Hiroshi},
+  booktitle = {Proceedings of the 15th International Conference on Network and Service Management (CNSM'20)},
+  title = {Causal analysis of network logs with layered protocols and topology knowledge},
+  pages = {1-9},
+  year = {2019}
+}
+
+
+@article{Kobayashi_TNSM2018,
   author = {Kobayashi, Satoru and Otomo, Kazuki and Fukuda, Kensuke and Esaki, Hiroshi},
   journal = {IEEE Transactions on Network and Service Management},
   volume = {15},

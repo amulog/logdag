@@ -31,7 +31,7 @@ class MultiLayerTopology:
             return self._default_layer
 
     def _is_adjacent(self, evdef1, evdef2):
-        if evdef1.host == evdef2.host:
+        if evdef1._host == evdef2._host:
             return True
 
         layer1 = self._get_layer(evdef1)
@@ -39,7 +39,7 @@ class MultiLayerTopology:
         for layer in (layer1, layer2):
             if layer in self._topology:
                 net = self._topology[layer]
-                if net.has_edge(evdef1.host, evdef2.host):
+                if net.has_edge(evdef1._host, evdef2._host):
                     return True
         else:
             return False
@@ -69,7 +69,7 @@ class SingleLayerTopology:
         g_ret = nx.Graph()
         g_ret.add_nodes_from(g_base.nodes())
         for edge in g_base.edges():
-            src_host, dst_host = [evmap.evdef(node).host for node in edge]
+            src_host, dst_host = [evmap.evdef(node)._host for node in edge]
             if src_host == dst_host or \
                     self._topology.has_edge(src_host, dst_host):
                 g_ret.add_edge(*edge)
@@ -85,7 +85,7 @@ class Independent:
         g_ret = nx.Graph()
         g_ret.add_nodes_from(g_base.nodes())
         for edge in g_base.edges():
-            src_host, dst_host = [evmap.evdef(node).host for node in edge]
+            src_host, dst_host = [evmap.evdef(node)._host for node in edge]
             if src_host == dst_host:
                 g_ret.add_edge(*edge)
         return g_ret

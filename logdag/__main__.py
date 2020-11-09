@@ -164,7 +164,7 @@ def dump_input(ns):
     args = am.jobname2args(ns.argname, conf)
 
     input_df, _ = makedag.make_input(args, binarize)
-    input_df.to_csv(ns.filename)
+    input_df.to_csv(ns._filename)
 
 
 def dump_events(ns):
@@ -281,7 +281,7 @@ def plot_dag(ns):
     conf = open_logdag_config(ns)
 
     args = arguments.name2args(ns.argname, conf)
-    output = ns.filename
+    output = ns._filename
 
     r = showdag.LogDAG(args)
     r.load()
