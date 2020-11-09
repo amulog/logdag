@@ -32,16 +32,16 @@ class InfluxDB(object):
     def list_measurements(self):
         return [d["name"] for d in self.client.get_list_measurements()]
 
-    def list_series(self, measure=None, ut_range=None):
+    def list_series(self, measure=None):
         ret = []
         if measure:
             iql = "SHOW SERIES FROM \"{0}\"".format(measure)
         else:
             iql = "SHOW SERIES"
-        #where time seems not available in show series...
-        #if ut_range is not None:
-        #    iql += " WHERE time >= {0}s AND time < {1}s".format(
-        #        int(ut_range[0]), int(ut_range[1]))
+        # where time seems not available in show series...
+        # if ut_range is not None:
+        #     iql += " WHERE time >= {0}s AND time < {1}s".format(
+        #         int(ut_range[0]), int(ut_range[1]))
 
         if self.verbose:
             print(iql)
@@ -92,8 +92,9 @@ class InfluxDB(object):
     def commit(self):
         pass
 
-    def get(self, measure, d_tags, fields, ut_range,
+    def get(self, measure, d_tags, fields, dt_range,
             str_bin=None, func=None, fill=None, limit=None):
+        ut_range = tuple(dt.timestamp() for dt in dt_range)
         if fields is None:
             s_fields = "*"
         elif func is None:
@@ -129,25 +130,25 @@ class InfluxDB(object):
                                 database=self.dbname)
         return ret
 
-    def get_items(self, measure, d_tags, fields, ut_range):
-        rs = self.get(measure, d_tags, fields, ut_range)
+    def get_items(self, measure, d_tags, fields, dt_range):
+        rs = self.get(measure, d_tags, fields, dt_range)
 
         for p in rs.get_points():
             dt = pd.to_datetime(p["time"])
             dt = dt.tz_localize(tz.tzutc())
             dt = dt.tz_convert(tz.tzlocal())
             array = np.array([p[f] for f in fields])
-            yield (dt, array)
+            yield dt, array
 
-    def has_data(self, measure, d_tags, fields, ut_range):
-        rs = self.get(measure, d_tags, fields, ut_range, limit=1)
+    def has_data(self, measure, d_tags, fields, dt_range):
+        rs = self.get(measure, d_tags, fields, dt_range, limit=1)
         return len(list(rs.get_points())) >= 1
 
-    def get_df(self, measure, d_tags, fields, ut_range,
+    def get_df(self, measure, d_tags, fields, dt_range,
                str_bin=None, func=None, fill=None):
         if fields is None:
             fields = self.list_fields(measure)
-        rs = self.get(measure, d_tags, fields, ut_range,
+        rs = self.get(measure, d_tags, fields, dt_range,
                       str_bin, func, fill)
         if len(rs) == 0:
             return None
@@ -159,9 +160,9 @@ class InfluxDB(object):
                    for p in rs.get_points()]
         return pd.DataFrame(l_array, index=dtindex, columns=fields)
 
-    def get_count(self, measure, d_tags, fields, ut_range):
+    def get_count(self, measure, d_tags, fields, dt_range):
         func = "count"
-        rs = self.get(measure, d_tags, fields, ut_range,
+        rs = self.get(measure, d_tags, fields, dt_range,
                       func=func)
         if len(rs) == 0:
             return None

@@ -42,7 +42,7 @@ def draw_graph_common(ns):
 
     dts = dtutil.shortstr2dt(ns.timestr)
     dte = dts + config.getdur(conf1, "dag", "unit_term")
-    output = ns.filename
+    output = ns._filename
 
     from . import comp_conf
     cevmap, cgraph = comp_conf.edge_set_common(conf1, conf2, (dts, dte))
@@ -65,7 +65,7 @@ def draw_graph_diff(ns):
 
     dts = dtutil.shortstr2dt(ns.timestr)
     dte = dts + config.getdur(conf1, "dag", "unit_term")
-    output = ns.filename
+    output = ns._filename
 
     from . import comp_conf
     cevmap, cgraph = comp_conf.edge_set_diff(conf1, conf2, (dts, dte))

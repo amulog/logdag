@@ -14,7 +14,7 @@ from collections import defaultdict
 from amulog import config
 from amulog import common
 from amulog import host_alias
-from logdag.source import rrd
+from logdag.source import src_rrd
 
 
 def parse_filename(filepath, conf):
@@ -35,7 +35,7 @@ def search_valid(conf, path, th=1.0):
     for fp in common.recur_dir(path):
         ut_range = [dt.timestamp() for dt in config.getterm(conf, "general", "whole_term")]
         try:
-            robj = rrd.fetch(fp, ut_range)
+            robj = src_rrd.fetch(fp, ut_range)
         except IOError as e:
             sys.stderr(e)
         except rrdtool.OperationalError as e:

@@ -21,6 +21,7 @@ def makedag_main(args):
     timer = common.Timer("makedag job({0})".format(jobname), output=_logger)
     timer.start()
 
+    # generate time-series nodes
     input_format = conf.get("dag", "input_format")
     ci_func = conf.get("dag", "ci_func")
     binarize = is_binarize(input_format, ci_func)
@@ -31,6 +32,7 @@ def makedag_main(args):
     evmap.dump(conf, args)
     timer.lap("load-nodes")
 
+    # generate initial graph
     node_ids = evmap.eids()
     g = _complete_graph(node_ids)
     if conf.getboolean("pc_prune", "do_pruning"):
@@ -47,6 +49,7 @@ def makedag_main(args):
                      "{0}".format(n_edges))
     timer.lap("prune-dag")
 
+    # generate dag
     graph = estimate_dag(conf, input_df, ci_func, binarize, init_graph)
     timer.lap("estimate-dag")
 
@@ -82,12 +85,12 @@ def makedag_prune_test(args):
         n_edges_before = g.number_of_edges()
         init_graph = prune.prune_graph(g, conf, evmap)
         n_edges_after = init_graph.number_of_edges()
-        _logger.info("{0} DAG edge pruning: ".format(jobname) + \
+        _logger.info("{0} DAG edge pruning: ".format(jobname) +
                      "{0} -> {1}".format(n_edges_before, n_edges_after))
     else:
         n_edges = g.number_of_edges()
         init_graph = g
-        _logger.info("{0} DAG edge candidates: ".format(jobname) + \
+        _logger.info("{0} DAG edge candidates: ".format(jobname) +
                      "{0}".format(n_edges))
 
     # record dag

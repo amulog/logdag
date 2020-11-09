@@ -24,13 +24,13 @@ class RRDEventDBSQL():
     def __init__(self, conf):
         if db_type == "sqlite3":
             dbpath = conf.get("database_rrd", "sqlite3_filename")
-            self.db = db_common.sqlite3(dbpath)
+            self.db = db_common.Sqlite3(dbpath)
         elif db_type == "mysql":
             host = conf.get("database_rrd", "mysql_host")
             dbname = conf.get("database_rrd", "mysql_dbname")
             user = conf.get("database_rrd", "mysql_user")
             passwd = conf.get("database_rrd", "mysql_passwd")
-            self.db = db_common.mysql(host, dbname, user, passwd)
+            self.db = db_common.Mysql(host, dbname, user, passwd)
         else:
             raise ValueError("invalid database type ({0})".format(
                     db_type))
@@ -111,9 +111,9 @@ class RRDEventDBSQL():
         sql = self.db.select_sql(table_name, l_key, l_cond)
         args = {"dts": dt_range[0],
                 "dte": dt_range[1]}
-        if self.db.connect is None:
+        if self.db._connect is None:
             self.db._open()
-        return pd.read_sql_query(sql, con = self.db.connect, params = args)
+        return pd.read_sql_query(sql, con = self.db._connect, params = args)
 
     def commit(self):
         self.db.commit()
