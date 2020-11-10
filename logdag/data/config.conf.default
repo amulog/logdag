@@ -215,6 +215,11 @@ multi_network_file = l2:l2.json, l3:l3.json
 multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
 
 
+[lingam]
+algorithm = ica
+lower_limit = 0.01
+
+
 [eval]
 path = eval_data
 

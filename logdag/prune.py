@@ -5,10 +5,20 @@ import json
 import networkx as nx
 
 
-class MultiLayerTopology:
+class _PruneBase(object):
+
+    def __init__(self):
+        pass
+
+    def prune(self, g_base, evmap):
+        raise NotImplementedError
+
+
+class MultiLayerTopology(_PruneBase):
     _default_layer = "other"
 
     def __init__(self, d_topology_fp, d_rule):
+        super().__init__()
         self._topology = self._load_graph(d_topology_fp)
         self._d_rule = d_rule
 
@@ -31,7 +41,7 @@ class MultiLayerTopology:
             return self._default_layer
 
     def _is_adjacent(self, evdef1, evdef2):
-        if evdef1._host == evdef2._host:
+        if evdef1.host == evdef2.host:
             return True
 
         layer1 = self._get_layer(evdef1)
@@ -39,7 +49,7 @@ class MultiLayerTopology:
         for layer in (layer1, layer2):
             if layer in self._topology:
                 net = self._topology[layer]
-                if net.has_edge(evdef1._host, evdef2._host):
+                if net.has_edge(evdef1.host, evdef2.host):
                     return True
         else:
             return False
@@ -54,9 +64,10 @@ class MultiLayerTopology:
         return g_ret
 
 
-class SingleLayerTopology:
+class SingleLayerTopology(_PruneBase):
 
     def __init__(self, topology_fp):
+        super().__init__()
         self._topology = self._load_graph(topology_fp)
 
     @staticmethod
@@ -69,32 +80,32 @@ class SingleLayerTopology:
         g_ret = nx.Graph()
         g_ret.add_nodes_from(g_base.nodes())
         for edge in g_base.edges():
-            src_host, dst_host = [evmap.evdef(node)._host for node in edge]
+            src_host, dst_host = [evmap.evdef(node).host for node in edge]
             if src_host == dst_host or \
                     self._topology.has_edge(src_host, dst_host):
                 g_ret.add_edge(*edge)
         return g_ret
 
 
-class Independent:
+class Independent(_PruneBase):
 
     def __init__(self):
-        pass
+        super().__init__()
 
     def prune(self, g_base, evmap):
         g_ret = nx.Graph()
         g_ret.add_nodes_from(g_base.nodes())
         for edge in g_base.edges():
-            src_host, dst_host = [evmap.evdef(node)._host for node in edge]
+            src_host, dst_host = [evmap.evdef(node).host for node in edge]
             if src_host == dst_host:
                 g_ret.add_edge(*edge)
         return g_ret
 
 
-class ExternalSource:
+class ExternalSource(_PruneBase):
 
     def __init__(self):
-        pass
+        super().__init__()
 
     def prune(self, g_base, evmap):
         from . import log2event
@@ -144,5 +155,3 @@ def prune_graph(g, conf, evmap):
     for p in l_pruner:
         g = p.prune(g, evmap)
     return g
-
-

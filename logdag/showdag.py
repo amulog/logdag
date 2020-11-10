@@ -453,6 +453,7 @@ def show_netsize_dist(conf):
     return "\n".join(["{0} {1}".format(size, cnt)
                       for size, cnt in d_size.items()])
 
+
 def get_coefficient(edge, graph):
     a = ''
     if 'label' in graph.edges[edge]:

@@ -138,8 +138,8 @@ class LogEventLoader(evgen_common.EventLoader):
         """Return: tuple(dt, host, msg)"""
         return self.source.load_org(ev, dt_range)
 
-    def iter_evdef(self, dt_range=None, area=None):
-        for host, gid in self.source.iter_event(dt_range=dt_range, area=area):
+    def iter_evdef(self, dt_range=None):
+        for host, gid in self.source.iter_event(dt_range=dt_range):
             group = self.source.label(gid)
             d = {"source": log2event.SRCCLS_LOG,
                  "host": host,

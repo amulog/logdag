@@ -210,12 +210,15 @@ def load_event_log_all(conf, dt_range, area, binarize, d_el=None):
     else:
         el = d_el[SRCCLS_LOG]
 
+    areatest = AreaTest(conf)
     method = conf.get("dag", "ci_bin_method")
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
-    for evdef in el.iter_evdef(dt_range, area):
+    for evdef in el.iter_evdef(dt_range):
         measure, tags = evdef.series()
+        if not areatest.test(area, tags["host"]):
+            continue
         df = load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
                         method, binarize, el)
         if df is not None:

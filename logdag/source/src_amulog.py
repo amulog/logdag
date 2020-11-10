@@ -17,15 +17,15 @@ class AmulogLoader(object):
         self.dt_range = dt_range
         self._ll = None
 
-    def iter_event(self, dt_range=None, area=None):
+    def iter_event(self, dt_range=None):
         if dt_range is None:
             dt_range = self.dt_range
         if self._gid_name == "ltid":
             return self._ld.whole_host_lt(top_dt=dt_range[0],
-                                          end_dt=dt_range[1], area=area)
+                                          end_dt=dt_range[1])
         elif self._gid_name == "ltgid":
             return self._ld.whole_host_ltg(top_dt=dt_range[0],
-                                           end_dt=dt_range[1], area=area)
+                                           end_dt=dt_range[1])
 
     def _iter_lines(self, ev, dt_range=None):
         if dt_range is None:
