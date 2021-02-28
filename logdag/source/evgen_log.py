@@ -42,8 +42,7 @@ class LogEventLoader(evgen_common.EventLoader):
     fields = ["val", ]
 
     def __init__(self, conf, dry=False):
-        self.conf = conf
-        self.dry = dry
+        super().__init__(conf, dry=dry)
         src = conf["general"]["log_source"]
         if src == "amulog":
             from . import src_amulog
@@ -148,4 +147,4 @@ class LogEventLoader(evgen_common.EventLoader):
             yield LogEventDefinition(**d)
 
     def instruction(self, evdef):
-        return "{0}: {1}".format(evdef._host, self.source.gid_instruction(evdef.gid))
+        return "{0}: {1}".format(evdef.host, self.source.gid_instruction(evdef.gid))

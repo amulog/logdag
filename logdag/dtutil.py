@@ -96,17 +96,17 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values=None):
 
     # extract change points
     d_cp = defaultdict(list)
-    # test top_dt
+    # tests top_dt
     for idx, term in enumerate(l_term):
         if term[0] <= top_dt < term[1]:
             d_cp[top_dt].append((idx, True))
-    # test both ends of terms
+    # tests both ends of terms
     for idx, term in enumerate(l_term):
         if term[0] > top_dt:
             d_cp[term[0]].append((idx, True))
         if end_dt >= term[1]:
             d_cp[term[1]].append((idx, False))
-    # test end_dt
+    # tests end_dt
     for idx, term in enumerate(l_term):
         if term[0] <= end_dt < term[1]:
             d_cp[end_dt].append((idx, False))
@@ -380,8 +380,7 @@ def radj_sep(dt, duration):
 
 
 def shortstr(dt):
-    date = datetime.datetime.combine(dt.date(), datetime.time())
-    date.tzinfo = dt.tzinfo
+    date = datetime.datetime.combine(dt.date(), datetime.time(), tzinfo=dt.tzinfo)
     if date == dt:
         return dt.strftime("%Y%m%d")
     else:

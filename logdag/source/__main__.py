@@ -192,7 +192,7 @@ DICT_ARGSET = {
     "make-evdb-snmp-org": ["Load telemetry data from rrd and store",
                            [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL],
                            make_evdb_snmp_org],
-    "make-evdb-snmp-test": ["Store 1 feature from a specified source",
+    "make-evdb-snmp-tests": ["Store 1 feature from a specified source",
                             [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL,
                              ARG_FEATURE, ARG_TAGS],
                             make_evdb_snmp_test],

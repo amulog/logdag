@@ -54,6 +54,11 @@ class ArgumentManager(object):
     def args_in_time(self, dt_range):
         return [args for args in self.l_args if args[1] == dt_range]
 
+    def args_in_time_range(self, dt_range):
+        for args in self.l_args:
+            if args[1][0] >= dt_range[0] and args[1][1] <= dt_range[1]:
+                yield args
+
     def args_from_time(self, dt):
         for args in self.l_args:
             dts, dte = args[1]

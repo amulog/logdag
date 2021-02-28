@@ -10,7 +10,7 @@ FUNCTIONS = ["no_isolated", "to_undirected",
              "ate_prune"]
 
 
-#def apply(ldag, l_filtername, th=None):
+# def apply(ldag, l_filtername, th=None):
 #    g = ldag.graph
 #
 #    # make to_undirected the first filter
@@ -29,7 +29,7 @@ FUNCTIONS = ["no_isolated", "to_undirected",
 #    return g
 
 
-def no_isolated(graph, **kwargs):
+def no_isolated(graph, **_):
     ret = graph.copy()
     nodes = set(graph.nodes())
     nodes_connected = set()
@@ -41,11 +41,11 @@ def no_isolated(graph, **kwargs):
     return ret
 
 
-def to_undirected(graph, **kwargs):
+def to_undirected(graph, **_):
     return graph.to_undirected()
 
 
-def _sep_directed(graph, **kwargs):
+def _sep_directed(graph, **_):
     g_di = nx.DiGraph()
     g_nodi = nx.Graph()
     l_temp_edge = []
@@ -60,22 +60,22 @@ def _sep_directed(graph, **kwargs):
     return g_di, g_nodi
 
 
-def directed(graph, **kwargs):
+def directed(graph, **_):
     return _sep_directed(graph)[0]
 
 
-def undirected(graph, **kwargs):
+def undirected(graph, **_):
     return _sep_directed(graph)[1]
 
 
-def _sep_across_host(graph, ldag=None, **kwargs):
+def _sep_across_host(graph, ldag=None, **_):
     if ldag is None:
         raise ValueError("LogDAG object is needed for sep_across_host")
     g_same = nx.DiGraph()
     g_diff = nx.DiGraph()
     for edge in graph.edges(data=True):
         src_evdef, dst_evdef = ldag.edge_evdef(edge)
-        if src_evdef._host == dst_evdef._host:
+        if src_evdef.host == dst_evdef.host:
             g_same.add_edges_from([edge])
         else:
             g_diff.add_edges_from([edge])
@@ -90,7 +90,7 @@ def within_host(graph, **kwargs):
     return _sep_across_host(graph, **kwargs)[0]
 
 
-def subgraph_with_log(graph, ldag=None, **kwargs):
+def subgraph_with_log(graph, ldag=None, **_):
     ret = nx.create_empty_copy(graph)
     for comp in nx.connected_components(graph.to_undirected()):
         sg = graph.subgraph(comp)
@@ -106,7 +106,7 @@ def subgraph_with_log(graph, ldag=None, **kwargs):
     return ret
 
 
-def subgraph_with_snmp(graph, ldag=None, **kwargs):
+def subgraph_with_snmp(graph, ldag=None, **_):
     ret = nx.create_empty_copy(graph)
     for comp in nx.connected_components(graph.to_undirected()):
         sg = graph.subgraph(comp)
@@ -122,19 +122,20 @@ def subgraph_with_snmp(graph, ldag=None, **kwargs):
     return ret
 
 
-def ate_prune(graph, th=None, **kwargs):
+def ate_prune(graph, th=None, **_):
     """Prune edges with smaller ATE (average treatment effect).
     Effective if DAG estimation algorithm is LiNGAM."""
 
+    import numpy as np
+    if th is None:
+        raise ValueError("threshold not given")
     ret = graph.copy()
     try:
-        edge_label = {(u, v): d["label"]
+        edge_label = {(u, v): d["weight"]
                       for (u, v, d) in graph.edges(data=True)}
         for (src, dst), val in edge_label.items():
-            if float(val) < th:
+            if np.abs(val) < th:
                 ret.remove_edge(src, dst)
         return ret
     except KeyError:
         return nx.create_empty_copy(graph)
-
-

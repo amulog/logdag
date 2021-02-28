@@ -196,6 +196,9 @@ evmap_dir =
 output_dir = pc_output
 output_dag_format = pickle
 
+# Check dag file and pass if already exists
+pass_dag_exists = false
+
 
 [pc_prune]
 # If true, pruning the initial graph of pc algorithm
@@ -218,6 +221,15 @@ multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
 [lingam]
 algorithm = ica
 lower_limit = 0.01
+
+
+[cdt]
+category = independence
+algorithm = glasso
+max_iteration = 2000
+tolerance = 0.0001
+use_deconvolution = true
+deconvolution_algorithm = aracne
 
 
 [eval]

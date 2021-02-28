@@ -6,7 +6,6 @@ import logging
 import argparse
 
 from . import arguments
-from amulog import config
 from amulog import common
 
 _logger = logging.getLogger(__package__)
@@ -153,6 +152,31 @@ def make_dag_prune(ns):
 #    d = parse_condition(ns.conditions)
 #    print(tsdb.show_filterlog(conf, **d))
 
+
+def update_event_label(ns):
+    conf = open_logdag_config(ns)
+    am = arguments.ArgumentManager(conf)
+    am.init_dirs(conf)
+    args = am.jobname2args(ns.argname, conf)
+
+    from . import log2event
+    evmap = log2event.EventDefinitionMap()
+    evmap.load(conf, args)
+
+    from amulog import config
+    from .source import src_amulog
+    tmp_args = [config.getterm(conf, "general", "evdb_whole_term"),
+                conf["database_amulog"]["source_conf"],
+                conf["database_amulog"]["event_gid"]]
+    al = src_amulog.AmulogLoader(*tmp_args)
+
+    for evdef in evmap.iter_evdef():
+        assert evdef.source == log2event.SRCCLS_LOG
+        evdef.group = al.label(evdef.gid)
+
+    evmap.dump(conf, args)
+
+
 def dump_input(ns):
     from . import makedag
 
@@ -196,10 +220,36 @@ def show_args(ns):
     try:
         am.load()
     except IOError:
-        path = am.args_filename
+        path = am.args_path
         sys.exit("ArgumentManager object file ({0}) not found".format(path))
 
     print(am.show())
+
+
+def show_subgraphs(ns):
+    from . import showdag
+    import networkx as nx
+    conf = open_logdag_config(ns)
+    args = arguments.name2args(ns.argname, conf)
+
+    r = showdag.LogDAG(args)
+    r.load()
+    g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
+
+    l_buf = []
+    separator = "\n\n"
+    iterobj = sorted(nx.connected_components(g.to_undirected()),
+                     key=len, reverse=True)
+    for sgid, nodes in enumerate(iterobj):
+        if len(nodes) == 1:
+            continue
+        l_graph_buf = ["Subgraph {0} (size: {1})".format(sgid, len(nodes))]
+        subg = nx.subgraph(g, nodes)
+        for edge in subg.edges():
+            msg = r.edge_str(edge, g)
+            l_graph_buf.append(msg)
+        l_buf.append("\n".join(l_graph_buf))
+    print(separator.join(l_buf))
 
 
 def show_edge_list(ns):
@@ -257,9 +307,22 @@ def show_stats(ns):
         lambda r: showdag.apply_filter(r, ["undirected", "across_host"]).number_of_edges(),
         lambda r: r.number_of_edges()
     ]
-    data = [v for _, _, v in showdag.stat_groupby(conf, l_func)]
+    dt_range = _parse_opt_range(ns)
+    data = [v for _, _, v
+            in showdag.stat_groupby(conf, l_func, dt_range=dt_range)]
     agg_data = np.sum(data, axis=0)
     print(common.cli_table(list(zip(msg, agg_data)), align="right"))
+
+
+def show_stats_by_threshold(ns):
+    import numpy as np
+    from . import showdag
+    conf = open_logdag_config(ns)
+
+    thresholds = np.arange(0, 1, 0.1)
+    dt_range = _parse_opt_range(ns)
+    data = showdag.stat_by_threshold(conf, thresholds, dt_range=dt_range)
+    print(common.cli_table(list(zip(thresholds, data)), align="right"))
 
 
 def show_netsize(ns):
@@ -282,7 +345,7 @@ def plot_dag(ns):
     conf = open_logdag_config(ns)
 
     args = arguments.name2args(ns.argname, conf)
-    output = ns._filename
+    output = ns.filename
 
     r = showdag.LogDAG(args)
     r.load()
@@ -291,6 +354,16 @@ def plot_dag(ns):
     g = r.relabel(graph=g)
     r.graph_nx(output, graph=g)
     print(output)
+
+
+def _parse_opt_range(ns):
+    date_range_str = ns.dt_range
+    if date_range_str is None:
+        return None
+    else:
+        assert len(date_range_str) == 2
+        import datetime
+        return [datetime.datetime.strptime(s, "%Y-%m-%d") for s in date_range_str]
 
 
 # def parse_condition(conditions):
@@ -345,6 +418,12 @@ OPT_DIRNAME = [["-d", "--dirname"],
                {"dest": "dirname", "metavar": "DIRNAME", "action": "store",
                 "default": ".",
                 "help": "directory name for output"}]
+OPT_RANGE = [["-r", "--range"],
+             {"dest": "dt_range",
+              "metavar": "DATE", "nargs": 2, "default": None,
+              "help": ("datetime range, start and end in YY-MM-dd style. "
+                       "end date is not included."
+                       "(optional; use all data in default)")}]
 OPT_THRESHOLD = [["-t", "--threshold"],
                  {"dest": "threshold", "metavar": "THRESHOLD", "action": "store",
                   "type": float, "default": None,
@@ -384,7 +463,7 @@ ARG_FILTER = [["filters"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "test": ["Generate DAG",
+    "tests": ["Generate DAG",
              [OPT_CONFIG, OPT_DEBUG],
              test_makedag],
     #"make-tsdb": ["Generate time-series DB for make-dag input",
@@ -402,6 +481,9 @@ DICT_ARGSET = {
     "make-dag-prune": ["Show pruned DAGs before PC algorithm",
                        [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_prune],
+    "update-event-label": ["Overwrite labels for log events",
+                           [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
+                           update_event_label],
     "dump-input": ["Output causal analysis input in pandas csv format",
                    [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME,
                     [["-b", "--binary"],
@@ -430,6 +512,10 @@ DICT_ARGSET = {
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],
+    "show-subgraphs": ["Show edges in each connected subgraphs",
+                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
+                        ARG_ARGNAME, ARG_FILTER],
+                       show_subgraphs],
     "show-edge-list": ["Show edges in a DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
                         ARG_ARGNAME, ARG_FILTER],
@@ -450,8 +536,11 @@ DICT_ARGSET = {
                   [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_GROUPBY],
                   show_list],
     "show-stats": ["Show sum of nodes and edges",
-                   [OPT_CONFIG, OPT_DEBUG],
+                   [OPT_CONFIG, OPT_DEBUG, OPT_RANGE,],
                    show_stats],
+    "show-stats-by-threshold": ["Show sum of edges by thresholds",
+                                [OPT_CONFIG, OPT_DEBUG, OPT_RANGE],
+                                show_stats_by_threshold],
     "show-netsize": ["Show distribution of connected subgraphs in DAGs",
                      [OPT_CONFIG, OPT_DEBUG],
                      show_netsize],

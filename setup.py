@@ -2,43 +2,55 @@
 
 import sys
 import os
+import re
 from setuptools import setup
 
-try:
-    from pypandoc import convert
-    read_md = lambda f: convert(f, 'rst')
-except ImportError:
-    print('pandoc is not installed.')
-    read_md = lambda f: open(f, 'r').read()
+
+def load_readme():
+    with open('README.rst', 'r') as fd:
+        return fd.read()
+
+
+def load_requirements():
+    """Parse requirements.txt"""
+    reqs_path = os.path.join('.', 'requirements.txt')
+    with open(reqs_path, 'r') as fd:
+        requirements = [line.rstrip() for line in fd]
+    return requirements
+
 
 sys.path.append("./tests")
 package_name = 'logdag'
 data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
-setup(name='logdag',
-      version='0.0.2',
-      description='',
-      long_description=read_md('README.md'),
+package_name = 'logdag'
+
+with open(os.path.join(os.path.dirname(__file__), package_name, '__init__.py')) as f:
+    version = re.search("__version__ = '([^']+)'", f.read()).group(1)
+
+setup(name=package_name,
+      version=version,
+      description='A tool to generate causal DAGs from syslog time-series.',
+      long_description=load_readme(),
       author='Satoru Kobayashi',
-      author_email='sat@hongo.wide.ad.jp',
+      author_email='sat@nii.ac.jp',
       url='https://github.com/cpflat/logdag/',
-      install_requires=['amulog>=0.1.4',
-                        'numpy>=1.12.1', 'scipy>=1.0.0', 'pandas>=0.24.2',
-                        'scikit-learn>=0.20.2', 'python-dateutil>=2.8.0',
-                        'pcalg>=0.1.9', 'gsq>=0.1.6', 'networkx>=2.1'],
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: Console',
           'Intended Audience :: Information Technology',
           'Intended Audience :: Science/Research',
+          "Intended Audience :: Developers",
           'License :: OSI Approved :: BSD License',
-          'Programming Language :: Python :: 3.4.3',
+          "Operating System :: OS Independent",
+          'Programming Language :: Python :: 3.6',
           'Topic :: Scientific/Engineering :: Information Analysis',
           'Topic :: Software Development :: Libraries :: Python Modules'],
       license='The 3-Clause BSD License',
 
       packages=['logdag'],
+      install_requires=load_requirements(),
       package_data={'logdag': data_files},
-      #test_suite = "suite.suite"
+      # test_suite = "suite.suite"
       )

@@ -17,6 +17,12 @@ def makedag_main(args):
     jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
+    if conf.getboolean("dag", "pass_dag_exists"):
+        import os.path
+        if os.path.exists(showdag.LogDAG.dag_path(args)):
+            _logger.info("dag file for job({0}) exists, passed".format(jobname))
+            return None
+
     timer = common.Timer("makedag job({0})".format(jobname), output=_logger)
     timer.start()
 
@@ -38,6 +44,9 @@ def makedag_main(args):
     # generate dag
     graph = estimate_dag(conf, input_df, ci_func, binarize, init_graph)
     timer.lap("estimate-dag")
+    if graph is None:
+        _logger.info("job({0}) failed on causal inference".format(jobname))
+        return None
 
     # record dag
     ldag = showdag.LogDAG(args, graph)
@@ -100,7 +109,7 @@ def _init_graph(conf, evmap, jobname=None):
         return None
 
 
-#def corr_graph(conf, input_df, ci_func, _, init_graph=None):
+# def corr_graph(conf, input_df, ci_func, _, init_graph=None):
 #    if input_df.shape[1] < 2:
 #        _logger.info("input too small({0} nodes), return empty dag".format(
 #            input_df.shape[1]))
@@ -152,6 +161,18 @@ def estimate_dag(conf, input_df, ci_func, binarize, init_graph=None):
                                           skel_method, skel_depth,
                                           skel_verbose, init_graph,
                                           binarize)
+    elif cause_algorithm == "cdt":
+        from . import cdt_input
+        category = conf.get("cdt", "category")
+        algorithm = conf.get("cdt", "algorithm")
+        max_iter = conf.getint("cdt", "max_iteration")
+        tolerance = conf.getfloat("cdt", "tolerance")
+        use_deconvolution = conf.getboolean("cdt", "use_deconvolution")
+        deconvolution_algorithm = conf.get("cdt", "deconvolution_algorithm")
+        return cdt_input.estimate(input_df, category, algorithm,
+                                  max_iter, tolerance,
+                                  use_deconvolution, deconvolution_algorithm,
+                                  init_graph)
     elif cause_algorithm == "pc-corr":
         skel_method = conf.get("dag", "skeleton_method")
         skel_th = conf.getfloat("dag", "skeleton_threshold")

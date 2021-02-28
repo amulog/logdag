@@ -88,9 +88,8 @@ class SNMPEventLoader(evgen_common.EventLoader):
     fields = ["val", ]
 
     def __init__(self, conf, parallel=None, dry=False):
-        self.conf = conf
+        super().__init__(conf, dry=dry)
         self.parallel = parallel
-        self.dry = dry
         self._srcdb = conf["general"]["snmp_source"]
         if self._srcdb == "rrd":
             from . import src_rrd
@@ -482,7 +481,9 @@ class SNMPEventLoader(evgen_common.EventLoader):
                 # compatibility for configparser-style rule
                 convolve_radius = self.conf.getint("general",
                                                    "evdb_convolve_radius")
-            sense_offset = self._feature_bin_size * convolve_radius
+        else:
+            convolve_radius = 0
+        sense_offset = self._feature_bin_size * convolve_radius
 
         # datetimeindex.get_loc includes stop time (unlike other types!)
         # dtindex_offset remove the stop time
@@ -641,7 +642,7 @@ def survey_snmp_stats(el, dt_range):
         measure, tags = evdef.series()
         cnt = el.load_feature_count(measure, tags, dt_range)
         if cnt is not None:
-            d_host[evdef._host].append(cnt)
+            d_host[evdef.host].append(cnt)
             d_measure[evdef.measure].append(cnt)
 
     return d_host, d_measure

@@ -1,0 +1,11 @@
+amulog>=0.1.4
+pcalg>=0.1.9
+gsq>=0.1.6
+numpy
+scipy
+pandas
+scikit-learn
+python-dateutil
+networkx>=2.1
+lingam
+statsmodels

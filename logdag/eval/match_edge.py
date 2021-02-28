@@ -8,7 +8,7 @@ from logdag import showdag
 
 
 def separate_args(conf, tr):
-    """Some troubles appear among multiple days.
+    """Some troubles can appear among multiple days.
     This function separates DAG arguments and corresponding logs.
     """
     from logdag import arguments
@@ -50,22 +50,14 @@ def _match_edge(s_evdef, edge_evdef, rule):
 
 def match_edges(conf, tr, rule="all", cond=None):
 
-    def _pass_condition(edge_evdef, cond):
-        if cond is None:
+    def _pass_condition(edge_evdef, condition):
+        if condition is None:
             return True
-        elif cond == "xhost":
+        elif condition == "xhost":
             src_evdef, dst_evdef = edge_evdef
-            return not src_evdef._host == dst_evdef._host
+            return not src_evdef.host == dst_evdef.host
         else:
             raise NotImplementedError
-
-    def _lm2ev(lm, gid_name):
-        gid = lm.lt.get(gid_name)
-        d = {"source": "log",
-             "gid": gid,
-             "host": lm._host,
-             "group": al.label(gid)}
-        return evgen_log.LogEventDefinition(**d)
 
     from amulog import config
     from logdag.source import src_amulog
@@ -74,18 +66,22 @@ def match_edges(conf, tr, rule="all", cond=None):
     al = src_amulog.init_amulogloader(conf, dt_range)
     gid_name = conf.get("database_amulog", "event_gid")
 
-    d = defaultdict(list)
+    d_results = defaultdict(list)
     for args, l_lm in separate_args(conf, tr):
+        s_evdef = set()
+        for lm in l_lm:
+            gid = lm.lt.get(gid_name)
+            evdef = evgen_log.LogEventDefinition(
+                source="log", gid=gid, host=lm.host, group=al.label(gid))
+            s_evdef.add(str(evdef))
+
         r = showdag.LogDAG(args)
         r.load()
         g = r.graph.to_undirected()
         for edge in g.edges():
             edevdef = r.edge_evdef(edge)
-            if not _pass_condition(edevdef, cond):
-                continue
+            if _pass_condition(edevdef, cond) and \
+                    _match_edge(s_evdef, edevdef, rule):
+                d_results[r.name].append(edge)
 
-            s_evdef = {str(_lm2ev(lm, gid_name)) for lm in l_lm}
-            if _match_edge(s_evdef, edevdef, rule):
-                d[r.name].append(edge)
-
-    return d
+    return d_results

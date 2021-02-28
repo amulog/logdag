@@ -16,7 +16,7 @@ fmt_ratio = lambda x: "{:.1f}".format(x)
 fmt_int_ratio = lambda x, y: "{:,d}({:.1f}%)".format(x, y)
 
 
-class LogDAG():
+class LogDAG:
 
     def __init__(self, args, graph=None):
         self.args = args
@@ -25,7 +25,15 @@ class LogDAG():
         self.graph = graph
 
         self._evmap_obj = None
-        self._evloader = None
+        self._d_el = None
+
+    @classmethod
+    def dag_path(cls, args):
+        conf = args[0]
+        dag_format = conf["dag"]["output_dag_format"]
+        fp = arguments.ArgumentManager.dag_path(conf, args,
+                                                ext=dag_format)
+        return fp
 
     def _evmap(self):
         if self._evmap_obj is None:
@@ -41,8 +49,7 @@ class LogDAG():
 
     def dump(self):
         dag_format = self.conf["dag"]["output_dag_format"]
-        fp = arguments.ArgumentManager.dag_path(self.conf, self.args,
-                                                ext=dag_format)
+        fp = self.dag_path(self.args)
         if dag_format == "pickle":
             with open(fp, 'wb') as f:
                 pickle.dump(self.graph, f)
@@ -179,25 +186,27 @@ class LogDAG():
         dst_str = self.node_str(dst_node)
         if self.edge_isdirected(edge, graph):
             a = get_coefficient(edge, graph)
-            return "{0} -{2}-> {1}".format(src_str, dst_str, a)
+            return "{0} -[{2}]-> {1}".format(src_str, dst_str, a)
         else:
             return "{0} <-> {1}".format(src_str, dst_str)
 
     def node_str(self, node):
         return str(self.node_evdef(node))
 
-#    def edge_detail(self, edge, head, foot):
-#        buf = ["## Edge {0}".format(self.edge_str(edge)), ]
-#        for node in edge:
-#            buf.append(self.node_detail(node, head, foot))
-#        return "\n".join(buf)
-#
-#    def node_detail(self, node, head, foot):
-#        evdef = self.node_evdef(node)
-#        buf = ["# Node {0}:".format(self.node_str(node)),
-#               log2event.evdef_detail(self.conf, evdef, self.dt_range,
-#                                      head, foot, d_el=self._evloader())]
-#        return "\n".join(buf)
+    def edge_detail(self, edge, head, foot):
+        buf = ["## Edge {0}".format(self.edge_str(edge)), ]
+        for node in edge:
+            buf.append(self.node_detail(node, head, foot))
+        return "\n".join(buf)
+
+    def node_detail(self, node, head, foot):
+        evdef = self.node_evdef(node)
+        buf = ["# Node {0}:".format(self.node_str(node)),
+               log2event.evdef_instruction(self.conf, evdef,
+                                           d_el=self._evloader()),
+               log2event.evdef_detail(self.conf, evdef, self.dt_range,
+                                      head, foot, d_el=self._evloader())]
+        return "\n".join(buf)
 
     def ate_prune(self, threshold, graph=None):
         """Prune edges with smaller ATE (average treatment effect).
@@ -238,10 +247,7 @@ class LogDAG():
         mapping = {}
         for node in graph.nodes():
             evdef = self.node_evdef(node)
-            #label = log2event.evdef_label(self.conf, evdef, d_el=self._evloader())
             mapping[node] = str(evdef)
-            #mapping[node] = "{0}({1}), {2}".format(evdef.key, evdef.group,
-            #                                       evdef.host)
         return nx.relabel_nodes(graph, mapping, copy=True)
 
     def graph_nx(self, output, graph=None):
@@ -310,14 +316,31 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
 # functions for presentation
 
 
-#def show_edge_detail(args, head, tail):
-#    conf, dt_range, area = args
-#    l_buf = []
+def show_edge_detail(args, head, tail):
+    l_buf = []
+    r = LogDAG(args)
+    r.load()
+    for edge in r.graph.edges():
+        l_buf.append(r.edge_detail(edge, head, tail))
+    return "\n\n".join(l_buf)
+
+
+#def list_subgraphs(args):
 #    r = LogDAG(args)
 #    r.load()
-#    for edge in r.graph.edges():
-#        l_buf.append(r.edge_detail(edge, head, tail))
-#    return "\n\n".join(l_buf)
+#
+#    l_buf = []
+#    separator = "\n\n"
+#    iterobj = sorted(nx.connected_components(r.graph.to_undirected()),
+#                     key=len, reverse=True)
+#    for nodes in iterobj:
+#        l_graph_buf = []
+#        subg = nx.subgraph(r.graph, nodes)
+#        for edge in subg.edges():
+#            msg = r.edge_str(edge, r.graph)
+#            l_graph_buf.append(msg)
+#        l_buf.append("\n".join(l_graph_buf))
+#    return separator.join(l_buf)
 
 
 #def show_graph(conf, args, output, lib="networkx",
@@ -338,13 +361,18 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
 #        raise NotImplementedError
 
 
-def stat_groupby(conf, l_func, groupby=None, src_dir=None):
+def stat_groupby(conf, l_func, l_kwargs=None, dt_range=None, groupby=None):
     import numpy as np
     from . import dtutil
     d_group = defaultdict(list)
     am = arguments.ArgumentManager(conf)
     am.load()
-    for args in am:
+
+    if dt_range is None:
+        iterobj = am
+    else:
+        iterobj = am.args_in_time_range(dt_range)
+    for args in iterobj:
         if groupby is None:
             key = arguments.args2name(args)
         elif groupby == "day":
@@ -360,8 +388,29 @@ def stat_groupby(conf, l_func, groupby=None, src_dir=None):
         for args in l_args:
             ldag = LogDAG(args)
             ldag.load()
-            data.append([func(ldag) for func in l_func])
+            if l_kwargs is None:
+                data.append([func(ldag) for func in l_func])
+            else:
+                data.append([func(ldag, **kwargs)
+                             for func, kwargs in zip(l_func, l_kwargs)])
         yield key, l_args, np.sum(data, axis=0)
+
+
+def _apply_by_threshold(ldag, **kwargs):
+    return ldag.number_of_edges(apply_filter(ldag, ["ate_prune"], **kwargs))
+
+
+def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
+    import numpy as np
+    l_func = []
+    l_kwargs = []
+    for th in thresholds:
+        l_func.append(_apply_by_threshold)
+        l_kwargs.append({"th": th})
+    data = [v for _, _, v
+            in stat_groupby(conf, l_func, l_kwargs=l_kwargs,
+                            dt_range=dt_range, groupby=groupby)]
+    return np.sum(data, axis=0)
 
 
 #def list_results(conf, src_dir=None):
@@ -428,7 +477,6 @@ def stat_groupby(conf, l_func, groupby=None, src_dir=None):
 
 def list_netsize(conf):
     l_buf = []
-    src_dir = conf.get("dag", "output_dir")
     for r in iter_results(conf):
         d_size = defaultdict(int)
         for net in r.connected_subgraphs():
@@ -444,8 +492,6 @@ def list_netsize(conf):
 
 
 def show_netsize_dist(conf):
-    l_buf = []
-    src_dir = conf.get("dag", "output_dir")
     d_size = defaultdict(int)
     for r in iter_results(conf):
         for net in r.connected_subgraphs():

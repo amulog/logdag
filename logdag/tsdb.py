@@ -559,7 +559,7 @@ def filter_periodic(conf, ld, l_dt, dt_range, evdef, method):
     p_cnt = conf.getint("filter", "pre_count")
     p_term = config.getdur(conf, "filter", "pre_term")
 
-    # preliminary test
+    # preliminary tests
     if len(l_dt) < p_cnt:
         _logger.debug("time-series count too small, skip")
         return ret_false
@@ -567,7 +567,7 @@ def filter_periodic(conf, ld, l_dt, dt_range, evdef, method):
         _logger.debug("time-series range too small, skip")
         return ret_false
 
-    # periodicity test
+    # periodicity tests
     for dt_cond in config.gettuple(conf, "filter", "sample_rule"):
         dt_length, binsize = [config.str2dur(s) for s in dt_cond.split("_")]
         if (dt_range[1] - dt_range[0]) == dt_length:

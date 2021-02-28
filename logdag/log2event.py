@@ -108,7 +108,8 @@ class EventDefinitionMap(object):
                 obj = pickle.load(f)
             self._emap, self._ermap = obj
 
-class AreaTest():
+
+class AreaTest:
 
     def __init__(self, conf):
         self._arearule = conf["dag"]["area"]
@@ -281,24 +282,24 @@ def evdef_instruction(conf, evdef, d_el=None):
         d_el = init_evloaders(conf)
     return d_el[evdef.source].instruction(evdef)
 
-# def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
-#    if d_el is None:
-#        d_el = init_evloaders(conf)
-#    if evdef.source == SRCCLS_LOG:
-#        measure = "log_feature"
-#        key = evdef.key
-#    elif evdef.source == SRCCLS_SNMP:
-#        measure, key = _snmp_name2tag(evdef.key)
-#    else:
-#        raise NotImplementedError
-#    el = d_el[evdef.source]
-#    tags = {"host": evdef.host, "key": evdef.key()}
-#    data = list(el.load_items(measure, evdef.host, key, dt_range))
-#    return common.show_repr(
-#        data, head, foot,
-#        strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
-#
-#
+
+def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
+    if d_el is None:
+        d_el = init_evloaders(conf)
+    if evdef.source == SRCCLS_LOG:
+        measure = "log_feature"
+    elif evdef.source == SRCCLS_SNMP:
+        raise NotImplementedError("snmp detail not available yet")
+        #measure, key = _snmp_name2tag(evdef.key)
+    else:
+        raise NotImplementedError
+    el = d_el[evdef.source]
+    data = list(el.load_items(measure, evdef.tags(), dt_range))
+    return common.show_repr(
+        data, head, foot,
+        strfunc=lambda x: "{0}: {1}".format(x[0], x[1][0]))
+
+
 # def evdef_detail_org(conf, evdef, dt_range, head, foot, d_el=None):
 #    if d_el is None:
 #        d_el = init_evloaders(conf)
