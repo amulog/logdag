@@ -9,17 +9,24 @@ _logger = logging.getLogger(__package__)
 
 
 def pc(data, threshold, mode="gsq", skel_method="stable",
-       pc_depth=None, verbose=False, init_graph=None):
+       pc_depth=None, verbose=False, prior_knowledge=None):
+
+    if prior_knowledge:
+        init_graph = prior_knowledge.pruned_initial_skeleton()
+    else:
+        init_graph = nx.complete_graph(data.columns)
+
     if mode == "gsq":
         from gsq.ci_tests import ci_test_bin
         func = ci_test_bin
+        data = binarize_input(data)
     elif mode in ("fisherz", "fisherz_bin"):
         from citestfz.ci_tests import ci_test_gauss
         func = ci_test_gauss
     else:
         raise ValueError("ci_func invalid ({0})".format(mode))
-    return estimate_skeleton(data, threshold, func, skel_method,
-                             pc_depth, verbose, init_graph)
+    return estimate_dag(data, threshold, func, skel_method,
+                        pc_depth, verbose, init_graph)
 
 
 # def pc(data, threshold, mode="pylib", skel_method="default",
@@ -39,7 +46,11 @@ def pc(data, threshold, mode="gsq", skel_method="stable",
 #    return graph
 
 
-def estimate_skeleton(data, threshold, func, skel_method,
+def binarize_input(data):
+    return data.apply(lambda s: s.map(lambda x: 1 if x >= 1 else 0))
+
+
+def estimate_skeleton(data, threshold, func, skel_method="stable",
                       pc_depth=None, verbose=False, init_graph=None):
     import pcalg
     args = {"indep_test_func": func,
@@ -55,7 +66,7 @@ def estimate_skeleton(data, threshold, func, skel_method,
     return g.to_directed()
 
 
-def estimate_dag(data, threshold, func, skel_method,
+def estimate_dag(data, threshold, func, skel_method="stable",
                  pc_depth=None, verbose=False, init_graph=None):
 
     import pcalg

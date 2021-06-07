@@ -6,14 +6,15 @@ import pickle
 import networkx as nx
 from collections import defaultdict
 
+from amulog import config
 from . import arguments
 from . import log2event
-from . import showdag_filter
-from amulog import common
 
-fmt_int = lambda x: "{:,d}".format(x)
-fmt_ratio = lambda x: "{:.1f}".format(x)
-fmt_int_ratio = lambda x, y: "{:,d}({:.1f}%)".format(x, y)
+KEY_WEIGHT = "weight"
+
+# fmt_int = lambda x: "{:,d}".format(x)
+# fmt_ratio = lambda x: "{:.1f}".format(x)
+# fmt_int_ratio = lambda x, y: "{:,d}({:.1f}%)".format(x, y)
 
 
 class LogDAG:
@@ -24,6 +25,7 @@ class LogDAG:
         self.name = arguments.args2name(self.args)
         self.graph = graph
 
+        # cache
         self._evmap_obj = None
         self._d_el = None
 
@@ -38,7 +40,7 @@ class LogDAG:
     def _evmap(self):
         if self._evmap_obj is None:
             evmap = log2event.EventDefinitionMap()
-            evmap.load(self.conf, self.args)
+            evmap.load(self.args)
             self._evmap_obj = evmap
         return self._evmap_obj
 
@@ -106,6 +108,13 @@ class LogDAG:
         evmap = self._evmap()
         return [evmap.get_eid(evdef) for evdef in t_evdef]
 
+    @staticmethod
+    def get_coefficient(edge, graph):
+        a = None
+        if KEY_WEIGHT in graph.edges[edge]:
+            a = graph.edges[edge][KEY_WEIGHT]
+        return a
+
     def edges_directed(self, graph=None):
         """Returns subgraphs of input graph its edges by
         the availability of their directions.
@@ -166,7 +175,7 @@ class LogDAG:
             graph = self.graph
         for edge in graph.edges():
             src_info, dst_info = self.edge_evdef(edge)
-            if src_info._host == dst_info._host:
+            if src_info.host == dst_info.host:
                 g_same.add_edge(*edge)
             else:
                 g_diff.add_edge(*edge)
@@ -178,6 +187,19 @@ class LogDAG:
         temp_graph = graph.to_undirected()
         return nx.connected_components(temp_graph)
 
+    def edge_org(self, edge, graph=None):
+        if graph is None:
+            graph = self.graph
+        src_node, dst_node = edge
+        if self.edge_isdirected(edge, graph):
+            a = self.get_coefficient(edge, graph)
+            if a is None:
+                return "{0} -> {1}".format(src_node, dst_node)
+            else:
+                return "{0} -[{2}]-> {1}".format(src_node, dst_node, a)
+        else:
+            return "{0} <-> {1}".format(src_node, dst_node)
+
     def edge_str(self, edge, graph=None):
         if graph is None:
             graph = self.graph
@@ -185,13 +207,24 @@ class LogDAG:
         src_str = self.node_str(src_node)
         dst_str = self.node_str(dst_node)
         if self.edge_isdirected(edge, graph):
-            a = get_coefficient(edge, graph)
-            return "{0} -[{2}]-> {1}".format(src_str, dst_str, a)
+            a = self.get_coefficient(edge, graph)
+            if a is None:
+                return "{0} -> {1}".format(src_str, dst_str)
+            else:
+                return "{0} -[{2}]-> {1}".format(src_str, dst_str, a)
         else:
             return "{0} <-> {1}".format(src_str, dst_str)
 
     def node_str(self, node):
-        return str(self.node_evdef(node))
+        return str(node) + "@" + str(self.node_evdef(node))
+
+    def edge_instruction(self, edge):
+        return "\n".join(["< " + self.node_instruction(edge[0]),
+                          "> " + self.node_instruction(edge[1])])
+
+    def node_instruction(self, node):
+        evdef = self.node_evdef(node)
+        return log2event.evdef_instruction(self.conf, evdef, d_el=self._evloader())
 
     def edge_detail(self, edge, head, foot):
         buf = ["## Edge {0}".format(self.edge_str(edge)), ]
@@ -202,11 +235,25 @@ class LogDAG:
     def node_detail(self, node, head, foot):
         evdef = self.node_evdef(node)
         buf = ["# Node {0}:".format(self.node_str(node)),
-               log2event.evdef_instruction(self.conf, evdef,
-                                           d_el=self._evloader()),
-               log2event.evdef_detail(self.conf, evdef, self.dt_range,
-                                      head, foot, d_el=self._evloader())]
+               self.node_instruction(node)]
+#               log2event.evdef_instruction(self.conf, evdef,
+#                                           d_el=self._evloader())]
+        if head > 0 or foot > 0:
+            buf += [log2event.evdef_detail(self.conf, evdef, self.dt_range,
+                                           head, foot, d_el=self._evloader())]
         return "\n".join(buf)
+
+    def node_ts(self, node):
+        method = self.conf.get("dag", "ci_bin_method")
+        ci_bin_size = config.getdur(self.conf, "dag", "ci_bin_size")
+        ci_bin_diff = config.getdur(self.conf, "dag", "ci_bin_diff")
+
+        evdef = self.node_evdef(node)
+        measure, tags = evdef.series()
+        df = log2event.load_event(measure, tags, self.dt_range, ci_bin_size, ci_bin_diff,
+                                  method, el=self._evloader()[evdef.source])
+        sr = df.iloc[:, 0]
+        return sr
 
     def ate_prune(self, threshold, graph=None):
         """Prune edges with smaller ATE (average treatment effect).
@@ -325,7 +372,7 @@ def show_edge_detail(args, head, tail):
     return "\n\n".join(l_buf)
 
 
-#def list_subgraphs(args):
+# def list_subgraphs(args):
 #    r = LogDAG(args)
 #    r.load()
 #
@@ -343,7 +390,7 @@ def show_edge_detail(args, head, tail):
 #    return separator.join(l_buf)
 
 
-#def show_graph(conf, args, output, lib="networkx",
+# def show_graph(conf, args, output, lib="networkx",
 #               threshold=None, ignore_orphan=False):
 #    if lib == "networkx":
 #        r = LogDAG(args)
@@ -413,7 +460,7 @@ def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
     return np.sum(data, axis=0)
 
 
-#def list_results(conf, src_dir=None):
+# def list_results(conf, src_dir=None):
 #    table = [["datetime", "area", "nodes", "edges", "name"], ]
 #    for r in iter_results(conf, src_dir):
 #        c, dt_range, area = r.args
@@ -423,7 +470,7 @@ def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
 #    return common.cli_table(table)
 #
 #
-#def list_results_byday(conf, src_dir=None):
+# def list_results_byday(conf, src_dir=None):
 #    table = [["datetime", "nodes", "edges"], ]
 #    d_date = {}
 #    for r in iter_results(conf, src_dir):
@@ -441,7 +488,7 @@ def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
 #    return common.cli_table(table)
 
 
-#def show_stats(conf, src_dir=None):
+# def show_stats(conf, src_dir=None):
 #    node_num = 0
 #    edge_num = 0
 #    di_num = 0
@@ -500,8 +547,16 @@ def show_netsize_dist(conf):
                       for size, cnt in d_size.items()])
 
 
-def get_coefficient(edge, graph):
-    a = ''
-    if 'label' in graph.edges[edge]:
-        a = graph.edges[edge]['label']
-    return a
+def plot_node_ts(args, l_nodeid, output):
+    import matplotlib
+    matplotlib.use("Agg")
+
+    import pandas as pd
+    ldag = LogDAG(args)
+    ldag.load()
+    d_ts = {node: ldag.node_ts(node) for node in l_nodeid}
+    df = pd.DataFrame(d_ts)
+
+    import matplotlib.pyplot as plt
+    df.plot(subplots=True, layout=(len(l_nodeid), 1))
+    plt.savefig(output)

@@ -1,12 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import logging
 import pickle
+from abc import ABC, abstractmethod
 import pandas as pd
 import numpy as np
-from dateutil import tz
-from collections import namedtuple
 
 from . import dtutil
 from . import arguments
@@ -19,7 +15,7 @@ SRCCLS_LOG = "log"
 SRCCLS_SNMP = "snmp"
 
 
-class EventDefinition(object):
+class EventDefinition(ABC):
     _l_attr = ["source", "host", "group"]
 
     def __init__(self, **kwargs):
@@ -28,6 +24,25 @@ class EventDefinition(object):
 
     def key(self):
         return None
+
+    @property
+    def identifier(self):
+        return self.__str__()
+
+
+class MultipleEventDefinition(EventDefinition):
+    _l_attr = []
+
+    def __init__(self, members, **kwargs):
+        super().__init__(**kwargs)
+        self._members = members
+
+    def __str__(self):
+        return "|".join([str(evdef) for evdef in self._members])
+
+    @property
+    def identifier(self):
+        return "|".join(sorted([str(evdef) for evdef in self._members]))
 
 
 class EventDefinitionMap(object):
@@ -64,14 +79,14 @@ class EventDefinitionMap(object):
     def add_evdef(self, evdef):
         eid = self._next_eid()
         self._emap[eid] = evdef
-        self._ermap[str(evdef)] = eid
+        self._ermap[evdef.identifier] = eid
         return eid
 
     def has_eid(self, eid):
         return eid in self._emap
 
     def has_evdef(self, evdef):
-        return str(evdef) in self._ermap
+        return evdef.identifier in self._ermap
 
     def evdef(self, eid):
         return self._emap[eid]
@@ -80,7 +95,7 @@ class EventDefinitionMap(object):
         return self._emap.items()
 
     def get_eid(self, evdef):
-        return self._ermap[str(evdef)]
+        return self._ermap[evdef.identifier]
 
     def iter_eid(self):
         return self._emap.keys()
@@ -89,13 +104,13 @@ class EventDefinitionMap(object):
         for eid in self.iter_eid():
             yield self._emap[eid]
 
-    def dump(self, conf, args):
+    def dump(self, args):
         fp = arguments.ArgumentManager.evdef_path(args)
         obj = (self._emap, self._ermap)
         with open(fp, "wb") as f:
             pickle.dump(obj, f)
 
-    def load(self, conf, args):
+    def load(self, args):
         fp = arguments.ArgumentManager.evdef_path(args)
         try:
             with open(fp, "rb") as f:
@@ -155,7 +170,7 @@ def init_evloaders(conf):
 
 
 def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
-               method, binarize, el):
+               method, binarize=False, el=None):
     if method == "sequential":
         df = el.load(measure, tags, dt_range, ci_bin_size)
         if df is None or df[el.fields[0]].sum() == 0:
@@ -178,7 +193,6 @@ def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
                                        l_dt_values=l_array)
         l_dt_label = dtutil.range_dt(dt_range[0], dt_range[1], ci_bin_diff)
         dtindex = pd.to_datetime(l_dt_label)
-        dtindex = dtindex.tz_localize(tz.tzlocal())
         df = pd.DataFrame(data, index=dtindex)
     elif method == "radius":
         tmp_dt_range = (min(dt_range[0],
@@ -196,7 +210,6 @@ def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
                                         l_dt_values=l_array)
         l_dt_label = dtutil.range_dt(dt_range[0], dt_range[1], ci_bin_diff)
         dtindex = pd.to_datetime(l_dt_label)
-        dtindex = dtindex.tz_localize(tz.tzlocal())
         df = pd.DataFrame(data, index=dtindex)
     else:
         raise NotImplementedError
@@ -273,8 +286,55 @@ def makeinput(conf, dt_range, area, binarize):
         msg = "loaded event {0} {1} (sum: {2})".format(eid, evmap.evdef(eid),
                                                        df[eid].sum())
         _logger.debug(msg)
+
+    if len(evlist) == 0:
+        _logger.warning("No data loaded")
+        return None, None
+
+    merge_sync = conf.getboolean("dag", "merge_syncevent")
+    if merge_sync:
+        merge_sync_rules = config.getlist(conf, "dag", "merge_syncevent_rules")
+        evlist, evmap = merge_sync_event(evlist, evmap, merge_sync_rules)
+
     input_df = pd.concat(evlist, axis=1)
     return input_df, evmap
+
+
+def merge_sync_event(evlist, evmap, rules):
+
+    from collections import defaultdict
+    hashmap = defaultdict(list)
+    # make clusters that have completely same values
+    for old_eid, df in enumerate(evlist):
+        # old_eid = df.columns[0]
+        evdef = evmap.evdef(old_eid)
+
+        value_key = tuple(df.iloc[:, 0])
+        tmp_key = [value_key, ]
+        if "host" in rules:
+            tmp_key.append(evdef.host)
+        if "group" in rules:
+            tmp_key.append(evdef.group)
+        key = tuple(tmp_key)
+        hashmap[key].append(old_eid)
+
+    new_evlist = []
+    new_evmap = EventDefinitionMap()
+    for l_old_eid in hashmap.values():
+        l_evdef = [evmap.evdef(eid) for eid in l_old_eid]
+
+        new_evdef = MultipleEventDefinition(l_evdef)
+        if "host" in rules:
+            new_evdef.host = l_evdef[0].host
+        if "group" in rules:
+            new_evdef.group = l_evdef[0].group
+        new_eid = new_evmap.add_evdef(new_evdef)
+        new_df = evlist[l_old_eid[0]]
+        new_df.columns = [new_eid, ]
+        new_evlist.append(new_df)
+
+    _logger.info("merge-syncevent {0} -> {1}".format(len(evmap), len(new_evmap)))
+    return new_evlist, new_evmap
 
 
 def evdef_instruction(conf, evdef, d_el=None):
@@ -319,3 +379,4 @@ def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
 #            strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
 #    else:
 #        raise NotImplementedError
+

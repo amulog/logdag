@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""NOTE: The source code of MixedLiNGAM implementation is
+currently not available due to license issue."""
+
+
 import logging
-import numpy as np
 import networkx as nx
 
 from .bcause.bcause import select
@@ -11,15 +14,23 @@ from .bcause.graph.mixed_graph import MixedGraph
 _logger = logging.getLogger(__package__)
 
 
-def estimate(data, skel_th, skel_method, pc_depth, skel_verbose, init_graph, binary=True):
+def estimate(data, skel_th=0.01, skel_method="stable", pc_depth=None,
+             skel_verbose=False, prior_knowledge=None):
     import pcalg
     from gsq.ci_tests import ci_test_bin
 
-    if binary:
-        pc_data_matrix = data.values
+    if prior_knowledge:
+        init_graph = prior_knowledge.pruned_initial_skeleton()
     else:
-        pc_data_matrix = data.apply(
-            lambda s: s.map(lambda x: 1 if x >= 1 else 0)).values
+        init_graph = nx.complete_graph(data.columns)
+
+    from . import pc_input
+    pc_data_matrix = pc_input.binarize_input(data).values
+    # if binary:
+    #     pc_data_matrix = data.values
+    # else:
+    #     pc_data_matrix = data.apply(
+    #         lambda s: s.map(lambda x: 1 if x >= 1 else 0)).values
 
     pc_args = {
         "indep_test_func": ci_test_bin,
@@ -34,8 +45,13 @@ def estimate(data, skel_th, skel_method, pc_depth, skel_verbose, init_graph, bin
         pc_args["init_graph"] = init_graph
 
     (graph, sep_set) = pcalg.estimate_skeleton(**pc_args)
-    mapping = {k: v for k, v in zip(graph.nodes(), data.columns.astype(int))}
-    graph = MixedGraph(nx.relabel_nodes(graph, mapping))
+    graph_final = estimate_direction(data, graph)
+    return graph_final
+
+
+def estimate_direction(data, skeleton):
+    mapping = {k: v for k, v in zip(skeleton.nodes(), data.columns.astype(int))}
+    graph = MixedGraph(nx.relabel_nodes(skeleton, mapping))
     subgraphs = [
         graph.subgraph(nodes)
         for nodes in nx.weakly_connected_components(graph)
@@ -44,7 +60,6 @@ def estimate(data, skel_th, skel_method, pc_depth, skel_verbose, init_graph, bin
     graph_final = MixedGraph()
     for sub in subgraphs:
         graph_n = MixedGraph(sub)
-        # import pdb; pdb.set_trace()
         data_n = data[list(graph_n.nodes())]
         # data_n = data[data.columns[np.array(graph_n.nodes())]]
         graph_n, data_n, mapping_n, invmap_n = normalize(graph_n, data_n)

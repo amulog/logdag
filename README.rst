@@ -10,18 +10,25 @@ This package works on python3.
 The input log data is loaded with AMULOG (https://github.com/cpflat/amulog).
 The output DAG is recorded in the format of NetworkX DiGraph.
 
-This project was partially ported from repository LogCausalAnaysis.
+This project was partially forked from repository LogCausalAnaysis.
 (https://github.com/cpflat/LogCausalAnalysis)
 
 
-Package requirements
-====================
+Notice
+======
 
-* amulog https://github.com/cpflat/amulog
-* pcalg https://github.com/keiichishima/pcalg
-* gsq https://github.com/keiichishima/gsq
-* citestfz https://github.com/cpflat/citestfz
-* NetworkX https://networkx.github.io
+Currently this project is under large changes, so you should not expect good support.
+It is recommended for you to try stable branch or v0.0.1, that is corresponding to CNSM2019 paper.
+
+All features are available from command line. First you should try following help command :code:`python -m logdag -h`.
+
+short usage:
+
+1. Generate amulog database (and its config) as the input log time-series source
+2. Prepare logdag config file by referring :code:`logdag/data/config.conf.default`
+3. (if after v0.0.2) Generate time-series db by :code:`logdag.source` features
+4. Generate DAGs by subcommand :code:`makedag`
+5. See results by commands such as :code:`show-edge-list`
 
 
 Reference

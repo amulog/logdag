@@ -52,5 +52,5 @@ setup(name=package_name,
       packages=['logdag'],
       install_requires=load_requirements(),
       package_data={'logdag': data_files},
-      # test_suite = "suite.suite"
+      test_suite="tests"
       )

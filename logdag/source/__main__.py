@@ -26,20 +26,16 @@ def _whole_term(conf):
     return config.getterm(conf, "general", "evdb_whole_term")
 
 
-def _iter_evdb_term(conf):
-    w_term = config.getterm(conf, "general", "evdb_whole_term")
-    term = config.getdur(conf, "general", "evdb_unit_diff")
-    return dtutil.iter_term(w_term, term)
-
-
 def make_evdb_log_all(ns):
     conf = open_logdag_config(ns)
     dump_org = ns.org
     dry = ns.dry
 
     from . import evgen_log
+    w_term = config.getterm(conf, "general", "evdb_whole_term")
+    term = config.getdur(conf, "general", "evdb_unit_diff")
     el = evgen_log.LogEventLoader(conf, dry=dry)
-    for dt_range in _iter_evdb_term(conf):
+    for dt_range in dtutil.iter_term(w_term, term):
         el.read(dt_range, dump_org=dump_org)
 
 
@@ -193,9 +189,9 @@ DICT_ARGSET = {
                            [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL],
                            make_evdb_snmp_org],
     "make-evdb-snmp-tests": ["Store 1 feature from a specified source",
-                            [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL,
-                             ARG_FEATURE, ARG_TAGS],
-                            make_evdb_snmp_test],
+                             [OPT_CONFIG, OPT_DEBUG, OPT_ORG, OPT_DRY, OPT_PARALLEL,
+                              ARG_FEATURE, ARG_TAGS],
+                             make_evdb_snmp_test],
     "show-snmp-stats": ["Show event counts in telemetry features",
                         [OPT_CONFIG, OPT_DEBUG],
                         show_snmp_stats],

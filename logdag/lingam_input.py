@@ -16,25 +16,27 @@ def _fit_back(data, cls, kwargs, limit=3):
             model = cls(**kwargs)
             model.fit(data)
             return model
-        except np.linalg.LinAlgError as e:
+        except np.linalg.LinAlgError:
             cnt += 1
             if cnt >= limit:
                 return None
 
 
-def estimate(data, algorithm="ica", lower_limit=0.01, init_graph=None):
+def estimate(data, algorithm="ica", lower_limit=0.01,
+             ica_max_iter=1000, prior_knowledge=None):
     """Generate DAG with LiNGAM"""
     import lingam
     if algorithm == "ica":
-        if init_graph is not None:
+        if prior_knowledge is not None:
             raise Warning("ICA-LiNGAM does not use prior knowledge")
-        kwargs = {}
+        kwargs = {"max_iter": ica_max_iter}
+        import pdb; pdb.set_trace()
         model = _fit_back(data, lingam.ICALiNGAM, kwargs)
     elif algorithm == "direct":
-        if init_graph is None:
+        if prior_knowledge is None:
             kwargs = {}
         else:
-            pmatrix = _convert_init_graph(init_graph)
+            pmatrix = prior_knowledge.lingam_prior_knowledge()
             kwargs = {"prior_knowledge": pmatrix}
         model = _fit_back(data, lingam.DirectLiNGAM, kwargs)
     else:
@@ -58,27 +60,29 @@ def estimate(data, algorithm="ica", lower_limit=0.01, init_graph=None):
     return g
 
 
-def estimate_corr(data, algorithm="ica", lower_limit=0.01, init_graph=None):
+def estimate_corr(data, algorithm="ica", lower_limit=0.01, prior_knowledge=None):
     """Generate DAG of pair-wise LiNGAM coefficient"""
     import lingam
 
-    def _model(alg):
+    def _model(alg, _kwargs):
         if alg == "ica":
-            return lingam.ICALiNGAM()
+            return lingam.ICALiNGAM(**_kwargs)
         elif alg == "direct":
-            return lingam.DirectLiNGAM()
+            return lingam.DirectLiNGAM(**_kwargs)
         else:
             raise ValueError("invalid lingam algorithm name")
 
     g = nx.DiGraph()
     g.add_nodes_from(data.columns)
     for i, j in combinations(data.columns, 2):
-        if init_graph is not None and not init_graph.has_edge(i, j):
-            # pruned in init_graph, pass
-            continue
+        if algorithm == "direct" and prior_knowledge:
+            pmatrix = prior_knowledge.lingam_prior_knowledge(node_ids=[i, j])
+            kwargs = {"prior_knowledge": pmatrix}
+        else:
+            kwargs = {}
 
         tmp_data = data[[i, j]]
-        model = _model(algorithm)
+        model = _model(algorithm, kwargs)
         model.fit(tmp_data)
         adj = np.nan_to_num(model.adjacency_matrix_)
 
@@ -92,11 +96,11 @@ def estimate_corr(data, algorithm="ica", lower_limit=0.01, init_graph=None):
     return g
 
 
-def _convert_init_graph(init_graph):
-    from lingam.utils import make_prior_knowledge
-    n_nodes = init_graph.number_of_nodes()
-    no_paths = []
-    for to, from_ in combinations(range(n_nodes), 2):
-        if not init_graph.has_edge(to, from_):
-            no_paths.append((to, from_))
-    return make_prior_knowledge(n_nodes, no_paths=no_paths)
+#def _convert_init_graph(init_graph):
+#    from lingam.utils import make_prior_knowledge
+#    n_nodes = init_graph.number_of_nodes()
+#    no_paths = []
+#    for to, from_ in combinations(range(n_nodes), 2):
+#        if not init_graph.has_edge(to, from_):
+#            no_paths.append((to, from_))
+#    return make_prior_knowledge(n_nodes, no_paths=no_paths)

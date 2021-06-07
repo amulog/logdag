@@ -10,7 +10,7 @@ from dateutil import tz
 _logger = logging.getLogger(__package__)
 
 
-class InfluxDB(object):
+class InfluxDBv1(object):
 
     def __init__(self, dbname, inf_kwargs,
                  batch_size=1000, protocol="line"):
@@ -92,8 +92,8 @@ class InfluxDB(object):
     def commit(self):
         pass
 
-    def get(self, measure, d_tags, fields, dt_range,
-            str_bin=None, func=None, fill=None, limit=None):
+    def _get(self, measure, d_tags, fields, dt_range,
+             str_bin=None, func=None, fill=None, limit=None):
         ut_range = tuple(dt.timestamp() for dt in dt_range)
         if fields is None:
             s_fields = "*"
@@ -131,7 +131,7 @@ class InfluxDB(object):
         return ret
 
     def get_items(self, measure, d_tags, fields, dt_range):
-        rs = self.get(measure, d_tags, fields, dt_range)
+        rs = self._get(measure, d_tags, fields, dt_range)
 
         for p in rs.get_points():
             dt = pd.to_datetime(p["time"])
@@ -141,15 +141,15 @@ class InfluxDB(object):
             yield dt, array
 
     def has_data(self, measure, d_tags, fields, dt_range):
-        rs = self.get(measure, d_tags, fields, dt_range, limit=1)
+        rs = self._get(measure, d_tags, fields, dt_range, limit=1)
         return len(list(rs.get_points())) >= 1
 
     def get_df(self, measure, d_tags, fields, dt_range,
-               str_bin=None, func=None, fill=None):
+               str_bin=None, func=None, fill=None, limit=None):
         if fields is None:
             fields = self.list_fields(measure)
-        rs = self.get(measure, d_tags, fields, dt_range,
-                      str_bin, func, fill)
+        rs = self._get(measure, d_tags, fields, dt_range,
+                       str_bin, func, fill, limit)
         if len(rs) == 0:
             return None
 
@@ -162,8 +162,8 @@ class InfluxDB(object):
 
     def get_count(self, measure, d_tags, fields, dt_range):
         func = "count"
-        rs = self.get(measure, d_tags, fields, dt_range,
-                      func=func)
+        rs = self._get(measure, d_tags, fields, dt_range,
+                       func=func)
         if len(rs) == 0:
             return None
         count = rs.get_points().__next__()["val"]
@@ -207,5 +207,5 @@ def init_influx(conf, dbname, df=False):
     protocol = conf["database_influx"]["protocol"]
     if df:
         raise NotImplementedError
-    return InfluxDB(dbname, d, batch_size=batch_size,
-                    protocol=protocol)
+    return InfluxDBv1(dbname, d, batch_size=batch_size,
+                      protocol=protocol)

@@ -68,7 +68,7 @@ def make_dag(ns):
         timer = common.Timer("makedag task", output=_logger)
         timer.start()
         for args in am:
-            makedag.makedag_main(args)
+            makedag.makedag_pool(args)
         timer.stop()
 
     def makedag_mprocess(am, pal=1):
@@ -76,7 +76,7 @@ def make_dag(ns):
         timer = common.Timer("makedag task", output=_logger)
         timer.start()
         with multiprocessing.Pool(processes=pal) as pool:
-            pool.map(makedag.makedag_main, am)
+            pool.map(makedag.makedag_pool, am)
         timer.stop()
 
     conf = open_logdag_config(ns)
@@ -161,7 +161,7 @@ def update_event_label(ns):
 
     from . import log2event
     evmap = log2event.EventDefinitionMap()
-    evmap.load(conf, args)
+    evmap.load(args)
 
     from amulog import config
     from .source import src_amulog
@@ -174,7 +174,7 @@ def update_event_label(ns):
         assert evdef.source == log2event.SRCCLS_LOG
         evdef.group = al.label(evdef.gid)
 
-    evmap.dump(conf, args)
+    evmap.dump(args)
 
 
 def dump_input(ns):
@@ -188,7 +188,7 @@ def dump_input(ns):
     args = am.jobname2args(ns.argname, conf)
 
     input_df, _ = makedag.make_input(args, binarize)
-    input_df.to_csv(ns._filename)
+    input_df.to_csv(ns.filename)
 
 
 def dump_events(ns):
@@ -200,7 +200,7 @@ def dump_events(ns):
     args = am.jobname2args(ns.argname, conf)
 
     evmap = log2event.EventDefinitionMap()
-    evmap.load(conf, args)
+    evmap.load(args)
 
     if len(evmap) == 0:
         from . import makedag
@@ -243,10 +243,21 @@ def show_subgraphs(ns):
     for sgid, nodes in enumerate(iterobj):
         if len(nodes) == 1:
             continue
-        l_graph_buf = ["Subgraph {0} (size: {1})".format(sgid, len(nodes))]
+        l_graph_buf = ["Subgraph {0} ({1} nodes)".format(sgid, len(nodes))]
         subg = nx.subgraph(g, nodes)
+
+        undirected = set()
         for edge in subg.edges():
-            msg = r.edge_str(edge, g)
+            if not r.edge_isdirected(edge, g):
+                if edge in undirected:
+                    continue
+                undirected.add(edge)
+                undirected.add((edge[1], edge[0]))
+            if ns.instruction:
+                msg = "\n".join([r.edge_str(edge, g),
+                                 r.edge_instruction(edge)])
+            else:
+                msg = r.edge_str(edge, g)
             l_graph_buf.append(msg)
         l_buf.append("\n".join(l_graph_buf))
     print(separator.join(l_buf))
@@ -262,7 +273,12 @@ def show_edge_list(ns):
     r.load()
     g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
     for edge in g.edges():
-        l_buf.append(r.edge_str(edge))
+        if ns.instruction:
+            msg = "\n".join([r.edge_str(edge, g),
+                             r.edge_instruction(edge)])
+        else:
+            msg = r.edge_str(edge, g)
+        l_buf.append(msg)
     print("\n".join(l_buf))
 
 
@@ -288,25 +304,46 @@ def show_list(ns):
     print(common.cli_table(table))
 
 
+def show_node_list(ns):
+    from . import showdag
+    conf = open_logdag_config(ns)
+    args = arguments.name2args(ns.argname, conf)
+
+    r = showdag.LogDAG(args)
+    r.load()
+    for node in r.graph.nodes():
+        print("{0}: {1}".format(node, r.node_str(node)))
+
+
 def show_stats(ns):
     import numpy as np
     from . import showdag
     conf = open_logdag_config(ns)
 
-    msg = ["number of events (nodes)",
-           "number of directed edges",
-           "number of directed edges across hosts",
-           "number of undirected edges",
-           "number of undirected edges across hosts",
-           "number of all edges"]
+    msg = [
+        "number of events (nodes)",
+        "number of all edges",
+        "number of directed edges",
+        "number of undirected edges"
+    ]
     l_func = [
         lambda r: r.number_of_nodes(),
+        lambda r: r.number_of_edges(),
         lambda r: showdag.apply_filter(r, ["directed"]).number_of_edges(),
-        lambda r: showdag.apply_filter(r, ["directed", "across_host"]).number_of_edges(),
         lambda r: showdag.apply_filter(r, ["undirected"]).number_of_edges(),
-        lambda r: showdag.apply_filter(r, ["undirected", "across_host"]).number_of_edges(),
-        lambda r: r.number_of_edges()
     ]
+    if ns.across_host:
+        msg += [
+            "number of edges across hosts",
+            "number of directed edges across hosts",
+            "number of undirected edges across hosts",
+        ]
+        l_func += [
+            lambda r: r.number_of_edges(showdag.apply_filter(r, ["across_host"])),
+            lambda r: showdag.apply_filter(r, ["directed", "across_host"]).number_of_edges(),
+            lambda r: showdag.apply_filter(r, ["undirected", "across_host"]).number_of_edges(),
+        ]
+
     dt_range = _parse_opt_range(ns)
     data = [v for _, _, v
             in showdag.stat_groupby(conf, l_func, dt_range=dt_range)]
@@ -353,6 +390,18 @@ def plot_dag(ns):
     g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
     g = r.relabel(graph=g)
     r.graph_nx(output, graph=g)
+    print(output)
+
+
+def plot_node_ts(ns):
+    from . import showdag
+    conf = open_logdag_config(ns)
+
+    args = arguments.name2args(ns.argname, conf)
+    output = ns.filename
+
+    l_nodeid = [int(n) for n in ns.node_ids]
+    showdag.plot_node_ts(args, l_nodeid, output)
     print(output)
 
 
@@ -440,6 +489,9 @@ OPT_BINSIZE = [["-b", "--binsize"],
                {"dest": "binsize", "metavar": "BINSIZE",
                 "action": "store", "default": None,
                 "help": "binsize (like 10s)"}]
+OPT_INSTRUCTION = [["--instruction"],
+                   {"dest": "instruction", "action": "store_true",
+                    "help": "show event definition with source information"}]
 OPT_GROUPBY = [["--groupby"],
                {"dest": "groupby", "metavar": "GROUPBY",
                 "action": "store", "default": None,
@@ -513,14 +565,14 @@ DICT_ARGSET = {
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],
     "show-subgraphs": ["Show edges in each connected subgraphs",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
+                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
                         ARG_ARGNAME, ARG_FILTER],
                        show_subgraphs],
     "show-edge-list": ["Show edges in a DAG",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
+                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
                         ARG_ARGNAME, ARG_FILTER],
                        show_edge_list],
-    "show-edge-detail": ["Show logs of detected edges in a DAG",
+    "show-edge-detail": ["Show time-series samples of detected edges in a DAG",
                          [OPT_CONFIG, OPT_DEBUG,
                           [["--head", ],
                            {"dest": "head", "action": "store",
@@ -535,8 +587,14 @@ DICT_ARGSET = {
     "show-list": ["Show abstracted results of DAG generation",
                   [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_GROUPBY],
                   show_list],
+    "show-node-list": ["Show node definitions of the input",
+                       [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
+                       show_node_list],
     "show-stats": ["Show sum of nodes and edges",
-                   [OPT_CONFIG, OPT_DEBUG, OPT_RANGE,],
+                   [OPT_CONFIG, OPT_DEBUG, OPT_RANGE,
+                    [["--xhost"],
+                     {"dest": "across_host", "action": "store_true",
+                      "help": "show additional stats for edges across multiple hosts"}]],
                    show_stats],
     "show-stats-by-threshold": ["Show sum of edges by thresholds",
                                 [OPT_CONFIG, OPT_DEBUG, OPT_RANGE],
@@ -551,6 +609,13 @@ DICT_ARGSET = {
                  [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME, OPT_THRESHOLD,
                   ARG_ARGNAME, ARG_FILTER],
                  plot_dag],
+    "plot-node-ts": ["Generate node time-series view",
+                     [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME,
+                      ARG_ARGNAME,
+                      [["node_ids"],
+                       {"metavar": "NODE_IDs", "nargs": "+",
+                        "help": "nodes to show"}]],
+                     plot_node_ts],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

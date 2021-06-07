@@ -101,13 +101,14 @@ class SNMPEventLoader(evgen_common.EventLoader):
         else:
             raise NotImplementedError
 
-        self._dstdb = conf["general"]["evdb"]
-        if self._dstdb == "influx":
-            dbname = conf["database_influx"]["snmp_dbname"]
-            from . import influx
-            self.evdb = influx.init_influx(conf, dbname, df=False)
-        else:
-            raise NotImplementedError
+        self.evdb = self._init_evdb(conf, "snmp_dbname")
+        # self._dstdb = conf["general"]["evdb"]
+        # if self._dstdb == "influx":
+        #     dbname = conf["database_influx"]["snmp_dbname"]
+        #     from . import influx
+        #     self.evdb = influx.init_influx(conf, dbname, df=False)
+        # else:
+        #     raise NotImplementedError
 
         self._ha = host_alias.HostAlias(conf["general"]["host_alias_filename"])
 

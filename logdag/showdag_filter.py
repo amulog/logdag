@@ -73,13 +73,16 @@ def _sep_across_host(graph, ldag=None, **_):
         raise ValueError("LogDAG object is needed for sep_across_host")
     g_same = nx.DiGraph()
     g_diff = nx.DiGraph()
-    for edge in graph.edges(data=True):
-        src_evdef, dst_evdef = ldag.edge_evdef(edge)
-        if src_evdef.host == dst_evdef.host:
-            g_same.add_edges_from([edge])
-        else:
-            g_diff.add_edges_from([edge])
-    return g_same, g_diff
+    try:
+        for edge in graph.edges(data=True):
+            src_evdef, dst_evdef = ldag.edge_evdef(edge)
+            if src_evdef.host == dst_evdef.host:
+                g_same.add_edges_from([edge])
+            else:
+                g_diff.add_edges_from([edge])
+        return g_same, g_diff
+    except AttributeError:
+        return None, None
 
 
 def across_host(graph, **kwargs):

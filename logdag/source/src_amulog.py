@@ -10,8 +10,8 @@ from amulog import log_db
 
 class AmulogLoader(object):
 
-    def __init__(self, dt_range, conf_fn, gid_name):
-        self.conf = config.open_config(conf_fn)
+    def __init__(self, dt_range, conf_path, gid_name):
+        self.conf = config.open_config(conf_path)
         self._ld = log_db.LogData(self.conf)
         self._gid_name = gid_name
         self.dt_range = dt_range
@@ -69,7 +69,7 @@ class AmulogLoader(object):
     def load_org(self, ev, dt_range):
         for lm in self._iter_lines(ev, dt_range):
             dt = lm.dt.replace(tzinfo=tzlocal())
-            yield (dt, lm._host, lm.restore_message())
+            yield dt, lm.host, lm.restore_message()
 
     def gid_instruction(self, gid):
         if self._gid_name == "ltid":

@@ -91,8 +91,11 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values=None):
 
     if l_dt_values is None:
         l_dt_values = np.array([1] * len(l_dt))
+        type_ret = int
+    else:
+        type_ret = type(l_dt_values[0])
     top_dt, end_dt = dt_range
-    a_ret = np.zeros(len(l_term), dtype=int)
+    a_ret = np.zeros(len(l_term), dtype=type_ret)
 
     # extract change points
     d_cp = defaultdict(list)
@@ -113,42 +116,44 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values=None):
 
     # generate mapped change points
     l_cp = []
-    temp_idxs = set()
+    tmp_idxs = set()
     for dt, changes in sorted(d_cp.items(), key=lambda x: x[0]):
         for idx, flag in changes:
             if flag:
-                temp_idxs.add(idx)
+                tmp_idxs.add(idx)
             else:
-                temp_idxs.remove(idx)
-        l_cp.append((dt, tuple(temp_idxs)))
-    assert len(temp_idxs) == 0
+                tmp_idxs.remove(idx)
+        l_cp.append((dt, np.array(tuple(tmp_idxs))))
+    assert len(tmp_idxs) == 0
 
     # iteration does not use last component (uniquely used afterward)
     iterobj = zip(l_cp[:-1], l_cp[1:])
     try:
-        (key, l_rid), (next_key, next_l_rid) = next(iterobj)
+        (key, current_idxs), (next_key, next_idxs) = next(iterobj)
     except StopIteration:
         return a_ret
 
     for dt, v in zip(l_dt, l_dt_values):
         if not dt_range[0] <= dt < dt_range[1]:
-            # ignored
+            # out of given range, ignored
             continue
+        # pass iteration to next matching bin
         assert dt >= key
         if next_key is not None:
             while dt >= next_key:
                 try:
-                    (key, l_rid), (next_key, next_l_rid) = next(iterobj)
+                    (key, current_idxs), (next_key, next_idxs) = next(iterobj)
                 except StopIteration:
                     # not iterate after here and use last component
-                    key, l_rid = l_cp[-1]
+                    key, current_idxs = l_cp[-1]
                     next_key = None
                     break
-        # following processed only if key <= dt < next_key
-        if binarize:
-            a_ret[np.array(l_rid)] = 1
-        else:
-            a_ret[np.array(l_rid)] += v
+        # following is processed only if key <= dt < next_key
+        if sum(current_idxs) > 0:
+            if binarize:
+                a_ret[current_idxs] = 1
+            else:
+                a_ret[current_idxs] += v
 
     return a_ret
 

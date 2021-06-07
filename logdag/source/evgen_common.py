@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import datetime
+from abc import ABC, abstractmethod
 import pandas as pd
 
 from amulog import config
@@ -9,13 +10,25 @@ from amulog import config
 source = ["log", "snmp"]
 
 
-class EventLoader(object):
+class EventLoader(ABC):
     fields = []
 
     def __init__(self, conf, dry=False):
         self.conf = conf
         self.dry = dry
         self.evdb = None
+
+    def _init_evdb(self, conf, dbname_key):
+        db_type = conf["general"]["evdb"]
+        if db_type == "influx":
+            dbname = conf["database_influx"][dbname_key]
+            from . import influx
+            return influx.init_influx(conf, dbname, df=False)
+        elif db_type in ("sql", "sqlite", "mysql"):
+            from . import sqlts
+            return sqlts.init_sqlts(conf)
+        else:
+            raise NotImplementedError
 
     #def all_condition(self):
     #    for featurename in self.all_feature():
@@ -38,8 +51,7 @@ class EventLoader(object):
         return self.evdb.get_items(measure, tags, self.fields, dt_range)
 
     def load_cnt(self, measure, tags, dt_range):
-        return self.evdb.get(measure, tags, self.fields, dt_range,
-                             func="count")
+        return self.evdb.get_count(measure, tags, self.fields, dt_range)
 
     #def has_data(self, measure, host, key, dt_range):
     #    d_tags = {"host": host, "key": key}

@@ -15,14 +15,14 @@ _amulog_logger = logging.getLogger("amulog")
 
 
 class ArgumentManager(object):
-    _args_filename = "args"
+    _arglist_filename = "args"
 
     def __init__(self, conf):
         self._conf = conf
-        output_dir = self._output_dir(conf)
-        common.mkdir(output_dir)
-        self.args_path = "{0}/{1}".format(output_dir,
-                                          self._args_filename)
+        # output_dir = self._output_dir(conf)
+        # common.mkdir(output_dir)
+        # self.args_path = "{0}/{1}".format(output_dir,
+        #                                   self._arglist_filename)
         self.l_args = []
         # self.args_filename = conf.get("dag", "args_fn")
         # self.l_args = []
@@ -75,12 +75,14 @@ class ArgumentManager(object):
         return common.cli_table(table, spl=" | ")
 
     def dump(self):
-        with open(self.args_path, 'w') as f:
+        output_dir = self._output_dir(self._conf)
+        common.mkdir(output_dir)
+        with open(self._arglist_path(self._conf), 'w') as f:
             f.write("\n".join([self.jobname(args) for args in self.l_args]))
 
     def load(self):
         self.l_args = []
-        with open(self.args_path, 'r') as f:
+        with open(self._arglist_path(self._conf), 'r') as f:
             for line in f:
                 args = self.jobname2args(line.rstrip(), self._conf)
                 self.l_args.append(args)
@@ -112,6 +114,11 @@ class ArgumentManager(object):
     @staticmethod
     def _arg_dirname(output_dir, argname):
         return "{0}/{1}".format(output_dir, argname)
+
+    @classmethod
+    def _arglist_path(cls, conf):
+        return "{0}/{1}".format(cls._output_dir(conf),
+                                cls._arglist_filename)
 
     @classmethod
     def dag_path(cls, conf, args, ext="pickle"):
@@ -194,8 +201,11 @@ def name2args(name, conf):
     return ArgumentManager.jobname2args(name, conf)
 
 
-def open_logdag_config(conf_path, debug=False):
-    conf = config.open_config(conf_path, ex_defaults=[DEFAULT_CONFIG])
+def open_logdag_config(conf_path=None, debug=False):
+    if conf_path is None:
+        conf = config.open_config(DEFAULT_CONFIG, base_default=False)
+    else:
+        conf = config.open_config(conf_path, ex_defaults=[DEFAULT_CONFIG])
     lv = logging.DEBUG if debug else logging.INFO
     am_logger = logging.getLogger("amulog")
     config.set_common_logging(conf, logger=[_logger, am_logger], lv=lv)
@@ -208,9 +218,6 @@ def open_amulog_config(conf):
 
 
 def all_args(conf):
-    amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
-    from amulog import log_db
-    ld = log_db.LogData(amulog_conf)
     w_top_dt, w_end_dt = config.getterm(conf, "dag", "whole_term")
     term = config.getdur(conf, "dag", "unit_term")
     diff = config.getdur(conf, "dag", "unit_diff")
@@ -220,10 +227,6 @@ def all_args(conf):
     while top_dt < w_end_dt:
         end_dt = top_dt + term
         l_area = config.getlist(conf, "dag", "area")
-        if "each" in l_area:
-            l_area.pop(l_area.index("each"))
-            l_area += ["host_" + host for host
-                       in ld.whole_host(top_dt, end_dt)]
         for area in l_area:
             l_args.append((conf, (top_dt, end_dt), area))
         top_dt = top_dt + diff
@@ -231,7 +234,10 @@ def all_args(conf):
 
 
 def all_terms(conf, term, diff, w_term=None):
-    w_top_dt, w_end_dt = config.getterm(conf, "dag", "whole_term")
+    if w_term:
+        w_top_dt, w_end_dt = w_term
+    else:
+        w_top_dt, w_end_dt = config.getterm(conf, "dag", "whole_term")
 
     l_args = []
     top_dt = w_top_dt

@@ -3,9 +3,7 @@
 [general]
 
 # Fetching term of RRD data for DB
-# For example:
-# whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
-evdb_whole_term =
+evdb_whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
 
 # Length of unit terms to generate evdb
 evdb_unit_term = 24h
@@ -118,13 +116,11 @@ corr_diff = 1h, 1d
 [dag]
 
 # Fetching term for estimating dag
-# For example:
-# whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
-whole_term =
+whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
 
 # data sources for dag estimation input
 # [log, snmp] are available
-source = log, snmp
+source = log
 
 # used features in snmp data source
 # if empty, all features are used
@@ -184,6 +180,10 @@ skeleton_threshold = 0.01
 # for debugging
 skeleton_verbose = false
 
+# merge event nodes that have completely same values
+merge_syncevent = false
+merge_syncevent_rules = host, group
+
 # Argument manager file
 # default: args_<config_filename>
 args_fn = args
@@ -201,12 +201,9 @@ pass_dag_exists = false
 
 
 [pc_prune]
-# If true, pruning the initial graph of pc algorithm
-do_pruning = false
-
-# List of pruning methods
+# List of methods to define prior knowledge
 # [topology, multi-topology]
-methods = multi-topology
+methods =
 
 # Specify if using "topology"
 # network file: networkx graph file in json format
@@ -221,6 +218,7 @@ multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
 [lingam]
 algorithm = ica
 lower_limit = 0.01
+ica_max_iter = 1000
 
 
 [cdt]

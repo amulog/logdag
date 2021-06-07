@@ -24,8 +24,14 @@ class LogEventDefinition(log2event.EventDefinition):
             setattr(self, attr, kwargs[attr])
 
     def __str__(self):
-        return "{0}, gid:{1}({2})".format(self.host, str(self.gid),
-                                          self.group)
+        # bug of string None: TODO to find the reason
+        if self.group is None or self.group == "None":
+            return "{0}:{1}".format(self.host, str(self.gid))
+        else:
+            return "{0}:{1}:{2}".format(self.host, str(self.gid),
+                                        self.group)
+        #return "{0}, gid:{1}({2})".format(self.host, str(self.gid),
+        #                                  self.group)
 
     def key(self):
         return str(self.gid)
@@ -56,20 +62,24 @@ class LogEventLoader(evgen_common.EventLoader):
         for method in self._filter_rules:
             assert method in filter_log.FUNCTIONS
 
-        dst = conf["general"]["evdb"]
-        if dst == "influx":
-            dbname = conf["database_influx"]["log_dbname"]
-            from . import influx
-            self.evdb = influx.init_influx(conf, dbname, df=False)
-            # self.evdb_df = influx.init_influx(conf, dbname, df = True)
-        else:
-            raise NotImplementedError
+        self.evdb = self._init_evdb(conf, "log_dbname")
+#        dst = conf["general"]["evdb"]
+#        if dst == "influx":
+#            dbname = conf["database_influx"]["log_dbname"]
+#            from . import influx
+#            self.evdb = influx.init_influx(conf, dbname, df=False)
+#            # self.evdb_df = influx.init_influx(conf, dbname, df = True)
+#        else:
+#            raise NotImplementedError
 
-        self._lf = filter_log.init_logfilter(conf, self.source)
+        self._lf = None
+        if len(self._filter_rules) > 0:
+            self._lf = filter_log.init_logfilter(conf, self.source)
         self._feature_unit_diff = config.getdur(conf,
                                                 "general", "evdb_unit_diff")
 
-    def _evdef(self, host, gid, group):
+    @staticmethod
+    def _evdef(host, gid, group):
         d = {"source": log2event.SRCCLS_LOG,
              "host": host,
              "group": group,
@@ -124,11 +134,8 @@ class LogEventLoader(evgen_common.EventLoader):
         for dt, cnt in self.source.timestamp2dict(l_dt).items():
             t = pd.to_datetime(dt)
             data[t] = [cnt, ]
-        #data = {dt: [cnt, ] for dt, cnt in self.source.timestamp2dict(l_dt).items()}
         self.evdb.add(measure, d_tags, data, self.fields)
         self.evdb.commit()
-        #data = {k: v for k, v
-        #        in zip(df.index, df.itertuples(index=False, name=None))}
 
     def all_feature(self):
         return [FEATURE_MEASUREMENT, ]
@@ -147,4 +154,4 @@ class LogEventLoader(evgen_common.EventLoader):
             yield LogEventDefinition(**d)
 
     def instruction(self, evdef):
-        return "{0}: {1}".format(evdef.host, self.source.gid_instruction(evdef.gid))
+        return "({0}) {1}".format(evdef.host, self.source.gid_instruction(evdef.gid))
