@@ -10,7 +10,7 @@ from .. import dtutil
 
 class TimeSeriesDB(ABC):
     @staticmethod
-    def _pdtimestamp(input_dt, naive=False):
+    def pdtimestamp(input_dt, naive=False):
         dt = pd.to_datetime(input_dt)
         if naive:
             if dt.tz is not None:
@@ -23,7 +23,7 @@ class TimeSeriesDB(ABC):
         return dt
 
     @staticmethod
-    def _pdtimestamps(input_dts, naive=False):
+    def pdtimestamps(input_dts, naive=False):
         dtindex = pd.to_datetime(input_dts)
         if naive:
             if dtindex.tz is not None:
@@ -176,7 +176,7 @@ class SQLTimeSeries(TimeSeriesDB):
 
         l_args = []
         for t, row in d_input.items():
-            dtstr = self._db.strftime(self._pdtimestamp(t, naive=True))
+            dtstr = self._db.strftime(self.pdtimestamp(t, naive=True))
             args = {self._key_time: dtstr}
             for tag_key in tag_keys:
                 args[tag_key] = d_tags[tag_key]
@@ -219,7 +219,7 @@ class SQLTimeSeries(TimeSeriesDB):
 
         for row in cursor:
             dtstr, values = self._get_row_values(row)
-            dt = self._pdtimestamp(self._db.strptime(dtstr))
+            dt = self.pdtimestamp(self._db.strptime(dtstr))
             yield dt, np.array(values)
 
     def get_df(self, measure, d_tags, fields, dt_range,
@@ -234,18 +234,18 @@ class SQLTimeSeries(TimeSeriesDB):
             if limit is not None and rid >= limit:
                 break
             dtstr, values = self._get_row_values(row)
-            l_dt.append(self._pdtimestamp(self._db.strptime(dtstr)))
+            l_dt.append(self.pdtimestamp(self._db.strptime(dtstr)))
             if fill:
                 values = values.nan_to_num(fill)
             l_values.append(values)
 
         if func is None:
-            dtindex = self._pdtimestamps(l_dt)
+            dtindex = self.pdtimestamps(l_dt)
             return pd.DataFrame(l_values, index=dtindex, columns=fields)
         elif func == "sum":
             assert str_bin is not None
             binsize = config.str2dur(str_bin)
-            dtindex = self._pdtimestamps(
+            dtindex = self.pdtimestamps(
                 dtutil.range_dt(dt_range[0], dt_range[1], binsize)
             )
 

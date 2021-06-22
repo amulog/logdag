@@ -68,8 +68,8 @@ class AmulogLoader(object):
 
     def load_org(self, ev, dt_range):
         for lm in self._iter_lines(ev, dt_range):
-            dt = lm.dt.replace(tzinfo=tzlocal())
-            yield dt, lm.host, lm.restore_message()
+            lm.dt = lm.dt.replace(tzinfo=tzlocal())
+            yield lm
 
     def gid_instruction(self, gid):
         if self._gid_name == "ltid":

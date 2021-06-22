@@ -220,15 +220,49 @@ def show_args(ns):
     try:
         am.load()
     except IOError:
-        path = am.args_path
-        sys.exit("ArgumentManager object file ({0}) not found".format(path))
+        sys.exit("ArgumentManager object file not found")
 
     print(am.show())
 
 
+def _parse_condition(conditions):
+    d = {}
+    for arg in conditions:
+        if "=" not in arg:
+            raise SyntaxError
+        key = arg.partition("=")[0]
+        if key == "node":
+            d["node"] = int(arg.partition("=")[-1])
+        elif key == "gid":
+            d["gid"] = int(arg.partition("=")[-1])
+        elif key == "host":
+            d["host"] = arg.partition("=")[-1]
+    return d
+
+
+def show_edge(ns):
+    from . import showdag
+    conf = open_logdag_config(ns)
+    args = arguments.name2args(ns.argname, conf)
+
+    r = showdag.LogDAG(args)
+    r.load()
+
+    if ns.detail:
+        context = "detail"
+    elif ns.instruction:
+        context = "instruction"
+    else:
+        context = "edge"
+    d_cond = _parse_condition(ns.conditions)
+
+    print(showdag.show_edge(r, d_cond, context=context,
+                            head=ns.head, foot=ns.foot,
+                            log_org=ns.log_org, graph=None))
+
+
 def show_subgraphs(ns):
     from . import showdag
-    import networkx as nx
     conf = open_logdag_config(ns)
     args = arguments.name2args(ns.argname, conf)
 
@@ -236,31 +270,16 @@ def show_subgraphs(ns):
     r.load()
     g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
 
-    l_buf = []
-    separator = "\n\n"
-    iterobj = sorted(nx.connected_components(g.to_undirected()),
-                     key=len, reverse=True)
-    for sgid, nodes in enumerate(iterobj):
-        if len(nodes) == 1:
-            continue
-        l_graph_buf = ["Subgraph {0} ({1} nodes)".format(sgid, len(nodes))]
-        subg = nx.subgraph(g, nodes)
+    if ns.detail:
+        context = "detail"
+    elif ns.instruction:
+        context = "instruction"
+    else:
+        context = "edge"
 
-        undirected = set()
-        for edge in subg.edges():
-            if not r.edge_isdirected(edge, g):
-                if edge in undirected:
-                    continue
-                undirected.add(edge)
-                undirected.add((edge[1], edge[0]))
-            if ns.instruction:
-                msg = "\n".join([r.edge_str(edge, g),
-                                 r.edge_instruction(edge)])
-            else:
-                msg = r.edge_str(edge, g)
-            l_graph_buf.append(msg)
-        l_buf.append("\n".join(l_graph_buf))
-    print(separator.join(l_buf))
+    print(showdag.show_subgraphs(r, context,
+                                 head=ns.head, foot=ns.foot,
+                                 log_org=ns.log_org, graph=g))
 
 
 def show_edge_list(ns):
@@ -268,28 +287,36 @@ def show_edge_list(ns):
     conf = open_logdag_config(ns)
     args = arguments.name2args(ns.argname, conf)
 
-    l_buf = []
     r = showdag.LogDAG(args)
     r.load()
     g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
-    for edge in g.edges():
-        if ns.instruction:
-            msg = "\n".join([r.edge_str(edge, g),
-                             r.edge_instruction(edge)])
-        else:
-            msg = r.edge_str(edge, g)
-        l_buf.append(msg)
-    print("\n".join(l_buf))
+
+    if ns.detail:
+        context = "detail"
+    elif ns.instruction:
+        context = "instruction"
+    else:
+        context = "edge"
+
+    print(showdag.show_edge_list(r, context,
+                                 head=ns.head, foot=ns.foot,
+                                 log_org=ns.log_org, graph=g))
 
 
-def show_edge_detail(ns):
-    from . import showdag
-    conf = open_logdag_config(ns)
-    args = arguments.name2args(ns.argname, conf)
-    head = ns.head
-    tail = ns.tail
-
-    print(showdag.show_edge_detail(args, head, tail))
+#def show_edge_detail(ns):
+#    from . import showdag
+#    conf = open_logdag_config(ns)
+#    args = arguments.name2args(ns.argname, conf)
+#    head = ns.head
+#    tail = ns.tail
+#
+#    l_buf = []
+#    r = showdag.LogDAG(args)
+#    r.load()
+#    g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
+#    for edge in g.edges():
+#        msg = "\n".join(r.edge_detail(edge, g))
+#    print(showdag.show_edge_detail(args, head, tail))
 
 
 def show_list(ns):
@@ -492,6 +519,18 @@ OPT_BINSIZE = [["-b", "--binsize"],
 OPT_INSTRUCTION = [["--instruction"],
                    {"dest": "instruction", "action": "store_true",
                     "help": "show event definition with source information"}]
+OPT_DETAIL = [["-d", "--detail"],
+              {"dest": "detail", "action": "store_true",
+               "help": "show event time-series samples"}]
+OPT_LOG_ORG = [["--log-org"],
+               {"dest": "log_org", "action": "store_true",
+                "help": "show original logs from amulog db for log time-series"}]
+OPT_HEAD = [["--head"],
+            {"dest": "head", "action": "store", "default": 5,
+             "help": 'number of head samples to show in "detail" view'}]
+OPT_FOOT = [["--foot"],
+            {"dest": "foot", "action": "store", "default": 5,
+             "help": 'number of foot samples to show in "detail" view'}]
 OPT_GROUPBY = [["--groupby"],
                {"dest": "groupby", "metavar": "GROUPBY",
                 "action": "store", "default": None,
@@ -500,16 +539,15 @@ OPT_GROUPBY = [["--groupby"],
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
-ARG_DBSEARCH = [["conditions"],
-                {"metavar": "CONDITION", "nargs": "+",
-                 "help": ("Conditions to search log messages. "
-                          "Example: command gid=24 date=2012-10-10 ..., "
-                          "Keys: gid, date, top_date, end_date, "
-                          "host, area")}]
 ARG_FILTER = [["filters"],
               {"metavar": "FILTER", "nargs": "*",
                "help": ("filters for dag stats or plots. "
                         "see showdag_filter.py for more detail")}]
+ARG_EDGESEARCH = [["conditions"],
+                  {"metavar": "CONDITION", "nargs": "+",
+                   "help": ("Conditions to search edges."
+                            "Example: MODE gid=24 host=host01 ..., "
+                            "Keys: node, gid, host.")}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -564,26 +602,33 @@ DICT_ARGSET = {
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],
-    "show-subgraphs": ["Show edges in each connected subgraphs",
+    "show-edge": ["Show edges related to given conditions",
+                  [OPT_CONFIG, OPT_DEBUG, OPT_INSTRUCTION,
+                   OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
+                   ARG_ARGNAME, ARG_EDGESEARCH],
+                  show_edge],
+    "show-edge-list": ["Show all edges in a DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
-                        ARG_ARGNAME, ARG_FILTER],
-                       show_subgraphs],
-    "show-edge-list": ["Show edges in a DAG",
-                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
+                        OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
                         ARG_ARGNAME, ARG_FILTER],
                        show_edge_list],
-    "show-edge-detail": ["Show time-series samples of detected edges in a DAG",
-                         [OPT_CONFIG, OPT_DEBUG,
-                          [["--head", ],
-                           {"dest": "head", "action": "store",
-                            "type": int, "default": 5,
-                            "help": "number of lines from log head"}],
-                          [["--tail", ],
-                           {"dest": "tail", "action": "store",
-                            "type": int, "default": 5,
-                            "help": "number of lines from log tail"}],
-                          ARG_ARGNAME],
-                         show_edge_detail],
+    "show-subgraphs": ["Show edges in each connected subgraphs",
+                       [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
+                        OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
+                        ARG_ARGNAME, ARG_FILTER],
+                       show_subgraphs],
+    # "show-edge-detail": ["Show time-series samples of detected edges in a DAG",
+    #                      [OPT_CONFIG, OPT_DEBUG,
+    #                       [["--head", ],
+    #                        {"dest": "head", "action": "store",
+    #                         "type": int, "default": 5,
+    #                         "help": "number of lines from log head"}],
+    #                       [["--tail", ],
+    #                        {"dest": "tail", "action": "store",
+    #                         "type": int, "default": 5,
+    #                         "help": "number of lines from log tail"}],
+    #                       ARG_ARGNAME],
+    #                      show_edge_detail],
     "show-list": ["Show abstracted results of DAG generation",
                   [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_GROUPBY],
                   show_list],

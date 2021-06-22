@@ -218,6 +218,9 @@ class LogDAG:
     def node_str(self, node):
         return str(node) + "@" + str(self.node_evdef(node))
 
+    def edge_identifier(self, edge):
+        return "-".join([evdef.identifier for evdef in self.edge_evdef(edge)])
+
     def edge_instruction(self, edge):
         return "\n".join(["< " + self.node_instruction(edge[0]),
                           "> " + self.node_instruction(edge[1])])
@@ -226,21 +229,23 @@ class LogDAG:
         evdef = self.node_evdef(node)
         return log2event.evdef_instruction(self.conf, evdef, d_el=self._evloader())
 
-    def edge_detail(self, edge, head, foot):
-        buf = ["## Edge {0}".format(self.edge_str(edge)), ]
-        for node in edge:
-            buf.append(self.node_detail(node, head, foot))
+    def edge_detail(self, edge, head, foot, log_org=False, graph=None):
+        buf = ["# Edge {0}".format(self.edge_str(edge, graph)),
+               self.node_detail(edge[0], head, foot,
+                                header="< ", log_org=log_org),
+               self.node_detail(edge[1], head, foot,
+                                header="> ", log_org=log_org)]
         return "\n".join(buf)
 
-    def node_detail(self, node, head, foot):
+    def node_detail(self, node, head, foot, header="# ", log_org=False):
         evdef = self.node_evdef(node)
-        buf = ["# Node {0}:".format(self.node_str(node)),
-               self.node_instruction(node)]
-#               log2event.evdef_instruction(self.conf, evdef,
-#                                           d_el=self._evloader())]
+        buf = [header + "Node {0}: {1}".format(self.node_str(node),
+                                               self.node_instruction(node))]
         if head > 0 or foot > 0:
-            buf += [log2event.evdef_detail(self.conf, evdef, self.dt_range,
-                                           head, foot, d_el=self._evloader())]
+            buf += [log2event.evdef_detail(self.conf, evdef,
+                                           self.dt_range, head, foot,
+                                           indent=2, log_org=log_org,
+                                           d_el=self._evloader())]
         return "\n".join(buf)
 
     def node_ts(self, node):
@@ -363,31 +368,13 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
 # functions for presentation
 
 
-def show_edge_detail(args, head, tail):
-    l_buf = []
-    r = LogDAG(args)
-    r.load()
-    for edge in r.graph.edges():
-        l_buf.append(r.edge_detail(edge, head, tail))
-    return "\n\n".join(l_buf)
-
-
-# def list_subgraphs(args):
+#def show_edge_detail(args, head, tail):
+#    l_buf = []
 #    r = LogDAG(args)
 #    r.load()
-#
-#    l_buf = []
-#    separator = "\n\n"
-#    iterobj = sorted(nx.connected_components(r.graph.to_undirected()),
-#                     key=len, reverse=True)
-#    for nodes in iterobj:
-#        l_graph_buf = []
-#        subg = nx.subgraph(r.graph, nodes)
-#        for edge in subg.edges():
-#            msg = r.edge_str(edge, r.graph)
-#            l_graph_buf.append(msg)
-#        l_buf.append("\n".join(l_graph_buf))
-#    return separator.join(l_buf)
+#    for edge in r.graph.edges():
+#        l_buf.append(r.edge_detail(edge, head, tail))
+#    return "\n\n".join(l_buf)
 
 
 # def show_graph(conf, args, output, lib="networkx",
@@ -520,6 +507,104 @@ def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
 #                  fmt_ratio(100.0 * nodidiff_num / edge_num)])
 #    table.append(["number of all edges", fmt_int(edge_num), ""])
 #    return common.cli_table(table, align="right")
+
+
+def show_edge(ldag, conditions, context="edge",
+              head=5, foot=5, log_org=False, graph=None):
+    if graph is None:
+        graph = ldag.graph.to_undirected()
+
+    l_buf = []
+    undirected = set()
+    for edge in graph.edges():
+        if "node" in conditions:
+            if conditions["node"] not in edge:
+                continue
+        if "gid" in conditions:
+            s_gid = edge[0].all_attr("gid") | edge[1].all_attr("gid")
+            if conditions["gid"] in s_gid:
+                continue
+        if "host" in conditions:
+            s_host = edge[0].all_attr("host") | edge[1].all_attr("host")
+            if conditions["host"] in s_host:
+                continue
+
+        if not ldag.edge_isdirected(edge, graph):
+            if edge in undirected:
+                continue
+            undirected.add(edge)
+            undirected.add((edge[1], edge[0]))
+        if context == "detail":
+            msg = "\n".join([ldag.edge_detail(edge, head, foot,
+                                              log_org=log_org, graph=graph)])
+        elif context == "instruction":
+            msg = "\n".join([ldag.edge_str(edge, graph),
+                             ldag.edge_instruction(edge)])
+        elif context == "edge":
+            msg = ldag.edge_str(edge, graph)
+        else:
+            raise NotImplementedError
+        l_buf.append(msg)
+    return "\n".join(l_buf)
+
+
+def show_edge_list(ldag, context="edge",
+                   head=5, foot=5, log_org=False, graph=None):
+    if graph is None:
+        graph = ldag.graph
+
+    l_buf = []
+    for edge in graph.edges():
+        if context == "detail":
+            msg = "\n".join([ldag.edge_detail(edge, head, foot,
+                                              log_org=log_org, graph=graph)])
+        elif context == "instruction":
+            msg = "\n".join([ldag.edge_str(edge, graph),
+                             ldag.edge_instruction(edge)])
+        elif context == "edge":
+            msg = ldag.edge_str(edge, graph)
+        else:
+            raise NotImplementedError
+        l_buf.append(msg)
+    return "\n".join(l_buf)
+
+
+def show_subgraphs(ldag, context="edge",
+                   head=5, foot=5, log_org=False, graph=None):
+    if graph is None:
+        graph = ldag.graph
+
+    l_buf = []
+    separator = "\n\n"
+    iterobj = sorted(nx.connected_components(graph.to_undirected()),
+                     key=len, reverse=True)
+    for sgid, nodes in enumerate(iterobj):
+        if len(nodes) == 1:
+            continue
+        l_graph_buf = ["Subgraph {0} ({1} nodes)".format(sgid, len(nodes))]
+        subg = nx.subgraph(graph, nodes)
+
+        undirected = set()
+        for edge in subg.edges():
+            if not ldag.edge_isdirected(edge, graph):
+                if edge in undirected:
+                    continue
+                undirected.add(edge)
+                undirected.add((edge[1], edge[0]))
+            if context == "detail":
+                msg = "\n".join([ldag.edge_detail(edge, head, foot,
+                                                  log_org=log_org,
+                                                  graph=graph)])
+            elif context == "instruction":
+                msg = "\n".join([ldag.edge_str(edge, graph),
+                                 ldag.edge_instruction(edge)])
+            elif context == "edge":
+                msg = ldag.edge_str(edge, graph)
+            else:
+                raise NotImplementedError
+            l_graph_buf.append(msg)
+        l_buf.append("\n".join(l_graph_buf))
+    print(separator.join(l_buf))
 
 
 def list_netsize(conf):

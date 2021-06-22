@@ -41,8 +41,15 @@ class MultipleEventDefinition(EventDefinition):
         return "|".join([str(evdef) for evdef in self._members])
 
     @property
+    def members(self):
+        return self._members
+
+    @property
     def identifier(self):
         return "|".join(sorted([str(evdef) for evdef in self._members]))
+
+    def all_attr(self, key):
+        return {getattr(evdef, key) for evdef in self._members}
 
 
 class EventDefinitionMap(object):
@@ -310,7 +317,9 @@ def merge_sync_event(evlist, evmap, rules):
         evdef = evmap.evdef(old_eid)
 
         value_key = tuple(df.iloc[:, 0])
-        tmp_key = [value_key, ]
+        tmp_key = [value_key,]
+        if "source" in rules:
+            tmp_key.append(evdef.source)
         if "host" in rules:
             tmp_key.append(evdef.host)
         if "group" in rules:
@@ -324,6 +333,8 @@ def merge_sync_event(evlist, evmap, rules):
         l_evdef = [evmap.evdef(eid) for eid in l_old_eid]
 
         new_evdef = MultipleEventDefinition(l_evdef)
+        if "source" in rules:
+            new_evdef.source = l_evdef[0].source
         if "host" in rules:
             new_evdef.host = l_evdef[0].host
         if "group" in rules:
@@ -340,24 +351,36 @@ def merge_sync_event(evlist, evmap, rules):
 def evdef_instruction(conf, evdef, d_el=None):
     if d_el is None:
         d_el = init_evloaders(conf)
-    return d_el[evdef.source].instruction(evdef)
+
+    # TODO compatibility to source-failed results
+    try:
+        source = evdef.source
+    except:
+        source = "log"
+    return d_el[source].instruction(evdef)
 
 
-def evdef_detail(conf, evdef, dt_range, head, foot, d_el=None):
+def evdef_detail(conf, evdef, dt_range, head, foot,
+                 indent=0, log_org=False, d_el=None):
     if d_el is None:
         d_el = init_evloaders(conf)
-    if evdef.source == SRCCLS_LOG:
-        measure = "log_feature"
-    elif evdef.source == SRCCLS_SNMP:
-        raise NotImplementedError("snmp detail not available yet")
-        #measure, key = _snmp_name2tag(evdef.key)
-    else:
-        raise NotImplementedError
-    el = d_el[evdef.source]
-    data = list(el.load_items(measure, evdef.tags(), dt_range))
+#    if evdef.source == SRCCLS_LOG:
+#        measure = "log_feature"
+#    elif evdef.source == SRCCLS_SNMP:
+#        raise NotImplementedError("snmp detail not available yet")
+#        #measure, key = _snmp_name2tag(evdef.key)
+#    else:
+#        raise NotImplementedError
+    # for compatibility
+    try:
+        el = d_el[evdef.source]
+    except:
+        el = d_el["log"]
+    data = list(el.details(evdef, dt_range, log_org))
+    #data = list(el.load_items(measure, evdef.tags(), dt_range))
     return common.show_repr(
-        data, head, foot,
-        strfunc=lambda x: "{0}: {1}".format(x[0], x[1][0]))
+        data, head, foot, indent=indent,
+        strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
 
 
 # def evdef_detail_org(conf, evdef, dt_range, head, foot, d_el=None):

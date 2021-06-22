@@ -7,10 +7,12 @@ import pandas as pd
 import influxdb
 from dateutil import tz
 
+from .sqlts import TimeSeriesDB
+
 _logger = logging.getLogger(__package__)
 
 
-class InfluxDBv1(object):
+class InfluxDBv1(TimeSeriesDB):
 
     def __init__(self, dbname, inf_kwargs,
                  batch_size=1000, protocol="line"):

@@ -141,7 +141,7 @@ class LogEventLoader(evgen_common.EventLoader):
         return [FEATURE_MEASUREMENT, ]
 
     def load_org(self, ev, dt_range):
-        """Return: tuple(dt, host, msg)"""
+        """Yields: LogMessage"""
         return self.source.load_org(ev, dt_range)
 
     def iter_evdef(self, dt_range=None):
@@ -154,4 +154,33 @@ class LogEventLoader(evgen_common.EventLoader):
             yield LogEventDefinition(**d)
 
     def instruction(self, evdef):
-        return "({0}) {1}".format(evdef.host, self.source.gid_instruction(evdef.gid))
+        if isinstance(evdef, log2event.MultipleEventDefinition):
+            l_buf = []
+            for tmp_evdef in evdef.members:
+                l_buf.append(self.instruction(tmp_evdef))
+            return " | ".join(l_buf)
+        else:
+            instruction = self.source.gid_instruction(evdef.gid)
+            return "({0}) {1}".format(evdef.host, instruction)
+
+    def details(self, evdef, dt_range, org=False):
+        if isinstance(evdef, log2event.MultipleEventDefinition):
+            results = []
+            for tmp_evdef in evdef.members:
+                results += self.details(tmp_evdef, dt_range, org)
+            return sorted(results, key=lambda x: x[0])
+
+        measure = "log_feature"
+        if org:
+            s_dt = {dt for dt, values
+                    in self.load_items(measure, evdef.tags(), dt_range)}
+
+            ev = (evdef.host, evdef.gid)
+            return [(lm.dt, lm.restore_message())
+                    for lm in self.load_org(ev, dt_range)
+                    if lm.dt in s_dt]
+        else:
+            return [(dt, values[0]) for dt, values
+                    in self.load_items(measure, evdef.tags(), dt_range)]
+
+
