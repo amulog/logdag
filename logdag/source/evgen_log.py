@@ -172,15 +172,31 @@ class LogEventLoader(evgen_common.EventLoader):
 
         measure = "log_feature"
         if org:
+            # It extracts timestamps on valid bins after preprocessing
+            # Note: it is impossible to distinguish counts in one bin
+            # if it includes periodic and aperiodic components
             s_dt = {dt for dt, values
                     in self.load_items(measure, evdef.tags(), dt_range)}
+            if len(s_dt) == 0:
+                msg = ("No time-series for {0}, ".format(evdef) +
+                       "inconsistent with tsdb")
+                raise ValueError(msg)
 
             ev = (evdef.host, evdef.gid)
-            return [(lm.dt, lm.restore_message())
-                    for lm in self.load_org(ev, dt_range)
-                    if lm.dt in s_dt]
+            ret = [(lm.dt, lm.restore_message())
+                   for lm in self.load_org(ev, dt_range)
+                   if lm.dt in s_dt]
+            if len(ret) == 0:
+                msg = ("No matching logs for {0}, ".format(evdef) +
+                       "inconsistent with source")
+                raise ValueError(msg)
+            assert len(ret) >= len(s_dt), "sanity check failure"
         else:
-            return [(dt, values[0]) for dt, values
-                    in self.load_items(measure, evdef.tags(), dt_range)]
+            ret = [(dt, values[0]) for dt, values
+                   in self.load_items(measure, evdef.tags(), dt_range)]
+            if len(ret) == 0:
+                msg = ("No time-series for {0}, ".format(evdef) +
+                       "inconsistent with tsdb")
+                raise ValueError(msg)
 
-
+        return ret

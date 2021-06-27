@@ -30,7 +30,6 @@ def estimate(data, algorithm="ica", lower_limit=0.01,
         if prior_knowledge is not None:
             raise Warning("ICA-LiNGAM does not use prior knowledge")
         kwargs = {"max_iter": ica_max_iter}
-        import pdb; pdb.set_trace()
         model = _fit_back(data, lingam.ICALiNGAM, kwargs)
     elif algorithm == "direct":
         if prior_knowledge is None:

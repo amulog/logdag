@@ -376,7 +376,11 @@ def evdef_detail(conf, evdef, dt_range, head, foot,
         el = d_el[evdef.source]
     except:
         el = d_el["log"]
-    data = list(el.details(evdef, dt_range, log_org))
+
+    try:
+        data = list(el.details(evdef, dt_range, log_org))
+    except ValueError as e:
+        raise e
     #data = list(el.load_items(measure, evdef.tags(), dt_range))
     return common.show_repr(
         data, head, foot, indent=indent,
