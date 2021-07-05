@@ -3,13 +3,13 @@
 
 import sys
 import logging
-import argparse
 
 from . import arguments
+from amulog import cli
 from amulog import common
 
 _logger = logging.getLogger(__package__)
-SUBLIB = ["source", "visual", "eval", "label"]
+SUBLIB = ["source", "eval", "visual"]
 
 
 def open_logdag_config(ns):
@@ -25,25 +25,6 @@ def test_makedag(ns):
     am.generate(arguments.all_args)
     am.dump()
     makedag.makedag_main(am[0])
-
-
-#def make_tsdb(ns):
-#    from . import tsdb
-#    conf = open_logdag_config(ns)
-#    term = config.getdur(conf, "database_ts", "unit_term")
-#    diff = config.getdur(conf, "database_ts", "unit_diff")
-#    l_args = arguments.all_terms(conf, term, diff)
-#
-#    timer = common.Timer("mk-tsdb task", output=_logger)
-#    timer.start()
-#    p = ns.parallel
-#    if p > 1:
-#        for args in l_args:
-#            tsdb.log2ts_pal(*args, pal=p)
-#    else:
-#        for args in l_args:
-#            tsdb.log2ts(*args)
-#    timer.stop()
 
 
 def reload_area(ns):
@@ -663,26 +644,11 @@ DICT_ARGSET = {
                      plot_node_ts],
 }
 
-USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
-                            for key, val in sorted(DICT_ARGSET.items())])
-USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
-         "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
-        "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0]) + \
-        "\nalso see sub-liblary {0}".format(" ".join(["logdag.{0}".format(n)
-                                                      for n in SUBLIB]))
+
+def main():
+    cli.main(DICT_ARGSET, sublibs=SUBLIB)
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 1:
-        sys.exit(USAGE)
-    mode = sys.argv[1]
-    if mode in ("-h", "--help"):
-        sys.exit(USAGE)
-    commandline = sys.argv[2:]
+    main()
 
-    desc, l_argset, func = DICT_ARGSET[mode]
-    ap = argparse.ArgumentParser(prog=" ".join(sys.argv[0:2]),
-                                 description=desc)
-    for given_args, given_kwargs in l_argset:
-        ap.add_argument(*given_args, **given_kwargs)
-    namespace = ap.parse_args(commandline)
-    func(namespace)

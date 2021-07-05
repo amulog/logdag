@@ -604,7 +604,7 @@ def show_subgraphs(ldag, context="edge",
                 raise NotImplementedError
             l_graph_buf.append(msg)
         l_buf.append("\n".join(l_graph_buf))
-    print(separator.join(l_buf))
+    return separator.join(l_buf)
 
 
 def list_netsize(conf):

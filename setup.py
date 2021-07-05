@@ -52,5 +52,13 @@ setup(name=package_name,
       packages=['logdag'],
       install_requires=load_requirements(),
       package_data={'logdag': data_files},
+      entry_points={
+          'console_scripts': [
+              'logdag = logdag.__main__:main',
+              'logdag.source = logdag.source.__main__:main',
+              'logdag.eval = logdag.eval.__main__:main',
+              'logdag.visual = logdag.visual.__main__:main',
+          ],
+      },
       test_suite="tests"
       )

@@ -1,4 +1,4 @@
-amulog>=0.1.4
+amulog>=0.2.1
 pcalg>=0.1.9
 gsq>=0.1.6
 numpy

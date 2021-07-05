@@ -146,7 +146,7 @@ class LogEventLoader(evgen_common.EventLoader):
 
     def iter_evdef(self, dt_range=None):
         for host, gid in self.source.iter_event(dt_range=dt_range):
-            group = self.source.label(gid)
+            group = self.source.group(gid)
             d = {"source": log2event.SRCCLS_LOG,
                  "host": host,
                  "group": group,

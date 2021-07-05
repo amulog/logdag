@@ -143,17 +143,17 @@ class ArgumentManager(object):
             return
         return dirname + "/evdef.pickle"
 
-    #@classmethod
-    #def output_filename(cls, dirname, args):
-    #    return "{0}/{1}".format(dirname, cls.jobname(args))
+    # @classmethod
+    # def output_filename(cls, dirname, args):
+    #     return "{0}/{1}".format(dirname, cls.jobname(args))
 
-    #@staticmethod
-    #def evdef_dir(conf):
-    #    dirname = conf.get("dag", "evmap_dir")
-    #    if dirname == "":
-    #        dirname = conf.get("dag", "output_dir")
-    #    else:
-    #        common.mkdir(dirname)
+    # @staticmethod
+    # def evdef_dir(conf):
+    #     dirname = conf.get("dag", "evmap_dir")
+    #     if dirname == "":
+    #         dirname = conf.get("dag", "output_dir")
+    #     else:
+    #         common.mkdir(dirname)
 
     @classmethod
     def evdef_path_old(cls, args):
@@ -167,10 +167,10 @@ class ArgumentManager(object):
             common.mkdir(dirname)
         return "{0}/{1}".format(dirname, filename)
 
-    #@staticmethod
-    #def dag_dir(conf):
-    #    dirname = conf.get("dag", "output_dir")
-    #    common.mkdir(dirname)
+    # @staticmethod
+    # def dag_dir(conf):
+    #     dirname = conf.get("dag", "output_dir")
+    #     common.mkdir(dirname)
 
     @classmethod
     def dag_path_old(cls, args):
@@ -183,8 +183,8 @@ class ArgumentManager(object):
     def init_dirs(self, conf):
         # TODO for compatibility
         pass
-        #self.evdef_dir(conf)
-        #self.dag_dir(conf)
+        # self.evdef_dir(conf)
+        # self.dag_dir(conf)
 
     def iter_dt_range(self):
         s = set()
@@ -203,9 +203,11 @@ def name2args(name, conf):
 
 def open_logdag_config(conf_path=None, debug=False):
     if conf_path is None:
-        conf = config.open_config(DEFAULT_CONFIG, base_default=False)
+        conf = config.open_config(DEFAULT_CONFIG, env="LOGDAG_CONFIG",
+                                  base_default=False)
     else:
-        conf = config.open_config(conf_path, ex_defaults=[DEFAULT_CONFIG])
+        conf = config.open_config(conf_path, env="LOGDAG_CONFIG",
+                                  ex_defaults=[DEFAULT_CONFIG])
     lv = logging.DEBUG if debug else logging.INFO
     am_logger = logging.getLogger("amulog")
     config.set_common_logging(conf, logger=[_logger, am_logger], lv=lv)

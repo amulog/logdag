@@ -27,6 +27,10 @@ class AmulogLoader(object):
             return self._ld.whole_host_ltg(top_dt=dt_range[0],
                                            end_dt=dt_range[1])
 
+    def _get_tags(self, gid):
+        kwargs = {self._gid_name: gid}
+        return self._ld.get_tags(**kwargs)
+
     def _iter_lines(self, ev, dt_range=None):
         if dt_range is None:
             dt_range = self.dt_range
@@ -81,13 +85,15 @@ class AmulogLoader(object):
             else:
                 "{0} tpls like: {1}".format(len(l_lt), l_lt[0])
 
-    def label(self, gid):
-        if self._ll is None:
-            from amulog import lt_label
-            self._ll = lt_label.init_ltlabel(self.conf)
-        if gid is None:
-            return self.conf["visual"]["ltlabel_default_group"]
-        return self._ll.get_ltg_group(gid, self._ld.ltg_members(gid))
+    def group(self, gid):
+        tags = self._get_tags(gid)
+        return "|".join(sorted(tags))
+        # if self._ll is None:
+        #     from amulog import lt_label
+        #     self._ll = lt_label.init_ltlabel(self.conf)
+        # if gid is None:
+        #     return self.conf["visual"]["ltlabel_default_group"]
+        # return self._ll.get_ltg_group(gid, self._ld.ltg_members(gid))
 
 
 def init_amulogloader(conf, dt_range):
@@ -95,4 +101,3 @@ def init_amulogloader(conf, dt_range):
             conf["database_amulog"]["source_conf"],
             conf["database_amulog"]["event_gid"]]
     return AmulogLoader(*args)
-

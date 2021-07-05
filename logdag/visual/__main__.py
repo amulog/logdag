@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
 import logging
-import argparse
 from collections import defaultdict
 
+from amulog import cli
+from amulog import config
 from logdag import arguments
 from logdag import dtutil
 from logdag import showdag
-from amulog import config
-from amulog import common
 
 _logger = logging.getLogger(__package__)
 
@@ -388,26 +386,10 @@ DICT_ARGSET = {
                                   show_diff_direction],
 }
 
-USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
-                            for key, val in sorted(DICT_ARGSET.items())])
-USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
-         "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
-    "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0])
+
+def main():
+    cli.main(DICT_ARGSET)
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 1:
-        sys.exit(USAGE)
-    mode = sys.argv[1]
-    if mode in ("-h", "--help"):
-        sys.exit(USAGE)
-    commandline = sys.argv[2:]
-
-    desc, l_argset, func = DICT_ARGSET[mode]
-    ap = argparse.ArgumentParser(prog = " ".join(sys.argv[0:2]),
-                                 description = desc)
-    for args, kwargs in l_argset:
-        ap.add_argument(*args, **kwargs)
-    ns = ap.parse_args(commandline)
-    func(ns)
-
-
+    main()
