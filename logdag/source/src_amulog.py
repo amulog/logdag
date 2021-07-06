@@ -10,22 +10,40 @@ from amulog import log_db
 
 class AmulogLoader(object):
 
-    def __init__(self, dt_range, conf_path, gid_name):
+    def __init__(self, dt_range, conf_path, gid_name, use_mapping):
         self.conf = config.open_config(conf_path)
         self._ld = log_db.LogData(self.conf)
         self._gid_name = gid_name
         self.dt_range = dt_range
-        self._ll = None
+
+        self._mapper = None
+        if use_mapping:
+            # use if tsdb is anonymized but amulog db is original
+            from amulog import anonymize
+            self._mapper = anonymize.AnonymizeMapper(self.conf)
+            self._mapper.load()
+
+    def _restore_host(self, host):
+        if self._mapper:
+            return self._mapper.restore_host(host)
+        else:
+            return host
+
+    def _restore_lt(self, ltobj):
+        if self._mapper:
+            return self._mapper.restore_lt(ltobj)
+        else:
+            return ltobj
 
     def iter_event(self, dt_range=None):
         if dt_range is None:
             dt_range = self.dt_range
         if self._gid_name == "ltid":
-            return self._ld.whole_host_lt(top_dt=dt_range[0],
-                                          end_dt=dt_range[1])
+            return self._ld.whole_host_lt(dts=dt_range[0],
+                                          dte=dt_range[1])
         elif self._gid_name == "ltgid":
-            return self._ld.whole_host_ltg(top_dt=dt_range[0],
-                                           end_dt=dt_range[1])
+            return self._ld.whole_host_ltg(dts=dt_range[0],
+                                           dte=dt_range[1])
 
     def _get_tags(self, gid):
         kwargs = {self._gid_name: gid}
@@ -35,8 +53,8 @@ class AmulogLoader(object):
         if dt_range is None:
             dt_range = self.dt_range
         host, gid = ev
-        d = {"top_dt": dt_range[0],
-             "end_dt": dt_range[1],
+        d = {"dts": dt_range[0],
+             "dte": dt_range[1],
              self._gid_name: gid,
              "host": host}
         return self._ld.iter_lines(**d)
@@ -71,33 +89,35 @@ class AmulogLoader(object):
         return sorted(self.iter_dt(ev, dt_range))
 
     def load_org(self, ev, dt_range):
-        for lm in self._iter_lines(ev, dt_range):
+        restored_ev = (self._restore_host(ev[0]), ev[1])
+        import pdb; pdb.set_trace()
+        print(restored_ev)
+        for lm in self._iter_lines(restored_ev, dt_range):
             lm.dt = lm.dt.replace(tzinfo=tzlocal())
             yield lm
 
     def gid_instruction(self, gid):
         if self._gid_name == "ltid":
-            return str(self._ld.lt(gid))
+            ltobj = self._ld.lt(gid)
+            return str(ltobj)
         elif self._gid_name == "ltgid":
             l_lt = self._ld.ltg_members(gid)
+            repr_lt = l_lt[0]
             if len(l_lt) == 1:
-                return str(l_lt[0])
+                return str(repr_lt)
             else:
-                "{0} tpls like: {1}".format(len(l_lt), l_lt[0])
+                return "{0} tpls like: {1}".format(len(l_lt), repr_lt)
 
     def group(self, gid):
         tags = self._get_tags(gid)
         return "|".join(sorted(tags))
-        # if self._ll is None:
-        #     from amulog import lt_label
-        #     self._ll = lt_label.init_ltlabel(self.conf)
-        # if gid is None:
-        #     return self.conf["visual"]["ltlabel_default_group"]
-        # return self._ll.get_ltg_group(gid, self._ld.ltg_members(gid))
 
 
 def init_amulogloader(conf, dt_range):
     args = [dt_range,
             conf["database_amulog"]["source_conf"],
-            conf["database_amulog"]["event_gid"]]
+            conf["database_amulog"]["event_gid"],
+            conf.getboolean("database_amulog",
+                            "use_anonymize_mapping")
+            ]
     return AmulogLoader(*args)

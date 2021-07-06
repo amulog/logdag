@@ -52,9 +52,13 @@ class LogEventLoader(evgen_common.EventLoader):
         src = conf["general"]["log_source"]
         if src == "amulog":
             from . import src_amulog
-            args = [config.getterm(conf, "general", "evdb_whole_term"),
-                    conf["database_amulog"]["source_conf"],
-                    conf["database_amulog"]["event_gid"]]
+            args = [
+                config.getterm(conf, "general", "evdb_whole_term"),
+                conf["database_amulog"]["source_conf"],
+                conf["database_amulog"]["event_gid"],
+                conf.getboolean("database_amulog",
+                                "use_anonymize_mapping")
+            ]
             self.source = src_amulog.AmulogLoader(*args)
         else:
             raise NotImplementedError

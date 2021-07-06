@@ -34,6 +34,7 @@ host_alias_filename =
 
 source_conf = amulog.conf
 event_gid = ltgid
+use_anonymize_mapping = false
 
 
 [database_rrd]
