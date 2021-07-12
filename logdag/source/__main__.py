@@ -29,12 +29,18 @@ def make_evdb_log_all(ns):
     dump_org = ns.org
     dry = ns.dry
 
+    timer = common.Timer("make-evdb-log task", output=_logger)
+    timer.start()
+
     from . import evgen_log
     w_term = config.getterm(conf, "general", "evdb_whole_term")
     term = config.getdur(conf, "general", "evdb_unit_diff")
     el = evgen_log.LogEventLoader(conf, dry=dry)
     for dt_range in dtutil.iter_term(w_term, term):
         el.read(dt_range, dump_org=dump_org)
+        timer.lap_diff("{0}".format(dt_range))
+
+    timer.stop()
 
 
 def make_evdb_snmp_all(ns):
