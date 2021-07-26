@@ -187,9 +187,15 @@ class LogEventLoader(evgen_common.EventLoader):
                 raise ValueError(msg)
 
             ev = (evdef.host, evdef.gid)
-            ret = [(lm.dt, lm.restore_message())
-                   for lm in self.load_org(ev, dt_range)
-                   if lm.dt in s_dt]
+            l_org_lm = [lm for lm in self.load_org(ev, dt_range)]
+
+            # print(s_dt)
+            # print([lm.dt for lm in l_org_lm])
+
+            ret = [(lm.dt, lm.restore_message()) for lm in l_org_lm]
+            # ret = [(lm.dt, lm.restore_message())
+            #        for lm in self.load_org(ev, dt_range)
+            #        if lm.dt in s_dt]
             if len(ret) == 0:
                 msg = ("No matching logs for {0}, ".format(evdef) +
                        "inconsistent with source")
