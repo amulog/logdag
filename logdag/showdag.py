@@ -96,17 +96,53 @@ class LogDAG:
         evmap = self._evmap()
         return evmap.evdef(node)
 
-    def evdef2node(self, evdef):
+    def evdef2node(self, evdef, graph=None):
+        if graph is None:
+            graph = self.graph
         evmap = self._evmap()
-        return evmap.get_eid(evdef)
+        node = evmap.get_eid(evdef)
+        return node, graph.get_node_data(node)
 
     def edge_evdef(self, edge):
         evmap = self._evmap()
         return [evmap.evdef(node) for node in edge[0:2]]
 
-    def evdef2edge(self, t_evdef):
+    def evdef2edge(self, evdef1, evdef2, graph=None, allow_reverse=False):
+        """
+        Returns:
+            u (int): source node of the edge
+            v (int): destination node of the edge
+            w (dict): edge attribute
+        """
+        if graph is None:
+            graph = self.graph
         evmap = self._evmap()
-        return [evmap.get_eid(evdef) for evdef in t_evdef]
+        node1 = evmap.get_eid(evdef1)
+        node2 = evmap.get_eid(evdef2)
+
+        if graph.has_edge(node1, node2):
+            return node1, node2, graph.get_edge_data(node1, node2)
+        if allow_reverse:
+            if graph.has_edge(node2, node1):
+                return node2, node1, graph.get_edge_data(node2, node1)
+        return None
+
+    def has_node(self, evdef):
+        return self._evmap().has_evdef(evdef)
+
+    def has_edge(self, evdef1, evdef2, graph=None, allow_reverse=False):
+        if graph is None:
+            graph = self.graph
+        evmap = self._evmap()
+        if self.has_node(evdef1) and self.has_node(evdef2):
+            node1 = evmap.get_eid(evdef1)
+            node2 = evmap.get_eid(evdef2)
+            if allow_reverse:
+                return graph.has_edge(node1, node2) or graph.has_edge(node2, node1)
+            else:
+                return graph.has_edge(node1, node2)
+        else:
+            return False
 
     @staticmethod
     def get_coefficient(edge, graph):

@@ -46,7 +46,7 @@ def makedag_main(args, do_dump=False):
 
     # generate prior knowledge
     from . import pknowledge
-    prior_knowledge = pknowledge.init_prior_knowledge(conf, evmap)
+    prior_knowledge = pknowledge.init_prior_knowledge(conf, args, evmap)
 #   init_graph = _init_graph(conf, evmap, jobname)
     timer.lap("make-prior-knowledge")
 
