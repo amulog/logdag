@@ -90,8 +90,6 @@ class AmulogLoader(object):
 
     def load_org(self, ev, dt_range):
         restored_ev = (self._restore_host(ev[0]), ev[1])
-        import pdb; pdb.set_trace()
-        print(restored_ev)
         for lm in self._iter_lines(restored_ev, dt_range):
             lm.dt = lm.dt.replace(tzinfo=tzlocal())
             yield lm
