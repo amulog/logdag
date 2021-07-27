@@ -385,7 +385,8 @@ def radj_sep(dt, duration):
 
 
 def shortstr(dt):
-    date = datetime.datetime.combine(dt.date(), datetime.time(), tzinfo=dt.tzinfo)
+    date = datetime.datetime.combine(dt.date(), datetime.time(),
+                                     tzinfo=dt.tzinfo)
     if date == dt:
         return dt.strftime("%Y%m%d")
     else:
@@ -395,9 +396,9 @@ def shortstr(dt):
 def shortstr2dt(dtstr):
     if "_" in dtstr:
         dt = datetime.datetime.strptime(dtstr, "%Y%m%d_%H%M%S")
-        return dt.replace(tzinfo=dateutil.tz.tzlocal())
     else:
-        return datetime.datetime.strptime(dtstr, "%Y%m%d")
+        dt = datetime.datetime.strptime(dtstr, "%Y%m%d")
+    return dt.replace(tzinfo=dateutil.tz.tzlocal())
 
 
 def iter_term(whole_term, term_length, term_diff=None):

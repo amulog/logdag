@@ -107,8 +107,11 @@ class AmulogLoader(object):
                 return "{0} tpls like: {1}".format(len(l_lt), repr_lt)
 
     def group(self, gid):
-        tags = self._get_tags(gid)
-        return "|".join(sorted(tags))
+        tags = [tag for tag in self._get_tags(gid)]
+        if len(tags) == 0:
+            return None
+        else:
+            return "|".join(sorted(tags))
 
 
 def init_amulogloader(conf, dt_range):

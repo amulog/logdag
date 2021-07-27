@@ -370,6 +370,15 @@ def show_stats_by_threshold(ns):
     print(common.cli_table(list(zip(thresholds, data)), align="right"))
 
 
+def show_node_ts(ns):
+    from . import showdag
+    conf = open_logdag_config(ns)
+
+    args = arguments.name2args(ns.argname, conf)
+    l_nodeid = [int(n) for n in ns.node_ids]
+    print(showdag.show_node_ts(args, l_nodeid))
+
+
 def show_netsize(ns):
     from . import showdag
     conf = open_logdag_config(ns)
@@ -507,10 +516,10 @@ OPT_LOG_ORG = [["--log-org"],
                {"dest": "log_org", "action": "store_true",
                 "help": "show original logs from amulog db for log time-series"}]
 OPT_HEAD = [["--head"],
-            {"dest": "head", "action": "store", "default": 5,
+            {"dest": "head", "action": "store", "type": int, "default": 5,
              "help": 'number of head samples to show in "detail" view'}]
 OPT_FOOT = [["--foot"],
-            {"dest": "foot", "action": "store", "default": 5,
+            {"dest": "foot", "action": "store", "type": int, "default": 5,
              "help": 'number of foot samples to show in "detail" view'}]
 OPT_GROUPBY = [["--groupby"],
                {"dest": "groupby", "metavar": "GROUPBY",
@@ -625,6 +634,13 @@ DICT_ARGSET = {
     "show-stats-by-threshold": ["Show sum of edges by thresholds",
                                 [OPT_CONFIG, OPT_DEBUG, OPT_RANGE],
                                 show_stats_by_threshold],
+    "show-node-ts": ["Show time-series of specified nodes",
+                     [OPT_CONFIG, OPT_DEBUG,
+                      ARG_ARGNAME,
+                      [["node_ids"],
+                       {"metavar": "NODE_IDs", "nargs": "+",
+                        "help": "nodes to show"}]],
+                     show_node_ts],
     "show-netsize": ["Show distribution of connected subgraphs in DAGs",
                      [OPT_CONFIG, OPT_DEBUG],
                      show_netsize],

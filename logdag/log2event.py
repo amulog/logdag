@@ -348,6 +348,52 @@ def merge_sync_event(evlist, evmap, rules):
     return new_evlist, new_evmap
 
 
+def _load_merged_event(conf, dt_range, area, evdef, areatest,
+                       ci_bin_size, ci_bin_diff, ci_bin_method, d_el):
+    if isinstance(evdef, MultipleEventDefinition):
+        l_df = []
+        for member in evdef.members:
+            tmp_df = _load_merged_event(conf, dt_range, area,
+                                        member, areatest,
+                                        ci_bin_size, ci_bin_diff,
+                                        ci_bin_method, d_el)
+            if tmp_df is not None:
+                tmp_df.columns = ["tmp"]
+                l_df.append(tmp_df)
+        if len(l_df) == 0:
+            return None
+        ret = l_df[0]
+        for tmp_df in l_df[1:]:
+            ret = ret.add(tmp_df)
+        return ret
+    else:
+        measure, tags = evdef.series()
+        if not areatest.test(area, tags["host"]):
+            return None
+        df = load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
+                        ci_bin_method, el=d_el[evdef.source])
+        return df
+
+
+def load_merged_events(conf, dt_range, area, l_evdef, d_el):
+    """for visualization"""
+    areatest = AreaTest(conf)
+    ci_bin_method = conf.get("dag", "ci_bin_method")
+    ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
+    ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
+
+    l_df = []
+    for idx, evdef in enumerate(l_evdef):
+        tmp_df = _load_merged_event(conf, dt_range, area, evdef, areatest,
+                                    ci_bin_size, ci_bin_diff,
+                                    ci_bin_method, d_el)
+        if tmp_df is None:
+            raise ValueError("no time-series for {0}".format(evdef))
+        tmp_df.columns = [idx]
+        l_df.append(tmp_df)
+    return pd.concat(l_df, axis=1)
+
+
 def evdef_instruction(conf, evdef, d_el=None):
     if d_el is None:
         d_el = init_evloaders(conf)

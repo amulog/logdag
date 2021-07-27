@@ -68,7 +68,7 @@ def makedag_main(args, do_dump=False):
 def make_input(args, binarize):
     conf, dt_range, area = args
     input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
-    evmap.dump(conf, args)
+    evmap.dump(args)
     return input_df, evmap
 
 

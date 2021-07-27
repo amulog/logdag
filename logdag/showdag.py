@@ -284,17 +284,14 @@ class LogDAG:
                                            d_el=self._evloader())]
         return "\n".join(buf)
 
-    def node_ts(self, node):
-        method = self.conf.get("dag", "ci_bin_method")
-        ci_bin_size = config.getdur(self.conf, "dag", "ci_bin_size")
-        ci_bin_diff = config.getdur(self.conf, "dag", "ci_bin_diff")
-
-        evdef = self.node_evdef(node)
-        measure, tags = evdef.series()
-        df = log2event.load_event(measure, tags, self.dt_range, ci_bin_size, ci_bin_diff,
-                                  method, el=self._evloader()[evdef.source])
-        sr = df.iloc[:, 0]
-        return sr
+    def node_ts(self, nodes):
+        if isinstance(nodes, int):
+            nodes = [nodes]
+        l_evdef = [self.node_evdef(node) for node in nodes]
+        df = log2event.load_merged_events(self.conf, self.dt_range, self.area,
+                                          l_evdef, self._evloader())
+        df.columns = nodes
+        return df
 
     def ate_prune(self, threshold, graph=None):
         """Prune edges with smaller ATE (average treatment effect).
@@ -672,11 +669,9 @@ def plot_node_ts(args, l_nodeid, output):
     import matplotlib
     matplotlib.use("Agg")
 
-    import pandas as pd
     ldag = LogDAG(args)
     ldag.load()
-    d_ts = {node: ldag.node_ts(node) for node in l_nodeid}
-    df = pd.DataFrame(d_ts)
+    df = ldag.node_ts(l_nodeid)
 
     import matplotlib.pyplot as plt
     df.plot(subplots=True, layout=(len(l_nodeid), 1))

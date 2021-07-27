@@ -188,19 +188,18 @@ class LogEventLoader(evgen_common.EventLoader):
 
             ev = (evdef.host, evdef.gid)
             l_org_lm = [lm for lm in self.load_org(ev, dt_range)]
-
-            # print(s_dt)
-            # print([lm.dt for lm in l_org_lm])
-
+            if len(l_org_lm) == 0:
+                msg = ("No logs for {0}, ".format(evdef) +
+                       "inconsistent with source")
+                raise ValueError(msg)
             ret = [(lm.dt, lm.restore_message()) for lm in l_org_lm]
-            # ret = [(lm.dt, lm.restore_message())
-            #        for lm in self.load_org(ev, dt_range)
-            #        if lm.dt in s_dt]
             if len(ret) == 0:
                 msg = ("No matching logs for {0}, ".format(evdef) +
                        "inconsistent with source")
                 raise ValueError(msg)
-            assert len(ret) >= len(s_dt), "sanity check failure"
+            if len(ret) < len(s_dt):
+                import pdb; pdb.set_trace()
+            assert len(ret) >= len(s_dt), "sanity check failure {0}".format(ev)
         else:
             ret = [(dt, values[0]) for dt, values
                    in self.load_items(measure, evdef.tags(), dt_range)]

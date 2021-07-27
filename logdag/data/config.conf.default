@@ -201,7 +201,7 @@ output_dag_format = pickle
 pass_dag_exists = false
 
 
-[pc_prune]
+[prior_knowledge]
 # List of methods to define prior knowledge
 # [topology, multi-topology]
 methods =
@@ -214,6 +214,10 @@ single_network_file = def_topology.json
 multi_network_file = l2:l2.json, l3:l3.json
 # group name is same as that of lt_label in amulog
 multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
+
+# For DAG import
+import_apply_rule = prune
+import_allow_reverse = true
 
 
 [lingam]
