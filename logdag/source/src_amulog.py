@@ -119,6 +119,5 @@ def init_amulogloader(conf, dt_range):
             conf["database_amulog"]["source_conf"],
             conf["database_amulog"]["event_gid"],
             conf.getboolean("database_amulog",
-                            "use_anonymize_mapping")
-            ]
+                            "use_anonymize_mapping")]
     return AmulogLoader(*args)

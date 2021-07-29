@@ -197,8 +197,6 @@ class LogEventLoader(evgen_common.EventLoader):
                 msg = ("No matching logs for {0}, ".format(evdef) +
                        "inconsistent with source")
                 raise ValueError(msg)
-            if len(ret) < len(s_dt):
-                import pdb; pdb.set_trace()
             assert len(ret) >= len(s_dt), "sanity check failure {0}".format(ev)
         else:
             ret = [(dt, values[0]) for dt, values
