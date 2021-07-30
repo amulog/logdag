@@ -136,9 +136,9 @@ class InfluxDBv1(TimeSeriesDB):
         rs = self._get(measure, d_tags, fields, dt_range)
 
         for p in rs.get_points():
-            dt = pd.to_datetime(p["time"])
-            dt = dt.tz_localize(tz.tzutc())
-            dt = dt.tz_convert(tz.tzlocal())
+            dt = pd.to_datetime(p["time"])  # obtained as naive(utc)
+            dt = dt.tz_localize(tz.tzutc())  # converted into utc
+            dt = dt.tz_convert(tz.tzlocal())  # converted into local tz
             array = np.array([p[f] for f in fields])
             yield dt, array
 
@@ -155,9 +155,10 @@ class InfluxDBv1(TimeSeriesDB):
         if len(rs) == 0:
             return None
 
+        # obtained as naive(utc)
         dtindex = pd.to_datetime([p["time"] for p in rs.get_points()])
-        dtindex = dtindex.tz_localize(tz.tzutc())
-        dtindex = dtindex.tz_convert(tz.tzlocal())
+        dtindex = dtindex.tz_localize(tz.tzutc())  # converted into utc
+        dtindex = dtindex.tz_convert(tz.tzlocal())  # converted into local tz
         l_array = [np.array([p[f] for f in fields])
                    for p in rs.get_points()]
         return pd.DataFrame(l_array, index=dtindex, columns=fields)

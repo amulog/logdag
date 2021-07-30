@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+
 import numpy as np
 import pandas as pd
 from dateutil import tz
@@ -9,30 +10,44 @@ from .. import dtutil
 
 
 class TimeSeriesDB(ABC):
+
     @staticmethod
-    def pdtimestamp(input_dt, naive=False):
-        dt = pd.to_datetime(input_dt)
-        if naive:
-            if dt.tz is not None:
-                dt = dt.tz_convert(None)
-                dt = dt.tz_localize(None)
+    def pdtimestamp_naive(input_dt):
+        if isinstance(input_dt, pd.Timestamp):
+            dt = input_dt
         else:
-            if dt.tz is None:
-                dt = dt.tz_localize(tz.tzutc())
-                dt = dt.tz_convert(tz.tzlocal())
+            dt = pd.Timestamp(input_dt)
+
+        # If input_dt is timezone-aware,
+        # convert it into naive(utc) for database input
+        if dt.tz is not None:
+            dt = dt.tz_convert(None)
+            dt = dt.tz_localize(None)
         return dt
 
     @staticmethod
-    def pdtimestamps(input_dts, naive=False):
-        dtindex = pd.to_datetime(input_dts)
-        if naive:
-            if dtindex.tz is not None:
-                dtindex = dtindex.tz_convert(None)
-                dtindex = dtindex.tz_localize(None)
+    def pdtimestamp(input_dt):
+        if isinstance(input_dt, pd.Timestamp):
+            dt = input_dt
         else:
-            if dtindex.tz is None:
-                dtindex = dtindex.tz_localize(tz.tzutc())
-                dtindex = dtindex.tz_convert(tz.tzlocal())
+            dt = pd.Timestamp(input_dt)
+
+        # If input_dt is timezone-naive,
+        # convert it into timezone-aware(local) for logdag use
+        if dt.tz is None:
+            dt = dt.tz_localize(tz.tzutc())
+            dt = dt.tz_convert(tz.tzlocal())
+        return dt
+
+    @staticmethod
+    def pdtimestamps(input_dts):
+        dtindex = pd.to_datetime(input_dts)
+
+        # If input_dt is timezone-naive,
+        # convert it into timezone-aware(local) for logdag use
+        if dtindex.tz is None:
+            dtindex = dtindex.tz_localize(tz.tzutc())
+            dtindex = dtindex.tz_convert(tz.tzlocal())
         return dtindex
 
     @abstractmethod
@@ -176,7 +191,7 @@ class SQLTimeSeries(TimeSeriesDB):
 
         l_args = []
         for t, row in d_input.items():
-            dtstr = self._db.strftime(self.pdtimestamp(t, naive=True))
+            dtstr = self._db.strftime(self.pdtimestamp_naive(t))
             args = {self._key_time: dtstr}
             for tag_key in tag_keys:
                 args[tag_key] = d_tags[tag_key]
@@ -198,14 +213,17 @@ class SQLTimeSeries(TimeSeriesDB):
         if fields is None:
             fields = self._field_names(measure)
 
+        # dt_range is converted from aware(local) to naive(utc)
+        dt_range_utc = [self.pdtimestamp_naive(dt) for dt in dt_range]
+
         l_key = [self._key_time] + [self._field_column_name(field_key)
                                     for field_key in fields]
         l_cond = []
         args = {}
         l_cond.append(db_common.Condition("time", ">=", "dts", True))
-        args["dts"] = self._db.strftime(dt_range[0])
+        args["dts"] = self._db.strftime(dt_range_utc[0])
         l_cond.append(db_common.Condition("time", "<", "dte", True))
-        args["dte"] = self._db.strftime(dt_range[1])
+        args["dte"] = self._db.strftime(dt_range_utc[1])
         for tag_key, tag_val in d_tags.items():
             key = self._tag_column_name(tag_key)
             l_cond.append(db_common.Condition(key, "=", tag_key, True))
@@ -219,6 +237,7 @@ class SQLTimeSeries(TimeSeriesDB):
 
         for row in cursor:
             dtstr, values = self._get_row_values(row)
+            # obtained as naive(utc), converted into aware(local)
             dt = self.pdtimestamp(self._db.strptime(dtstr))
             yield dt, np.array(values)
 
@@ -234,6 +253,7 @@ class SQLTimeSeries(TimeSeriesDB):
             if limit is not None and rid >= limit:
                 break
             dtstr, values = self._get_row_values(row)
+            # obtained as naive(utc), converted into aware(local)
             l_dt.append(self.pdtimestamp(self._db.strptime(dtstr)))
             if fill:
                 values = values.nan_to_num(fill)
