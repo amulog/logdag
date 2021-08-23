@@ -121,6 +121,17 @@ class ArgumentManager(object):
                                 cls._arglist_filename)
 
     @classmethod
+    def unit_cache_path(cls, conf, args, cache_name):
+        dirname = cls._arg_dirname(cls._output_dir(conf),
+                                   cls.jobname(args))
+        return "{0}/{1}".format(dirname, cache_name)
+
+    @classmethod
+    def whole_cache_path(cls, conf, cache_name):
+        return "{0}/{1}".format(cls._output_dir(conf),
+                                cache_name)
+
+    @classmethod
     def dag_path(cls, conf, args, ext="pickle"):
         dirname = cls._arg_dirname(cls._output_dir(conf),
                                    cls.jobname(args))

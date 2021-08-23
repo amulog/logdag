@@ -121,11 +121,12 @@ class SQLTimeSeries(TimeSeriesDB):
         return l_key
 
     @staticmethod
-    def _index_name(measure):
-        return measure + "_index"
+    def _index_name_header(measure):
+        return measure + "_index_"
 
     @classmethod
     def _index_keys(cls, tag_keys):
+        # columns for index: timestamps and tags
         l_key = [db_common.TableKey(cls._key_time, "datetime", tuple())]
         for tag_key in tag_keys:
             key = cls._header_tag + tag_key
@@ -139,11 +140,18 @@ class SQLTimeSeries(TimeSeriesDB):
             sql = self._db.create_table_sql(measure, l_key)
             self._db.execute(sql)
 
-            index_name = self._index_name(measure)
-            assert index_name not in table_names
-            l_key = self._index_keys(tag_keys)
-            sql = self._db.create_index_sql(measure, index_name, l_key)
-            self._db.execute(sql)
+            header = self._index_name_header(measure)
+            for index_tablekey in self._index_keys(tag_keys):
+                index_name = header + index_tablekey.key
+                assert index_name not in table_names
+                sql = self._db.create_index_sql(measure, index_name, [index_tablekey])
+                self._db.execute(sql)
+
+            # index_name = self._index_name(measure)
+            # assert index_name not in table_names
+            # l_key = self._index_keys(tag_keys)
+            # sql = self._db.create_index_sql(measure, index_name, l_key)
+            # self._db.execute(sql)
 
     def _tag_column_names(self, measure):
         ret = []
@@ -259,6 +267,10 @@ class SQLTimeSeries(TimeSeriesDB):
                 values = values.nan_to_num(fill)
             l_values.append(values)
 
+        sortidx = np.argsort(l_dt)
+        sorted_l_dt = [l_dt[idx] for idx in sortidx]
+        sorted_l_values = [l_values[idx] for idx in sortidx]
+
         if func is None:
             dtindex = self.pdtimestamps(l_dt)
             return pd.DataFrame(l_values, index=dtindex, columns=fields)
@@ -274,8 +286,8 @@ class SQLTimeSeries(TimeSeriesDB):
                 for field in fields:
                     d_values[field] = [float(0)] * len(dtindex)
             else:
-                for fid, series in enumerate(zip(*l_values)):
-                    a_cnt = dtutil.discretize_sequential(l_dt, dt_range,
+                for fid, series in enumerate(zip(*sorted_l_values)):
+                    a_cnt = dtutil.discretize_sequential(sorted_l_dt, dt_range,
                                                          binsize, l_dt_values=series)
                     d_values[fields[fid]] = a_cnt
 

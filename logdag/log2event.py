@@ -1,6 +1,6 @@
 import logging
 import pickle
-from abc import ABC, abstractmethod
+from abc import ABC
 import pandas as pd
 import numpy as np
 
@@ -28,6 +28,9 @@ class EventDefinition(ABC):
     @property
     def identifier(self):
         return self.__str__()
+
+    def all_attr(self, key):
+        return {getattr(self, key)}
 
 
 class MultipleEventDefinition(EventDefinition):
@@ -177,26 +180,25 @@ def init_evloaders(conf):
 
 
 def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
-               method, binarize=False, el=None):
+               method, el=None):
     if method == "sequential":
         df = el.load(measure, tags, dt_range, ci_bin_size)
         if df is None or df[el.fields[0]].sum() == 0:
             _logger.debug("{0} is empty".format((measure, tags)))
             return None
-        if binarize:
-            df[df > 0] = 1
     elif method == "slide":
         tmp_dt_range = (dt_range[0],
                         max(dt_range[1],
                             dt_range[1] + (ci_bin_size - ci_bin_diff)))
-        items = list(el.load_items(measure, tags, tmp_dt_range))
+        items = sorted(list(el.load_items(measure, tags, tmp_dt_range)),
+                       key=lambda x: x[0])
         if len(items) == 0:
             _logger.debug("{0} is empty".format((measure, tags)))
             return None
         l_dt = [e[0] for e in items]
         l_array = np.vstack([e[1] for e in items])[:, 0]
-        data = dtutil.discretize_slide(l_dt, dt_range, ci_bin_diff,
-                                       ci_bin_size, binarize,
+        data = dtutil.discretize_slide(l_dt, dt_range,
+                                       ci_bin_diff, ci_bin_size,
                                        l_dt_values=l_array)
         l_dt_label = dtutil.range_dt(dt_range[0], dt_range[1], ci_bin_diff)
         dtindex = pd.to_datetime(l_dt_label)
@@ -206,14 +208,15 @@ def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
                             dt_range[0] - 0.5 * (ci_bin_size - ci_bin_diff)),
                         max(dt_range[1],
                             dt_range[1] + 0.5 * (ci_bin_size - ci_bin_diff)))
-        items = list(el.load_items(measure, tags, tmp_dt_range))
+        items = sorted(list(el.load_items(measure, tags, tmp_dt_range)),
+                       key=lambda x: x[0])
         if len(items) == 0:
             _logger.debug("{0} is empty".format((measure, tags)))
             return None
         l_dt = [e[0] for e in items]
         l_array = np.vstack([e[1] for e in items])[:, 0]
         data = dtutil.discretize_radius(l_dt, dt_range, ci_bin_diff,
-                                        0.5 * ci_bin_size, binarize,
+                                        0.5 * ci_bin_size,
                                         l_dt_values=l_array)
         l_dt_label = dtutil.range_dt(dt_range[0], dt_range[1], ci_bin_diff)
         dtindex = pd.to_datetime(l_dt_label)
@@ -224,7 +227,7 @@ def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
     return df
 
 
-def load_event_log_all(conf, dt_range, area, binarize, d_el=None):
+def load_event_log_all(conf, dt_range, area, d_el=None):
     if d_el is None:
         from .source import evgen_log
         el = evgen_log.LogEventLoader(conf)
@@ -241,12 +244,12 @@ def load_event_log_all(conf, dt_range, area, binarize, d_el=None):
         if not areatest.test(area, tags["host"]):
             continue
         df = load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
-                        method, binarize, el)
+                        method, el)
         if df is not None:
             yield evdef, df
 
 
-def load_event_snmp_all(conf, dt_range, area, binarize, d_el=None):
+def load_event_snmp_all(conf, dt_range, area, d_el=None):
     if d_el is None:
         from .source import evgen_snmp
         el = evgen_snmp.SNMPEventLoader(conf)
@@ -265,28 +268,28 @@ def load_event_snmp_all(conf, dt_range, area, binarize, d_el=None):
         if not areatest.test(area, tags["host"]):
             continue
         df = load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
-                        method, binarize, el)
+                        method, el)
         if df is not None:
             yield evdef, df
 
 
-def load_event_all(sources, conf, dt_range, area, binarize):
+def load_event_all(sources, conf, dt_range, area):
     for src in sources:
         if src == SRCCLS_LOG:
-            for evdef, df in load_event_log_all(conf, dt_range, area, binarize):
+            for evdef, df in load_event_log_all(conf, dt_range, area):
                 yield evdef, df
         elif src == SRCCLS_SNMP:
-            for evdef, df in load_event_snmp_all(conf, dt_range, area, binarize):
+            for evdef, df in load_event_snmp_all(conf, dt_range, area):
                 yield evdef, df
         else:
             raise NotImplementedError
 
 
-def makeinput(conf, dt_range, area, binarize):
+def makeinput(conf, dt_range, area):
     evmap = EventDefinitionMap()
     evlist = []
     sources = config.getlist(conf, "dag", "source")
-    for evdef, df in load_event_all(sources, conf, dt_range, area, binarize):
+    for evdef, df in load_event_all(sources, conf, dt_range, area):
         eid = evmap.add_evdef(evdef)
         df.columns = [eid, ]
         evlist.append(df)
@@ -317,7 +320,7 @@ def merge_sync_event(evlist, evmap, rules):
         evdef = evmap.evdef(old_eid)
 
         value_key = tuple(df.iloc[:, 0])
-        tmp_key = [value_key,]
+        tmp_key = [value_key, ]
         if "source" in rules:
             tmp_key.append(evdef.source)
         if "host" in rules:
@@ -427,10 +430,10 @@ def evdef_detail(conf, evdef, dt_range, head, foot,
         data = list(el.details(evdef, dt_range, log_org))
     except ValueError as e:
         raise e
-    #data = list(el.load_items(measure, evdef.tags(), dt_range))
+    # data = list(el.load_items(measure, evdef.tags(), dt_range))
     return common.show_repr(
         data, head, foot, indent=indent,
-        strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
+        strfunc=lambda x: "{0} {1}: {2}".format(x[0], x[1], x[2]))
 
 
 # def evdef_detail_org(conf, evdef, dt_range, head, foot, d_el=None):
@@ -452,4 +455,3 @@ def evdef_detail(conf, evdef, dt_range, head, foot,
 #            strfunc=lambda x: "{0}: {1}".format(x[0], x[1]))
 #    else:
 #        raise NotImplementedError
-

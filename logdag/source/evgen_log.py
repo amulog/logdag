@@ -192,14 +192,14 @@ class LogEventLoader(evgen_common.EventLoader):
                 msg = ("No logs for {0}, ".format(evdef) +
                        "inconsistent with source")
                 raise ValueError(msg)
-            ret = [(lm.dt, lm.restore_message()) for lm in l_org_lm]
+            ret = [(lm.dt, lm.host, lm.restore_message()) for lm in l_org_lm]
             if len(ret) == 0:
                 msg = ("No matching logs for {0}, ".format(evdef) +
                        "inconsistent with source")
                 raise ValueError(msg)
             assert len(ret) >= len(s_dt), "sanity check failure {0}".format(ev)
         else:
-            ret = [(dt, values[0]) for dt, values
+            ret = [(dt, evdef.host, values[0]) for dt, values
                    in self.load_items(measure, evdef.tags(), dt_range)]
             if len(ret) == 0:
                 msg = ("No time-series for {0}, ".format(evdef) +

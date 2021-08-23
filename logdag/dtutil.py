@@ -126,11 +126,12 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values=None):
         l_cp.append((dt, np.array(tuple(tmp_idxs))))
     assert len(tmp_idxs) == 0
 
-    # iteration does not use last component (uniquely used afterward)
+    # note: iteration does not use last component (uniquely used afterward)
     iterobj = zip(l_cp[:-1], l_cp[1:])
     try:
         (key, current_idxs), (next_key, next_idxs) = next(iterobj)
     except StopIteration:
+        # changes are empty
         return a_ret
 
     for dt, v in zip(l_dt, l_dt_values):

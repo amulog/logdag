@@ -45,21 +45,6 @@ def make_args(ns):
 def make_dag(ns):
     from . import makedag
 
-    def makedag_sprocess(am):
-        timer = common.Timer("makedag task", output=_logger)
-        timer.start()
-        for args in am:
-            makedag.makedag_pool(args)
-        timer.stop()
-
-    def makedag_mprocess(am, pal=1):
-        import multiprocessing
-        timer = common.Timer("makedag task", output=_logger)
-        timer.start()
-        with multiprocessing.Pool(processes=pal) as pool:
-            pool.map(makedag.makedag_pool, am)
-        timer.stop()
-
     conf = open_logdag_config(ns)
 
     am = arguments.ArgumentManager(conf)
@@ -67,11 +52,20 @@ def make_dag(ns):
     am.init_dirs(conf)
     am.dump()
 
-    p = ns.parallel
-    if p > 1:
-        makedag_mprocess(am, p)
+    pal = ns.parallel
+    if pal > 1:
+        import multiprocessing
+        timer = common.Timer("makedag task", output=_logger)
+        timer.start()
+        with multiprocessing.Pool(processes=pal) as pool:
+            pool.map(makedag.makedag_pool, am)
+        timer.stop()
     else:
-        makedag_sprocess(am)
+        timer = common.Timer("makedag task", output=_logger)
+        timer.start()
+        for args in am:
+            makedag.makedag_pool(args)
+        timer.stop()
 
 
 def make_dag_stdin(ns):
@@ -86,7 +80,7 @@ def make_dag_stdin(ns):
     timer = common.Timer("makedag task for {0}".format(ns.argname),
                          output=_logger)
     timer.start()
-    makedag.makedag_main(args)
+    makedag.makedag_main(args, do_dump=True)
     timer.stop()
 
 
@@ -153,7 +147,7 @@ def update_event_label(ns):
 
     for evdef in evmap.iter_evdef():
         assert evdef.source == log2event.SRCCLS_LOG
-        evdef.group = al.label(evdef.gid)
+        evdef.group = al.group(evdef.gid)
 
     evmap.dump(args)
 
@@ -162,13 +156,12 @@ def dump_input(ns):
     from . import makedag
 
     conf = open_logdag_config(ns)
-    binarize = ns.binary
 
     am = arguments.ArgumentManager(conf)
     am.init_dirs(conf)
     args = am.jobname2args(ns.argname, conf)
 
-    input_df, _ = makedag.make_input(args, binarize)
+    input_df, _ = makedag.make_input(args)
     input_df.to_csv(ns.filename)
 
 
@@ -185,10 +178,7 @@ def dump_events(ns):
 
     if len(evmap) == 0:
         from . import makedag
-        input_format = conf.get("dag", "input_format")
-        ci_func = conf.get("dag", "ci_func")
-        binarize = makedag.is_binarize(input_format, ci_func)
-        input_df, evmap = makedag.make_input(args, binarize)
+        input_df, evmap = makedag.make_input(args)
 
     for eid, evdef in evmap.items():
         print("eid {0}: {1}".format(eid, evdef))
@@ -239,7 +229,7 @@ def show_edge(ns):
 
     print(showdag.show_edge(r, d_cond, context=context,
                             head=ns.head, foot=ns.foot,
-                            log_org=ns.log_org, graph=None))
+                            log_org=True, graph=None))
 
 
 def show_subgraphs(ns):
@@ -260,7 +250,7 @@ def show_subgraphs(ns):
 
     print(showdag.show_subgraphs(r, context,
                                  head=ns.head, foot=ns.foot,
-                                 log_org=ns.log_org, graph=g))
+                                 log_org=True, graph=g))
 
 
 def show_edge_list(ns):
@@ -281,23 +271,7 @@ def show_edge_list(ns):
 
     print(showdag.show_edge_list(r, context,
                                  head=ns.head, foot=ns.foot,
-                                 log_org=ns.log_org, graph=g))
-
-
-#def show_edge_detail(ns):
-#    from . import showdag
-#    conf = open_logdag_config(ns)
-#    args = arguments.name2args(ns.argname, conf)
-#    head = ns.head
-#    tail = ns.tail
-#
-#    l_buf = []
-#    r = showdag.LogDAG(args)
-#    r.load()
-#    g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
-#    for edge in g.edges():
-#        msg = "\n".join(r.edge_detail(edge, g))
-#    print(showdag.show_edge_detail(args, head, tail))
+                                 log_org=True, graph=g))
 
 
 def show_list(ns):
@@ -376,7 +350,11 @@ def show_node_ts(ns):
 
     args = arguments.name2args(ns.argname, conf)
     l_nodeid = [int(n) for n in ns.node_ids]
-    print(showdag.show_node_ts(args, l_nodeid))
+
+    ldag = showdag.LogDAG(args)
+    ldag.load()
+    df = ldag.node_ts(l_nodeid)
+    print(df)
 
 
 def show_netsize(ns):
@@ -512,9 +490,9 @@ OPT_INSTRUCTION = [["--instruction"],
 OPT_DETAIL = [["-d", "--detail"],
               {"dest": "detail", "action": "store_true",
                "help": "show event time-series samples"}]
-OPT_LOG_ORG = [["--log-org"],
-               {"dest": "log_org", "action": "store_true",
-                "help": "show original logs from amulog db for log time-series"}]
+# OPT_LOG_ORG = [["--log-org"],
+#                {"dest": "log_org", "action": "store_true",
+#                 "help": "show original logs from amulog db for log time-series"}]
 OPT_HEAD = [["--head"],
             {"dest": "head", "action": "store", "type": int, "default": 5,
              "help": 'number of head samples to show in "detail" view'}]
@@ -543,12 +521,6 @@ ARG_EDGESEARCH = [["conditions"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "tests": ["Generate DAG",
-             [OPT_CONFIG, OPT_DEBUG],
-             test_makedag],
-    #"make-tsdb": ["Generate time-series DB for make-dag input",
-    #              [OPT_CONFIG, OPT_DEBUG, OPT_PARALLEL],
-    #              make_tsdb],
     "make-args": ["Initialize arguments for pc algorithm",
                   [OPT_CONFIG, OPT_DEBUG],
                   make_args],
@@ -594,17 +566,17 @@ DICT_ARGSET = {
                   show_args],
     "show-edge": ["Show edges related to given conditions",
                   [OPT_CONFIG, OPT_DEBUG, OPT_INSTRUCTION,
-                   OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
+                   OPT_DETAIL, OPT_HEAD, OPT_FOOT,
                    ARG_ARGNAME, ARG_EDGESEARCH],
                   show_edge],
     "show-edge-list": ["Show all edges in a DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
-                        OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
+                        OPT_DETAIL, OPT_HEAD, OPT_FOOT,
                         ARG_ARGNAME, ARG_FILTER],
                        show_edge_list],
     "show-subgraphs": ["Show edges in each connected subgraphs",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
-                        OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
+                        OPT_DETAIL, OPT_HEAD, OPT_FOOT,
                         ARG_ARGNAME, ARG_FILTER],
                        show_subgraphs],
     # "show-edge-detail": ["Show time-series samples of detected edges in a DAG",
@@ -667,4 +639,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

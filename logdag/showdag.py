@@ -6,7 +6,6 @@ import pickle
 import networkx as nx
 from collections import defaultdict
 
-from amulog import config
 from . import arguments
 from . import log2event
 
@@ -151,71 +150,75 @@ class LogDAG:
             a = graph.edges[edge][KEY_WEIGHT]
         return a
 
-    def edges_directed(self, graph=None):
+    def edges_by_direction(self, graph=None, data=False):
         """Returns subgraphs of input graph its edges by
         the availability of their directions.
 
         Args:
             graph (nx.DiGraph): A subgraph of self.graph.
                                 If empty, self.graph is used.
+            data (boolean): Include data in EdgeView.
 
         Returns:
-            g_di (nx.DiGraph): A subgraph of directed edges.
-            g_nodi (nx.Graph): A subgraph of undirected edges.
+            edges_di (EdgeView): Directed edges.
+            edges_nodi (EdgeView): Undirected edges.
         """
-        g_di = nx.DiGraph()
-        g_nodi = nx.Graph()
-        l_temp_edge = []
         if graph is None:
             graph = self.graph
-        for edge in graph.edges():
-            rev_edge = (edge[1], edge[0])
-            if rev_edge in l_temp_edge:
-                g_nodi.add_edge(*edge)
-                l_temp_edge.remove(rev_edge)
+
+        g_di = nx.DiGraph()
+        g_nodi = nx.Graph()
+        undirected = set()
+        for u, v, ddict in graph.edges(data=True):
+            if self.edge_isdirected((u, v), graph):
+                g_di.add_edge(u, v, **ddict)
             else:
-                l_temp_edge.append(edge)
-        g_di.add_edges_from(l_temp_edge)
-        return g_di, g_nodi
+                edge_key = frozenset([u, v])
+                if edge_key in undirected:
+                    continue
+                else:
+                    undirected.add(edge_key)
+                    g_nodi.add_edge(u, v, **ddict)
+        return g_di.edges(data=data), g_nodi.edges(data=data)
 
     def edge_isdirected(self, edge, graph=None):
         if graph is None:
             graph = self.graph
-        rev_edge = (edge[1], edge[0])
         if edge in graph.edges():
-            if rev_edge in graph.edges():
+            if graph.has_edge(edge[1], edge[0]):
                 return False
             else:
                 return True
         else:
-            if rev_edge in graph.edges():
+            if graph.has_edge(edge[1], edge[0]):
                 raise ValueError("Edge not found, Reversed edge exists")
             else:
                 raise ValueError("Edge not found")
 
-    def edges_across_host(self, graph=None):
+    def edges_across_host(self, graph=None, data=False):
         """Returns subgraphs of input graph its edges by the consistency
         of the hosts of adjacent nodes.
 
         Args:
             graph (nx.DiGraph): A subgraph of self.graph.
                                 If empty, self.graph is used.
+            data (boolean): Include data in EdgeView.
 
         Returns:
-            g_same (nx.DiGraph): A subgraph of edges among same hosts.
-            g_diff (nx.DiGraph): A subgraph of edges across hosts.
+            edges_same (EdgeView): Edges between same hosts.
+            edges_diff (EdgeView): Edges across multiple hosts.
         """
         g_same = nx.DiGraph()
         g_diff = nx.DiGraph()
         if graph is None:
             graph = self.graph
-        for edge in graph.edges():
-            src_info, dst_info = self.edge_evdef(edge)
+        for u, v, ddict in graph.edges(data=True):
+            src_info, dst_info = self.edge_evdef((u, v))
             if src_info.host == dst_info.host:
-                g_same.add_edge(*edge)
+                g_same.add_edge(u, v, **ddict)
             else:
-                g_diff.add_edge(*edge)
-        return g_same, g_diff
+                g_diff.add_edge(u, v, **ddict)
+        return g_same.edges(data=data), g_diff.edges(data=data)
 
     def connected_subgraphs(self, graph=None):
         if graph is None:
@@ -375,6 +378,32 @@ def isdirected(edge, graph):
             raise ValueError("Edge not found")
 
 
+def remove_edge_duplication(edges, ldag, graph=None):
+    undirected = set()
+    for edge in edges:
+        if not ldag.edge_isdirected(edge, graph=graph):
+            edge_key = frozenset(edge)
+            if edge_key in undirected:
+                continue
+            else:
+                undirected.add(edge_key)
+        yield edge
+
+
+def edge_view(edge, ldag, context="edge", head=5, foot=5,
+              log_org=False, graph=None):
+    if context == "detail":
+        return "\n".join([ldag.edge_detail(edge, head, foot,
+                                           log_org=log_org, graph=graph)])
+    elif context == "instruction":
+        return "\n".join([ldag.edge_str(edge, graph),
+                         ldag.edge_instruction(edge)])
+    elif context == "edge":
+        return ldag.edge_str(edge, graph)
+    else:
+        raise NotImplementedError
+
+
 def apply_filter(ldag, l_filtername, th=None, graph=None):
     from . import showdag_filter
     if graph is None:
@@ -382,19 +411,36 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
     else:
         g = graph
 
+    filters = []
+
     # make to_undirected the first filter
     if "to_undirected" in l_filtername:
         l_filtername.remove("to_undirected")
-        l_filtername = ["to_undirected"] + l_filtername
+        filters.append("to_undirected")
 
-    # make no_isolated the last filter
+    has_no_isolated = False
     if "no_isolated" in l_filtername:
         l_filtername.remove("no_isolated")
-        l_filtername.append("no_isolated")
+        has_no_isolated = True
 
-    for funcname in l_filtername:
+    for filtername in l_filtername:
+        if filtername[0] == "_":
+            raise ValueError
+        elif "=" in filtername:
+            key, _, val = filtername.partition("=")
+            filters.append(("_search_edges", {key: val}))
+        elif filtername == "ate_prune":
+            filters.append(("ate_prune", {"threshold": th}))
+        else:
+            filters.append((filtername, {}))
+
+    # make no_isolated the last filter
+    if has_no_isolated:
+        filters.append(("no_isolated", {}))
+
+    for funcname, kwargs in filters:
         assert funcname in showdag_filter.FUNCTIONS
-        g = eval("showdag_filter." + funcname)(graph=g, ldag=ldag, th=th)
+        g = eval("showdag_filter." + funcname)(graph=g, ldag=ldag, **kwargs)
     return g
 
 
@@ -542,41 +588,34 @@ def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
 #    return common.cli_table(table, align="right")
 
 
-def show_edge(ldag, conditions, context="edge",
+def show_edge(ldag: LogDAG, conditions, context="edge",
               head=5, foot=5, log_org=False, graph=None):
     if graph is None:
-        graph = ldag.graph.to_undirected()
+        graph = ldag.graph
 
-    l_buf = []
-    undirected = set()
+    edges_to_show = []
     for edge in graph.edges():
         if "node" in conditions:
             if conditions["node"] not in edge:
                 continue
         if "gid" in conditions:
-            s_gid = edge[0].all_attr("gid") | edge[1].all_attr("gid")
-            if conditions["gid"] in s_gid:
+            src_evdef = ldag.node_evdef(edge[0])
+            dst_evdef = ldag.node_evdef(edge[1])
+            s_gid = src_evdef.all_attr("gid") | dst_evdef.all_attr("gid")
+            if conditions["gid"] not in s_gid:
                 continue
         if "host" in conditions:
-            s_host = edge[0].all_attr("host") | edge[1].all_attr("host")
-            if conditions["host"] in s_host:
+            src_evdef = ldag.node_evdef(edge[0])
+            dst_evdef = ldag.node_evdef(edge[1])
+            s_host = src_evdef.all_attr("host") | dst_evdef.all_attr("host")
+            if conditions["host"] not in s_host:
                 continue
+        edges_to_show.append(edge)
 
-        if not ldag.edge_isdirected(edge, graph):
-            if edge in undirected:
-                continue
-            undirected.add(edge)
-            undirected.add((edge[1], edge[0]))
-        if context == "detail":
-            msg = "\n".join([ldag.edge_detail(edge, head, foot,
-                                              log_org=log_org, graph=graph)])
-        elif context == "instruction":
-            msg = "\n".join([ldag.edge_str(edge, graph),
-                             ldag.edge_instruction(edge)])
-        elif context == "edge":
-            msg = ldag.edge_str(edge, graph)
-        else:
-            raise NotImplementedError
+    l_buf = []
+    for edge in remove_edge_duplication(edges_to_show, ldag, graph=graph):
+        msg = edge_view(edge, ldag, context=context, head=head, foot=foot,
+                        log_org=log_org, graph=graph)
         l_buf.append(msg)
     return "\n".join(l_buf)
 
@@ -587,17 +626,9 @@ def show_edge_list(ldag, context="edge",
         graph = ldag.graph
 
     l_buf = []
-    for edge in graph.edges():
-        if context == "detail":
-            msg = "\n".join([ldag.edge_detail(edge, head, foot,
-                                              log_org=log_org, graph=graph)])
-        elif context == "instruction":
-            msg = "\n".join([ldag.edge_str(edge, graph),
-                             ldag.edge_instruction(edge)])
-        elif context == "edge":
-            msg = ldag.edge_str(edge, graph)
-        else:
-            raise NotImplementedError
+    for edge in remove_edge_duplication(graph.edges(), ldag, graph=graph):
+        msg = edge_view(edge, ldag, context=context, head=head, foot=foot,
+                        log_org=log_org, graph=graph)
         l_buf.append(msg)
     return "\n".join(l_buf)
 
@@ -617,24 +648,9 @@ def show_subgraphs(ldag, context="edge",
         l_graph_buf = ["Subgraph {0} ({1} nodes)".format(sgid, len(nodes))]
         subg = nx.subgraph(graph, nodes)
 
-        undirected = set()
-        for edge in subg.edges():
-            if not ldag.edge_isdirected(edge, graph):
-                if edge in undirected:
-                    continue
-                undirected.add(edge)
-                undirected.add((edge[1], edge[0]))
-            if context == "detail":
-                msg = "\n".join([ldag.edge_detail(edge, head, foot,
-                                                  log_org=log_org,
-                                                  graph=graph)])
-            elif context == "instruction":
-                msg = "\n".join([ldag.edge_str(edge, graph),
-                                 ldag.edge_instruction(edge)])
-            elif context == "edge":
-                msg = ldag.edge_str(edge, graph)
-            else:
-                raise NotImplementedError
+        for edge in remove_edge_duplication(subg.edges(), ldag, graph=graph):
+            msg = edge_view(edge, ldag, context=context, head=head, foot=foot,
+                            log_org=log_org, graph=graph)
             l_graph_buf.append(msg)
         l_buf.append("\n".join(l_graph_buf))
     return separator.join(l_buf)

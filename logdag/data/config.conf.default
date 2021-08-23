@@ -157,11 +157,6 @@ ci_bin_diff = 1m
 # [fisherz, fisherz_bin, gsq, gsq_rlib] is available
 ci_func = gsq
 
-# Input log data format for DAG estimation
-# one of [auto, binary, countable]
-# if auto, the format is selected considering ci_func (binary for gsq, countable for fisherz).
-input_format = auto
-
 # Method to estimate causal DAG
 # pc in default, and lingam (LiNGAM-fast) is also available
 cause_algorithm = pc
@@ -216,6 +211,8 @@ multi_network_file = l2:l2.json, l3:l3.json
 multi_network_group = interface:l2, network:l2, egp:l3, igp:l3, vpn:l3
 
 # For DAG import
+# apply_rule: [prune, force, prune+force, prune-unconnected]
+import_config =
 import_apply_rule = prune
 import_allow_reverse = true
 

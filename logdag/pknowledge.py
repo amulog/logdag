@@ -147,6 +147,7 @@ class ImportDAG(KnowledgeGenerator):
         try:
             self._ldag = showdag.LogDAG((self._src_conf, self._dt_range,
                                          self._area))
+            self._ldag.load()
             self._src_ugraph = self._ldag.graph.to_undirected()
         except IOError:
             raise IOError("failed to import existing DAG :"
@@ -155,7 +156,8 @@ class ImportDAG(KnowledgeGenerator):
     def _update_edge_prune(self, pk, evmap, node1, node2):
         evdef1 = evmap.evdef(node1)
         evdef2 = evmap.evdef(node2)
-        if not self._ldag.has_edge(evdef1, evdef2, self._allow_reverse):
+        if not self._ldag.has_edge(evdef1, evdef2,
+                                   allow_reverse=self._allow_reverse):
             pk.add_noedge_rule((node1, node2))
         return pk
 
@@ -306,7 +308,6 @@ class AdditionalSource(RuleBasedPruning):
 
 def init_prior_knowledge(conf, args, evmap):
     from amulog import config
-    l_pruner = []
     methods = config.getlist(conf, "prior_knowledge", "methods")
 
     node_ids = evmap.eids()
@@ -334,8 +335,9 @@ def init_prior_knowledge(conf, args, evmap):
                 d_rule[group] = layer
             pk = LayeredTopology(d_fp, d_rule).update(pk, evmap)
         elif method == "independent":
-            l_pruner.append(HostIndependent())
+            pk = HostIndependent().update(pk, evmap)
         elif method == "additional-source":
-            l_pruner.append(AdditionalSource())
+            pk = AdditionalSource().update(pk, evmap)
         else:
             raise NotImplementedError("invalid method name {0}".format(method))
+    return pk

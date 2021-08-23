@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import networkx as nx
 
 FUNCTIONS = ["no_isolated", "to_undirected",
@@ -8,25 +5,6 @@ FUNCTIONS = ["no_isolated", "to_undirected",
              "across_host", "within_host",
              "subgraph_with_log", "subgraph_with_snmp",
              "ate_prune"]
-
-
-# def apply(ldag, l_filtername, th=None):
-#    g = ldag.graph
-#
-#    # make to_undirected the first filter
-#    if "to_undirected" in l_filtername:
-#        l_filtername.remove("to_undirected")
-#        l_filtername = ["to_undirected"] + l_filtername
-#
-#    # make no_isolated the last filter
-#    if "no_isolated" in l_filtername:
-#        l_filtername.remove("no_isolated")
-#        l_filtername.append("no_isolated")
-#
-#    for funcname in l_filtername:
-#        assert funcname in FUNCTIONS
-#        g = eval(funcname)(graph=g, ldag=ldag, th=th)
-#    return g
 
 
 def no_isolated(graph, **_):
@@ -125,19 +103,19 @@ def subgraph_with_snmp(graph, ldag=None, **_):
     return ret
 
 
-def ate_prune(graph, th=None, **_):
+def ate_prune(graph, threshold=None, **_):
     """Prune edges with smaller ATE (average treatment effect).
     Effective if DAG estimation algorithm is LiNGAM."""
 
     import numpy as np
-    if th is None:
+    if threshold is None:
         raise ValueError("threshold not given")
     ret = graph.copy()
     try:
         edge_label = {(u, v): d["weight"]
                       for (u, v, d) in graph.edges(data=True)}
         for (src, dst), val in edge_label.items():
-            if np.abs(val) < th:
+            if np.abs(val) < threshold:
                 ret.remove_edge(src, dst)
         return ret
     except KeyError:

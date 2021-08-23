@@ -36,7 +36,7 @@ def makedag_main(args, do_dump=False):
 #   binarize = is_binarize(input_format, ci_func)
     # generate event set and evmap, and apply preprocessing
     # d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
-    input_df, evmap = log2event.makeinput(conf, dt_range, area, False)
+    input_df, evmap = log2event.makeinput(conf, dt_range, area)
     if input_df is None:
         return None
     _logger.info("{0} pc input shape: {1}".format(jobname, input_df.shape))
@@ -65,9 +65,9 @@ def makedag_main(args, do_dump=False):
     return ldag
 
 
-def make_input(args, binarize):
+def make_input(args):
     conf, dt_range, area = args
-    input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
+    input_df, evmap = log2event.makeinput(conf, dt_range, area)
     evmap.dump(args)
     return input_df, evmap
 
@@ -76,11 +76,7 @@ def makedag_prune_test(args):
     jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
-    input_format = conf.get("dag", "input_format")
-    ci_func = conf.get("dag", "ci_func")
-    #binarize = is_binarize(input_format, ci_func)
-    binarize = False
-    input_df, evmap = log2event.makeinput(conf, dt_range, area, binarize)
+    input_df, evmap = log2event.makeinput(conf, dt_range, area)
     _logger.info("pc input shape: {0}".format(input_df.shape))
     evmap.dump(conf, args)
 
@@ -201,24 +197,6 @@ def estimate_dag(conf, input_df, ci_func, prior_knowledge=None):
                                           prior_knowledge=prior_knowledge)
     else:
         raise ValueError("invalid dag.cause_algorithm")
-
-
-#def is_binarize(input_format, ci_func):
-#    if input_format == "auto":
-#        if ci_func == "fisherz":
-#            return False
-#        elif ci_func == "fisherz_bin":
-#            return True
-#        elif ci_func == "gsq":
-#            return True
-#        elif ci_func == "gsq_rlib":
-#            return True
-#        else:
-#            raise NotImplementedError
-#    elif input_format == "binary":
-#        return True
-#    else:
-#        return False
 
 
 def _complete_graph(node_ids):
