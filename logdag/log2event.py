@@ -29,6 +29,16 @@ class EventDefinition(ABC):
     def identifier(self):
         return self.__str__()
 
+    @property
+    def groups(self):
+        group = getattr(self, "group")
+        if group is None or group == "None":
+            return []
+        elif "|" in group:
+            return "|".split(group)
+        else:
+            return [group]
+
     def all_attr(self, key):
         return {getattr(self, key)}
 

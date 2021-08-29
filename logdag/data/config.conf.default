@@ -24,7 +24,7 @@ log_source = amulog
 snmp_source = rrd
 
 # [influx, sql]
-evdb = influx
+evdb = sql
 
 # amulog host_alias filename
 host_alias_filename =
@@ -67,7 +67,7 @@ protocol = line
 database = sqlite3
 
 # timeseries database for sqlite3
-sqlite3_filename = rrd.db
+sqlite3_filename = logdag.db
 
 # Database hostname for mysql
 mysql_host = localhost

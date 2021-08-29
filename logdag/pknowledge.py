@@ -261,11 +261,21 @@ class LayeredTopology(RuleBasedPruning):
                 topo[name] = nx.Graph()
         return topo
 
-    def _get_layer(self, evdef):
-        if evdef.group in self._d_rule:
-            return self._d_rule[evdef.group]
+    def _get_layers(self, evdef):
+        s_layer = set()
+        for group in evdef.groups:
+            if group in self._d_rule:
+                s_layer.add(self._d_rule[group])
+        if len(s_layer) == 0:
+            return {self._default_layer}
         else:
-            return self._default_layer
+            return s_layer
+
+#    def _get_layer(self, evdef):
+#        if evdef.group in self._d_rule:
+#            return self._d_rule[evdef.group]
+#        else:
+#            return self._default_layer
 
     def _is_adjacent(self, evdef1, evdef2):
         # same host
@@ -275,9 +285,19 @@ class LayeredTopology(RuleBasedPruning):
         # allow one intermediate variable (node)
         # -> connection on a layer of at least one end node
         # see cnsm2020 paper
-        layer1 = self._get_layer(evdef1)
-        layer2 = self._get_layer(evdef2)
-        for layer in (layer1, layer2):
+        # now extended to support multiple tags for 1 tpl
+
+        # layer1 = self._get_layer(evdef1)
+        # layer2 = self._get_layer(evdef2)
+        # for layer in (layer1, layer2):
+        #     if layer in self._topology:
+        #         net = self._topology[layer]
+        #         if net.has_edge(evdef1.host, evdef2.host):
+        #             return True
+        # else:
+        #     return False
+
+        for layer in self._get_layers(evdef1) | self._get_layers(evdef2):
             if layer in self._topology:
                 net = self._topology[layer]
                 if net.has_edge(evdef1.host, evdef2.host):

@@ -30,8 +30,6 @@ class LogEventDefinition(log2event.EventDefinition):
         else:
             return "{0}:{1}:{2}".format(self.host, str(self.gid),
                                         self.group)
-        #return "{0}, gid:{1}({2})".format(self.host, str(self.gid),
-        #                                  self.group)
 
     def key(self):
         return str(self.gid)

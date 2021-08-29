@@ -104,7 +104,7 @@ class AmulogLoader(object):
             if len(l_lt) == 1:
                 return str(repr_lt)
             else:
-                return "{0} tpls like: {1}".format(len(l_lt), repr_lt)
+                return "{0} tpls: {1}".format(len(l_lt), repr_lt)
 
     def group(self, gid):
         tags = [tag for tag in self._get_tags(gid)]
