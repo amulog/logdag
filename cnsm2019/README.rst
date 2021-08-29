@@ -5,7 +5,7 @@ CNSM2019 reproduction with logdag
 Overview
 ========
 
-This document is for researchers who want to follow-up `CNSM2019 <https://doi.org/10.23919/CNSM46954.2019.9012718>`_ paper in their data.
+This document is for researchers who want to follow-up `CNSM2019 <https://doi.org/10.23919/CNSM46954.2019.9012718>`_ paper with their data.
 
 ::
 
