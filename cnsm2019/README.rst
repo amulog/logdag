@@ -29,6 +29,8 @@ First, you need to prepare :code:`amulog.conf`, the amulog configuration file.
 You may also need some additional files such as for log2seq if required.
 For datails, see `amulog readme <https://github.com/amulog/amulog/blob/master/README.rst>`_ and `log2seq document <https://log2seq.readthedocs.io/en/latest/>`_.
 
+Then, you can generate amulog DB with :code:`python -m amulog db-make -c amulog.conf`.
+
 
 Add classification labels for log templates
 ===========================================
