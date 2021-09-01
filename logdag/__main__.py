@@ -371,6 +371,17 @@ def show_netsize_list(ns):
     print(showdag.list_netsize(conf))
 
 
+def show_full_config(ns):
+    from amulog import config
+    conf = open_logdag_config(ns)
+    config.show_config(conf)
+
+
+def show_default_config(_):
+    from . import arguments
+    arguments.show_logdag_default_config()
+
+
 def plot_dag(ns):
     from . import showdag
     # from . import showdag_filter
@@ -619,6 +630,12 @@ DICT_ARGSET = {
     "show-netsize-list": ["Show connected subgraphs in every DAG",
                           [OPT_CONFIG, OPT_DEBUG],
                           show_netsize_list],
+    "show-full-config": ["Show virtual configuration considering defaults",
+                         [OPT_CONFIG, OPT_DEBUG],
+                         show_full_config],
+    "show-deafult-config": ["Show configuration defaults",
+                            [],
+                            show_default_config],
     "plot-dag": ["Generate causal DAG view",
                  [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME, OPT_THRESHOLD,
                   ARG_ARGNAME, ARG_FILTER],

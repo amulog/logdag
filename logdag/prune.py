@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# DEPRECATED
+
+
 import json
 import networkx as nx
 

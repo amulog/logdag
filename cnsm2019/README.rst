@@ -17,7 +17,7 @@ This document is for researchers who want to follow-up `CNSM2019 <https://doi.or
       year = {2019}
     }
 
-- This document is written for :code:`amulog=v0.3.0`, :code:`log2seq=v0.2.3`, and :code:`logdag=v0.0.5`.
+- This document is written for :code:`amulog=v0.3.1`, :code:`log2seq=v0.2.3`, and :code:`logdag=v0.0.6`.
 
 - Use sqlite instead of mysql, as mysql support is not stable currently (both in amulog and logdag).
 

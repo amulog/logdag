@@ -218,7 +218,7 @@ def open_logdag_config(conf_path=None, debug=False):
                                   base_default=False)
     else:
         conf = config.open_config(conf_path, env="LOGDAG_CONFIG",
-                                  ex_defaults=[DEFAULT_CONFIG])
+                                  base_default=False, ex_defaults=[DEFAULT_CONFIG])
     lv = logging.DEBUG if debug else logging.INFO
     am_logger = logging.getLogger("amulog")
     config.set_common_logging(conf, logger=[_logger, am_logger], lv=lv)
@@ -228,6 +228,10 @@ def open_logdag_config(conf_path=None, debug=False):
 def open_amulog_config(conf):
     conf_fn = conf["database_amulog"]["source_conf"]
     return config.open_config(conf_fn)
+
+
+def show_logdag_default_config():
+    return config.show_default_config(ex_defaults=[DEFAULT_CONFIG])
 
 
 def all_args(conf):
