@@ -5,7 +5,7 @@ CNSM2019 reproduction with logdag
 Overview
 ========
 
-This document is for researchers who want to follow-up `CNSM2019 <https://doi.org/10.23919/CNSM46954.2019.9012718>`_ paper in their data.
+This document is for researchers who want to follow-up `CNSM2019 <https://doi.org/10.23919/CNSM46954.2019.9012718>`_ paper with their data.
 
 ::
 
@@ -28,6 +28,8 @@ Make amulog DB
 First, you need to prepare :code:`amulog.conf`, the amulog configuration file.
 You may also need some additional files such as for log2seq if required.
 For datails, see `amulog readme <https://github.com/amulog/amulog/blob/master/README.rst>`_ and `log2seq document <https://log2seq.readthedocs.io/en/latest/>`_.
+
+Then, you can generate amulog DB with :code:`python -m amulog db-make -c amulog.conf`.
 
 
 Add classification labels for log templates
