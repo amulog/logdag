@@ -31,11 +31,7 @@ def makedag_main(args, do_dump=False):
     timer.start()
 
     # generate time-series nodes
-#   input_format = conf.get("dag", "input_format")
-    ci_func = conf.get("dag", "ci_func")
-#   binarize = is_binarize(input_format, ci_func)
     # generate event set and evmap, and apply preprocessing
-    # d_input, evmap = log2event.ts2input(conf, dt_range, area, binarize)
     input_df, evmap = log2event.makeinput(conf, dt_range, area)
     if input_df is None:
         return None
@@ -47,11 +43,10 @@ def makedag_main(args, do_dump=False):
     # generate prior knowledge
     from . import pknowledge
     prior_knowledge = pknowledge.init_prior_knowledge(conf, args, evmap)
-#   init_graph = _init_graph(conf, evmap, jobname)
     timer.lap("make-prior-knowledge")
 
     # generate dag
-    graph = estimate_dag(conf, input_df, ci_func, prior_knowledge)
+    graph = estimate_dag(conf, input_df, prior_knowledge)
     timer.lap("estimate-dag")
     if graph is None:
         _logger.info("job({0}) failed on causal inference".format(jobname))
@@ -72,77 +67,14 @@ def make_input(args):
     return input_df, evmap
 
 
-def makedag_prune_test(args):
-    jobname = arguments.args2name(args)
-    conf, dt_range, area = args
-
-    input_df, evmap = log2event.makeinput(conf, dt_range, area)
-    _logger.info("pc input shape: {0}".format(input_df.shape))
-    evmap.dump(conf, args)
-
-    node_ids = evmap.eids()
-    g = _complete_graph(node_ids)
-    if conf.getboolean("pc_prune", "do_pruning"):
-        from . import prune
-        n_edges_before = g.number_of_edges()
-        init_graph = prune.prune_graph(g, conf, evmap)
-        n_edges_after = init_graph.number_of_edges()
-        _logger.info("{0} DAG edge pruning: ".format(jobname) +
-                     "{0} -> {1}".format(n_edges_before, n_edges_after))
-    else:
-        n_edges = g.number_of_edges()
-        init_graph = g
-        _logger.info("{0} DAG edge candidates: ".format(jobname) +
-                     "{0}".format(n_edges))
-
-    # record dag
-    ldag = showdag.LogDAG(args, init_graph)
-    ldag.dump()
-    return ldag
-
-
-#def _init_graph(conf, evmap, jobname=None):
-#    node_ids = evmap.eids()
-#    g = _complete_graph(node_ids)
-#    if conf.getboolean("pc_prune", "do_pruning"):
-#        from . import prune
-#        n_edges_before = g.number_of_edges()
-#        init_graph = prune.prune_graph(g, conf, evmap)
-#        n_edges_after = init_graph.number_of_edges()
-#        _logger.info("{0} DAG edge pruning: ".format(jobname) +
-#                     "{0} -> {1}".format(n_edges_before, n_edges_after))
-#        return init_graph
-#    else:
-#        return None
-
-
-# def corr_graph(conf, input_df, ci_func, _, init_graph=None):
-#    if input_df.shape[1] < 2:
-#        _logger.info("input too small({0} nodes), return empty dag".format(
-#            input_df.shape[1]))
-#        return showdag.empty_dag()
-#
-#    cause_algorithm = conf.get("dag", "cause_algorithm")
-#    if cause_algorithm in ("pc", "mixedlingam"):
-#        skel_method = conf.get("dag", "skeleton_method")
-#        skel_th = conf.getfloat("dag", "skeleton_threshold")
-#        skel_depth = 0
-#        skel_verbose = conf.getboolean("dag", "skeleton_verbose")
-#        return pc_input.pc(input_df, skel_th, ci_func, skel_method,
-#                           skel_depth, skel_verbose, init_graph)
-#    elif cause_algorithm == "lingam":
-#        raise NotImplementedError
-#    else:
-#        raise ValueError("invalid dag.cause_algorithm")
-
-
-def estimate_dag(conf, input_df, ci_func, prior_knowledge=None):
+def estimate_dag(conf, input_df, prior_knowledge=None):
     if input_df.shape[1] < 2:
         _logger.info("input too small({0} nodes), return empty dag".format(
             input_df.shape[1]))
         return showdag.empty_dag()
 
     cause_algorithm = conf.get("dag", "cause_algorithm")
+    ci_func = conf.get("dag", "ci_func")
     if cause_algorithm == "pc":
         # apply pc algorithm to estimate dag
         skel_method = conf.get("dag", "skeleton_method")

@@ -1,11 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-
 import pickle
 import networkx as nx
 from collections import defaultdict
 
+from amulog import common
 from . import arguments
 from . import log2event
 
@@ -27,6 +24,7 @@ class LogDAG:
         # cache
         self._evmap_obj = None
         self._d_el = None
+        self._ed = None
 
     @classmethod
     def dag_path(cls, args):
@@ -47,6 +45,17 @@ class LogDAG:
         if self._d_el is None:
             self._d_el = log2event.init_evloaders(self.conf)
         return self._d_el
+
+    def _eventdetail(self, load_cache):
+        if self._ed is None:
+            use_cache = self.conf.getboolean("dag", "event_detail_cache")
+            if not use_cache:
+                load_cache = False
+            self._ed = log2event.EventDetail(
+                self.conf, self._evloader(),
+                load_cache=load_cache, dump_cache=use_cache
+            )
+        return self._ed
 
     def dump(self):
         dag_format = self.conf["dag"]["output_dag_format"]
@@ -268,23 +277,24 @@ class LogDAG:
         evdef = self.node_evdef(node)
         return log2event.evdef_instruction(self.conf, evdef, d_el=self._evloader())
 
-    def edge_detail(self, edge, head, foot, log_org=False, graph=None):
+    def edge_detail(self, edge, load_cache=True, graph=None):
         buf = ["# Edge {0}".format(self.edge_str(edge, graph)),
-               self.node_detail(edge[0], head, foot,
-                                header="< ", log_org=log_org),
-               self.node_detail(edge[1], head, foot,
-                                header="> ", log_org=log_org)]
+               self.node_detail(edge[0],
+                                header="< ", load_cache=load_cache),
+               self.node_detail(edge[1],
+                                header="> ", load_cache=load_cache)]
         return "\n".join(buf)
 
-    def node_detail(self, node, head, foot, header="# ", log_org=False):
+    def node_detail(self, node, header="# ", load_cache=True):
         evdef = self.node_evdef(node)
         buf = [header + "Node {0}: {1}".format(self.node_str(node),
                                                self.node_instruction(node))]
-        if head > 0 or foot > 0:
-            buf += [log2event.evdef_detail(self.conf, evdef,
-                                           self.dt_range, head, foot,
-                                           indent=2, log_org=log_org,
-                                           d_el=self._evloader())]
+        ed = self._eventdetail(load_cache)
+        detail_output = ed.get_detail(self.args, evdef)
+        buf.append(common.add_indent(detail_output, indent=2))
+        # buf.append(common.show_repr(
+        #     data, head, foot, indent=2,
+        #     strfunc=lambda x: "{0} {1}: {2}".format(x[0], x[1], x[2])))
         return "\n".join(buf)
 
     def node_ts(self, nodes):
@@ -295,6 +305,10 @@ class LogDAG:
                                           l_evdef, self._evloader())
         df.columns = nodes
         return df
+
+    def node_count(self, node):
+        df = self.node_ts([node])
+        return df[node].sum(axis=0)
 
     def ate_prune(self, threshold, graph=None):
         """Prune edges with smaller ATE (average treatment effect).
@@ -390,11 +404,11 @@ def remove_edge_duplication(edges, ldag, graph=None):
         yield edge
 
 
-def edge_view(edge, ldag, context="edge", head=5, foot=5,
-              log_org=False, graph=None):
+def edge_view(edge, ldag, context="edge",
+              load_cache=True, graph=None):
     if context == "detail":
-        return "\n".join([ldag.edge_detail(edge, head, foot,
-                                           log_org=log_org, graph=graph)])
+        return "\n".join([ldag.edge_detail(edge,
+                                           load_cache=load_cache, graph=graph)])
     elif context == "instruction":
         return "\n".join([ldag.edge_str(edge, graph),
                          ldag.edge_instruction(edge)])
@@ -445,33 +459,6 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
 
 
 # functions for presentation
-
-
-#def show_edge_detail(args, head, tail):
-#    l_buf = []
-#    r = LogDAG(args)
-#    r.load()
-#    for edge in r.graph.edges():
-#        l_buf.append(r.edge_detail(edge, head, tail))
-#    return "\n\n".join(l_buf)
-
-
-# def show_graph(conf, args, output, lib="networkx",
-#               threshold=None, ignore_orphan=False):
-#    if lib == "networkx":
-#        r = LogDAG(args)
-#        r.load()
-#        if threshold is not None:
-#            g = r.ate_prune(threshold)
-#        else:
-#            g = r.graph
-#        if ignore_orphan:
-#            g = r.graph_no_orphan(graph=g)
-#        r.relabel()
-#        fp = r.graph_nx(output, graph=g)
-#        return fp
-#    else:
-#        raise NotImplementedError
 
 
 def stat_groupby(conf, l_func, l_kwargs=None, dt_range=None, groupby=None):
@@ -589,7 +576,7 @@ def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
 
 
 def show_edge(ldag: LogDAG, conditions, context="edge",
-              head=5, foot=5, log_org=False, graph=None):
+              load_cache=True, graph=None):
     if graph is None:
         graph = ldag.graph
 
@@ -614,27 +601,25 @@ def show_edge(ldag: LogDAG, conditions, context="edge",
 
     l_buf = []
     for edge in remove_edge_duplication(edges_to_show, ldag, graph=graph):
-        msg = edge_view(edge, ldag, context=context, head=head, foot=foot,
-                        log_org=log_org, graph=graph)
+        msg = edge_view(edge, ldag, context=context,
+                        load_cache=load_cache, graph=graph)
         l_buf.append(msg)
     return "\n".join(l_buf)
 
 
-def show_edge_list(ldag, context="edge",
-                   head=5, foot=5, log_org=False, graph=None):
+def show_edge_list(ldag, context="edge", load_cache=True, graph=None):
     if graph is None:
         graph = ldag.graph
 
     l_buf = []
     for edge in remove_edge_duplication(graph.edges(), ldag, graph=graph):
-        msg = edge_view(edge, ldag, context=context, head=head, foot=foot,
-                        log_org=log_org, graph=graph)
+        msg = edge_view(edge, ldag, context=context,
+                        load_cache=load_cache, graph=graph)
         l_buf.append(msg)
     return "\n".join(l_buf)
 
 
-def show_subgraphs(ldag, context="edge",
-                   head=5, foot=5, log_org=False, graph=None):
+def show_subgraphs(ldag, context="edge", load_cache=True, graph=None):
     if graph is None:
         graph = ldag.graph
 
@@ -649,8 +634,8 @@ def show_subgraphs(ldag, context="edge",
         subg = nx.subgraph(graph, nodes)
 
         for edge in remove_edge_duplication(subg.edges(), ldag, graph=graph):
-            msg = edge_view(edge, ldag, context=context, head=head, foot=foot,
-                            log_org=log_org, graph=graph)
+            msg = edge_view(edge, ldag, context=context,
+                            load_cache=load_cache, graph=graph)
             l_graph_buf.append(msg)
         l_buf.append("\n".join(l_graph_buf))
     return separator.join(l_buf)

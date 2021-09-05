@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import os
 import logging
+import pickle
+from abc import ABC, abstractmethod
 
 from . import dtutil
 from amulog import config
@@ -10,6 +9,7 @@ from amulog import common
 
 DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
                            "data/config.conf.default"))
+
 _logger = logging.getLogger(__package__)
 _amulog_logger = logging.getLogger("amulog")
 
@@ -202,6 +202,70 @@ class ArgumentManager(object):
         for args in self.l_args:
             s.add(args[1])
         return list(s)
+
+
+class CacheBase(ABC):
+
+    cache_header = "cache_"
+
+    def __init__(self, conf, am=None):
+        self._conf = conf
+        if am is None:
+            self._am = ArgumentManager(conf)
+            self._am.load()
+        else:
+            self._am = am
+
+
+class WholeCacheBase(CacheBase):
+    """One cache file for one config"""
+
+    def __init__(self, conf, am=None):
+        super().__init__(conf, am=am)
+
+    @property
+    @abstractmethod
+    def base_name(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def cache_name(self) -> str:
+        return self.cache_header + self.base_name
+
+    @property
+    def cache_path(self) -> str:
+        return self._am.whole_cache_path(self._conf, self.cache_name)
+
+    def has_cache(self) -> bool:
+        return os.path.exists(self.cache_path)
+
+    def remove_cache(self):
+        if os.path.exists(self.cache_path):
+            os.remove(self.cache_path)
+
+    def load(self):
+        with open(self.cache_path, 'rb') as f:
+            obj = pickle.load(f)
+        return obj
+
+    def dump(self, obj):
+        with open(self.cache_path, 'wb') as f:
+            pickle.dump(obj, f)
+
+    @abstractmethod
+    def load_cache(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def dump_cache(self):
+        raise NotImplementedError
+
+
+class UnitCacheBase(CacheBase):
+    """One or multiple cache files for one calculation unit (args)"""
+
+    pass
+    # TODO
 
 
 def args2name(args):

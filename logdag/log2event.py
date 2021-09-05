@@ -1,3 +1,4 @@
+import os
 import logging
 import pickle
 from abc import ABC
@@ -171,6 +172,64 @@ class AreaTest:
 
     def test(self, area, host):
         return self._testfunc(area, host)
+
+
+class EventDetail:
+
+    def __init__(self, conf, d_evloaders, load_cache=True, dump_cache=True):
+        self._conf = conf
+        self._d_el = d_evloaders
+        self._load_cache = load_cache
+        self._dump_cache = dump_cache
+
+        self._head = int(conf["dag"]["event_detail_head"])
+        self._foot = int(conf["dag"]["event_detail_foot"])
+
+    @staticmethod
+    def output_format(data):
+        return "{0} {1}: {2}".format(data[0], data[1], data[2])
+
+    @staticmethod
+    def cache_name(evdef):
+        return "cache_detail_" + evdef.identifier
+
+    def cache_path(self, args, evdef):
+        return arguments.ArgumentManager.unit_cache_path(
+            self._conf, args, self.cache_name(evdef)
+        )
+
+    def has_cache(self, args, evdef):
+        path = self.cache_path(args, evdef)
+        return os.path.exists(path)
+
+    def load(self, args, evdef):
+        path = self.cache_path(args, evdef)
+        with open(path, "r") as f:
+            buf = f.read()
+        return buf
+
+    def dump(self, args, evdef, buf):
+        path = self.cache_path(args, evdef)
+        with open(path, "w") as f:
+            f.write(buf)
+
+    def get_detail(self, args, evdef):
+        if self._load_cache and self.has_cache(args, evdef):
+            buf = self.load(args, evdef)
+        else:
+            conf, dt_range, area = args
+            el = self._d_el[evdef.source]
+            data = list(el.details(evdef, dt_range))
+
+            buf = common.show_repr(
+                data, self._head, self._foot, indent=0,
+                strfunc=self.output_format
+            )
+
+            if self._dump_cache:
+                self.dump(args, evdef, buf)
+
+        return buf
 
 
 def init_evloader(conf, src):
@@ -411,18 +470,29 @@ def evdef_instruction(conf, evdef, d_el=None):
     if d_el is None:
         d_el = init_evloaders(conf)
 
-    # TODO compatibility to source-failed results
-    try:
-        source = evdef.source
-    except:
-        source = "log"
-    return d_el[source].instruction(evdef)
+    return d_el[evdef.source].instruction(evdef)
 
 
-def evdef_detail(conf, evdef, dt_range, head, foot,
-                 indent=0, log_org=False, d_el=None):
+def show_evdef_detail(conf, dt_range, area, evdef, load_cache=True, d_el=None):
     if d_el is None:
         d_el = init_evloaders(conf)
+
+    use_cache = conf.getboolean("dag", "event_detail_cache")
+    if not use_cache:
+        load_cache = False
+    args = (conf, dt_range, area)
+    ed = EventDetail(conf, d_el, load_cache=load_cache, dump_cache=use_cache)
+    return ed.get_detail(args, evdef)
+
+    # return common.show_repr(
+    #     data, head, foot, indent=indent,
+    #     strfunc=lambda x: "{0} {1}: {2}".format(x[0], x[1], x[2]))
+
+
+# def show_evdef_detail(conf, evdef, dt_range, head, foot,
+#                      indent=0, log_org=True, d_el=None):
+#    if d_el is None:
+#        d_el = init_evloaders(conf)
 #    if evdef.source == SRCCLS_LOG:
 #        measure = "log_feature"
 #    elif evdef.source == SRCCLS_SNMP:
@@ -431,19 +501,21 @@ def evdef_detail(conf, evdef, dt_range, head, foot,
 #    else:
 #        raise NotImplementedError
     # for compatibility
-    try:
-        el = d_el[evdef.source]
-    except:
-        el = d_el["log"]
-
-    try:
-        data = list(el.details(evdef, dt_range, log_org))
-    except ValueError as e:
-        raise e
-    # data = list(el.load_items(measure, evdef.tags(), dt_range))
-    return common.show_repr(
-        data, head, foot, indent=indent,
-        strfunc=lambda x: "{0} {1}: {2}".format(x[0], x[1], x[2]))
+    # try:
+    #     el = d_el[evdef.source]
+    # except:
+    #     el = d_el["log"]
+#
+#    el = d_el[evdef.source]
+#
+#    try:
+#        data = list(el.details(evdef, dt_range, log_org))
+#    except ValueError as e:
+#        raise e
+#    # data = list(el.load_items(measure, evdef.tags(), dt_range))
+#    return common.show_repr(
+#        data, head, foot, indent=indent,
+#        strfunc=lambda x: "{0} {1}: {2}".format(x[0], x[1], x[2]))
 
 
 # def evdef_detail_org(conf, evdef, dt_range, head, foot, d_el=None):

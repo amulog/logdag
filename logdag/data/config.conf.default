@@ -184,7 +184,7 @@ merge_syncevent_rules = host, group
 # default: args_<config_filename>
 args_fn = args
 
-# Event definition data
+# Event definition data (unused in current version, for compatibility)
 # If empty, dag.output_dir is used with filename extended
 evmap_dir =
 
@@ -194,6 +194,11 @@ output_dag_format = pickle
 
 # Check dag file and pass if already exists
 pass_dag_exists = false
+
+# values for event detail output
+event_detail_head = 5
+event_detail_foot = 5
+event_detail_cache = True
 
 
 [prior_knowledge]

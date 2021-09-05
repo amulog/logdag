@@ -48,8 +48,7 @@ def show_minor_edges(ns):
     print(edge_search.show_edges_by_count(ldag,
                                           maximum=count, reverse=False,
                                           context=context,
-                                          head=ns.head, foot=ns.foot,
-                                          log_org=ns.log_org, graph=g))
+                                          load_cache=(not ns.nocache), graph=g))
 
 
 def show_major_edges(ns):
@@ -72,65 +71,76 @@ def show_major_edges(ns):
     print(edge_search.show_edges_by_count(ldag,
                                           minimum=count, reverse=True,
                                           context=context,
-                                          head=ns.head, foot=ns.foot,
-                                          log_org=ns.log_org, graph=g))
+                                          load_cache=(not ns.nocache), graph=g))
+
+
+def show_dag_anomaly_score(ns):
+    conf = open_logdag_config(ns)
+
+    from . import edge_search
+    d_score = edge_search.dag_anomaly_score(conf, ns.feature)
+
+    if ns.order:
+        am = arguments.ArgumentManager(conf)
+        am.load()
+        iterobj = [(am.jobname(args), d_score[am.jobname(args)]) for args in am]
+    else:
+        iterobj = sorted(d_score.items(), key=lambda x: x[1],
+                         reverse=(not ns.reverse))
+
+    for jobname, score in iterobj:
+        print(jobname, score)
 
 
 def draw_graph_common(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     dts = dtutil.shortstr2dt(ns.timestr)
     dte = dts + config.getdur(conf1, "dag", "unit_term")
-    output = ns._filename
+    output = ns.filename
 
     from . import comparison
     cevmap, cgraph = comparison.edge_set_common(conf1, conf2, (dts, dte))
 
     from . import draw
-    rgraph = draw.relabel_graph(conf1, cgraph, cevmap)
+    rgraph = draw.relabel_nodes(cgraph, cevmap)
     draw.graph_nx(output, rgraph)
     print(output)
 
 
 def draw_graph_diff(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     dts = dtutil.shortstr2dt(ns.timestr)
     dte = dts + config.getdur(conf1, "dag", "unit_term")
-    output = ns._filename
+    output = ns.filename
 
     from . import comparison
     cevmap, cgraph = comparison.edge_set_diff(conf1, conf2, (dts, dte))
 
     from . import draw
-    rgraph = draw.relabel_graph(conf1, cgraph, cevmap)
+    rgraph = draw.relabel_nodes(cgraph, cevmap)
     draw.graph_nx(output, rgraph)
     print(output)
 
 
 def show_diff_info(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     from . import comparison
     d = defaultdict(int)
@@ -144,10 +154,10 @@ def show_diff_info(ns):
             conf1, conf2, dt_range)
         d["lor"] += cgraph_lor.number_of_edges()
         cevmap_diff1, cgraph_diff1 = comparison.edge_set_diff(
-            conf1, conf2, dt_range, lor = (cevmap_lor, cgraph_lor))
+            conf1, conf2, dt_range, lor=(cevmap_lor, cgraph_lor))
         d["diff1"] += cgraph_diff1.number_of_edges()
         cevmap_diff2, cgraph_diff2 = comparison.edge_set_diff(
-            conf2, conf1, dt_range, lor = (cevmap_lor, cgraph_lor))
+            conf2, conf1, dt_range, lor=(cevmap_lor, cgraph_lor))
         d["diff2"] += cgraph_diff2.number_of_edges()
     print("Logical OR edges: {0}".format(d["lor"]))
     print("Common edges: {0}".format(d["common"]))
@@ -156,14 +166,12 @@ def show_diff_info(ns):
 
 
 def show_diff_edges(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     from . import comparison
     am = arguments.ArgumentManager(conf1)
@@ -190,14 +198,12 @@ def show_diff_edges(ns):
 
 
 def show_graph_common_edges(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     from . import comparison
     edge_sum = 0
@@ -210,19 +216,17 @@ def show_graph_common_edges(ns):
         d_edges[dt_range[0]] = cgraph.edges()
 
     print("common edge num: {0}".format(edge_sum))
-    for k, v in sorted(d_edges.items(), key = lambda x: x[0]):
+    for k, v in sorted(d_edges.items(), key=lambda x: x[0]):
         print("{0}: {1}".format(k, len(v)))
 
 
 def show_graph_lor_edges(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     from . import comparison
     edge_sum = 0
@@ -235,41 +239,37 @@ def show_graph_lor_edges(ns):
         d_edges[dt_range[0]] = cgraph.edges()
 
     print("logical disjunction edge num: {0}".format(edge_sum))
-    for k, v in sorted(d_edges.items(), key = lambda x: x[0]):
+    for k, v in sorted(d_edges.items(), key=lambda x: x[0]):
         print("{0}: {1}".format(k, len(v)))
 
 
 def show_graph_diff_lts(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     from amulog import log_db
     ld = log_db.LogData(conf1)
 
     from . import comparison
     d_ltid = comparison.edge_diff_gid(conf1, conf2)
-    for ltid, l_name in sorted(d_ltid.items(), key = lambda x: len(x[1]),
-                               reverse = True):
+    for ltid, l_name in sorted(d_ltid.items(), key=lambda x: len(x[1]),
+                               reverse=True):
         print("{0}: {1} ({2})".format(len(l_name), ltid, ld.lt(ltid)))
         if len(l_name) < 100:
             print(l_name)
 
 
 def show_graph_diff_search(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     gid = ns.gid
     from . import comparison
@@ -277,17 +277,15 @@ def show_graph_diff_search(ns):
 
 
 def show_diff_direction(ns):
-    l_conffp = ns.confs
-    assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults = [arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    conf_fn1, conf_fn2 = ns.confs
+    conf1 = arguments.open_logdag_config(conf_fn1)
+    conf2 = arguments.open_logdag_config(conf_fn2)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
-    config.set_common_logging(conf1, logger = [_logger, am_logger], lv = lv)
+    config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
-    def _print_diff(ret):
-        for ev1, ev2, di1, di2 in ret:
+    def _print_diff(_ret):
+        for ev1, ev2, di1, di2 in _ret:
             print("{0} {1} | {2} {3}".format(ev1, di1, di2, ev2))
 
     cnt = 0
@@ -303,7 +301,7 @@ def show_diff_direction(ns):
                 _print_diff(ret)
                 print("")
     else:
-        args = am.jobname2args(ns.argname, conf)
+        args = am.jobname2args(ns.argname, conf1)
         dt_range = args[2]
         ret = comparison.edge_direction_diff(conf1, conf2, dt_range)
         cnt += len(ret)
@@ -338,19 +336,22 @@ OPT_INSTRUCTION = [["--instruction"],
 OPT_DETAIL = [["-d", "--detail"],
               {"dest": "detail", "action": "store_true",
                "help": "show event time-series samples"}]
-OPT_LOG_ORG = [["--log-org"],
-               {"dest": "log_org", "action": "store_true",
-                "help": "show original logs from amulog db for log time-series"}]
-OPT_HEAD = [["--head"],
-            {"dest": "head", "action": "store", "type": int, "default": 5,
-             "help": 'number of head samples to show in "detail" view'}]
-OPT_FOOT = [["--foot"],
-            {"dest": "foot", "action": "store", "type": int, "default": 5,
-             "help": 'number of foot samples to show in "detail" view'}]
+OPT_IGNORE_CACHE = [["--nocache"],
+                    {"dest": "nocache", "action": "store_true",
+                     "help": "ignore existing cache"}]
 OPT_COUNT = [["-n", "--number"],
              {"dest": "count", "action": "store", "type": int, "default": None,
               "help": 'threshold of edge counts'}]
-
+OPT_FEATURE = [["--feature"],
+               {"dest": "feature", "action": "store",
+                "type": str, "default": "edge",
+                "help": "node or edge"}]
+OPT_ORDER = [["--order"],
+             {"dest": "order", "action": "store_true",
+              "help": "do not sort results by score"}]
+OPT_REVERSE = [["--reverse"],
+               {"dest": "reverse", "action": "store_true",
+                "help": "reversed sort"}]
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
@@ -370,57 +371,61 @@ DICT_ARGSET = {
                    [OPT_CONFIG, OPT_DEBUG,
                     [["gid"],
                      {"metavar": "GID", "action": "store", "type": int,
-                      "help": "gid to search"}],],
+                      "help": "gid to search"}], ],
                    search_gid],
     "show-minor-edges": ["Show minor edges in all data",
                          [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_COUNT,
                           OPT_INSTRUCTION,
-                          OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
+                          OPT_DETAIL, OPT_IGNORE_CACHE,
                           ARG_ARGNAME, ARG_FILTER],
                          show_minor_edges],
     "show-major-edges": ["Show major edges in all data",
                          [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_COUNT,
                           OPT_INSTRUCTION,
-                          OPT_DETAIL, OPT_LOG_ORG, OPT_HEAD, OPT_FOOT,
+                          OPT_DETAIL, OPT_IGNORE_CACHE,
                           ARG_ARGNAME, ARG_FILTER],
                          show_major_edges],
+    "show-dag-anomaly-score": ["Show anomaly score of DAGs",
+                               [OPT_CONFIG, OPT_DEBUG,
+                                OPT_FEATURE, OPT_ORDER, OPT_REVERSE],
+                               show_dag_anomaly_score],
     "draw-graph-common": ["Draw common edges of 2 DAG sets",
                           [OPT_DEBUG, OPT_FILENAME,
                            [["confs"],
                             {"metavar": "CONFIG", "nargs": 2,
                              "help": "2 config file path"}],
-                           ARG_TIMESTR,],
+                           ARG_TIMESTR, ],
                           draw_graph_common],
     "draw-graph-diff": ["Draw contrasting edges of 2 DAG sets",
-                          [OPT_DEBUG, OPT_FILENAME,
-                           [["confs"],
-                            {"metavar": "CONFIG", "nargs": 2,
-                             "help": "2 config file path"}],
-                           ARG_TIMESTR,],
-                          draw_graph_diff],
+                        [OPT_DEBUG, OPT_FILENAME,
+                         [["confs"],
+                          {"metavar": "CONFIG", "nargs": 2,
+                           "help": "2 config file path"}],
+                         ARG_TIMESTR, ],
+                        draw_graph_diff],
     "show-diff-info": ["Show information of 2 edge sets",
                        [OPT_DEBUG,
                         [["confs"],
                          {"metavar": "CONFIG", "nargs": 2,
-                          "help": "2 config file path"}],],
+                          "help": "2 config file path"}], ],
                        show_diff_info],
     "show-diff-edges": ["Show all different edges of 2 edge sets",
                         [OPT_DEBUG,
-                        [["confs"],
-                         {"metavar": "CONFIG", "nargs": 2,
-                          "help": "2 config file path"}],],
+                         [["confs"],
+                          {"metavar": "CONFIG", "nargs": 2,
+                           "help": "2 config file path"}], ],
                         show_diff_edges],
     "show-graph-common-edges": ["List number of edges in common graph",
                                 [OPT_DEBUG,
                                  [["confs"],
                                   {"metavar": "CONFIG", "nargs": 2,
-                                   "help": "2 config file path"}],],
+                                   "help": "2 config file path"}], ],
                                 show_graph_common_edges],
     "show-graph-lor-edges": ["List number of edges in lor graph",
                              [OPT_DEBUG,
                               [["confs"],
                                {"metavar": "CONFIG", "nargs": 2,
-                                "help": "2 config file path"}],],
+                                "help": "2 config file path"}], ],
                              show_graph_lor_edges],
     "show-graph-diff-lts": ["List ltids found in diff graph of 2 DAG sets",
                             [OPT_DEBUG,
@@ -437,13 +442,13 @@ DICT_ARGSET = {
                                 [["gid"],
                                  {"metavar": "GID", "action": "store",
                                   "type": int,
-                                  "help": "gid to search"}],],
+                                  "help": "gid to search"}], ],
                                show_graph_diff_search],
     "show-graph-diff-direction": ["List edge direction differences",
                                   [OPT_DEBUG, OPT_ARGNAME,
                                    [["confs"],
                                     {"metavar": "CONFIG", "nargs": 2,
-                                     "help": "2 config file path"}],],
+                                     "help": "2 config file path"}], ],
                                   show_diff_direction],
 }
 

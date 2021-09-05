@@ -84,50 +84,6 @@ def make_dag_stdin(ns):
     timer.stop()
 
 
-# def show_event(ns):
-#    from . import tsdb
-#    conf = open_logdag_config(ns)
-#    d = parse_condition(ns.conditions)
-#    print(tsdb.show_event(conf, **d))
-#
-#
-# def show_ts(ns):
-#    from . import tsdb
-#    conf = open_logdag_config(ns)
-#    d = parse_condition(ns.conditions)
-#    print(tsdb.show_ts(conf, **d))
-#
-#
-# def show_ts_compare(ns):
-#    from . import tsdb
-#    conf = open_logdag_config(ns)
-#    d = parse_condition(ns.conditions)
-#    print(tsdb.show_ts_compare(conf, **d))
-
-
-def make_dag_prune(ns):
-    from . import makedag
-
-    conf = open_logdag_config(ns)
-
-    am = arguments.ArgumentManager(conf)
-    am.init_dirs(conf)
-    args = am.jobname2args(ns.argname, conf)
-
-    timer = common.Timer("makedag_prune task for {0}".format(ns.argname),
-                         output=_logger)
-    timer.start()
-    makedag.makedag_prune_test(args)
-    timer.stop()
-
-
-# def show_filterlog(ns):
-#    from . import tsdb
-#    conf = open_logdag_config(ns)
-#    d = parse_condition(ns.conditions)
-#    print(tsdb.show_filterlog(conf, **d))
-
-
 def update_event_label(ns):
     conf = open_logdag_config(ns)
     am = arguments.ArgumentManager(conf)
@@ -228,8 +184,7 @@ def show_edge(ns):
     d_cond = _parse_condition(ns.conditions)
 
     print(showdag.show_edge(r, d_cond, context=context,
-                            head=ns.head, foot=ns.foot,
-                            log_org=True, graph=None))
+                            load_cache=(not ns.nocache), graph=None))
 
 
 def show_subgraphs(ns):
@@ -249,8 +204,7 @@ def show_subgraphs(ns):
         context = "edge"
 
     print(showdag.show_subgraphs(r, context,
-                                 head=ns.head, foot=ns.foot,
-                                 log_org=True, graph=g))
+                                 load_cache=(not ns.nocache), graph=g))
 
 
 def show_edge_list(ns):
@@ -270,8 +224,7 @@ def show_edge_list(ns):
         context = "edge"
 
     print(showdag.show_edge_list(r, context,
-                                 head=ns.head, foot=ns.foot,
-                                 log_org=True, graph=g))
+                                 load_cache=(not ns.nocache), graph=g))
 
 
 def show_list(ns):
@@ -354,7 +307,7 @@ def show_node_ts(ns):
     ldag = showdag.LogDAG(args)
     ldag.load()
     df = ldag.node_ts(l_nodeid)
-    print(df)
+    print(df.to_csv())
 
 
 def show_netsize(ns):
@@ -501,15 +454,12 @@ OPT_INSTRUCTION = [["--instruction"],
 OPT_DETAIL = [["-d", "--detail"],
               {"dest": "detail", "action": "store_true",
                "help": "show event time-series samples"}]
+OPT_IGNORE_CACHE = [["--nocache"],
+                    {"dest": "nocache", "action": "store_true",
+                     "help": "ignore existing cache"}]
 # OPT_LOG_ORG = [["--log-org"],
 #                {"dest": "log_org", "action": "store_true",
 #                 "help": "show original logs from amulog db for log time-series"}]
-OPT_HEAD = [["--head"],
-            {"dest": "head", "action": "store", "type": int, "default": 5,
-             "help": 'number of head samples to show in "detail" view'}]
-OPT_FOOT = [["--foot"],
-            {"dest": "foot", "action": "store", "type": int, "default": 5,
-             "help": 'number of foot samples to show in "detail" view'}]
 OPT_GROUPBY = [["--groupby"],
                {"dest": "groupby", "metavar": "GROUPBY",
                 "action": "store", "default": None,
@@ -541,9 +491,6 @@ DICT_ARGSET = {
     "make-dag-stdin": ["make-dag interface for pipeline processing",
                        [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                        make_dag_stdin],
-    "make-dag-prune": ["Show pruned DAGs before PC algorithm",
-                       [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
-                       make_dag_prune],
     "update-event-label": ["Overwrite labels for log events",
                            [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                            update_event_label],
@@ -560,48 +507,24 @@ DICT_ARGSET = {
     #    "reload-area": ["Reload area definition for time-series DB",
     #                    [OPT_CONFIG, OPT_DEBUG],
     #                    reload_area],
-    #    "show-event": ["Show events (list of gid and host)",
-    #                   [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
-    #                   show_event],
-    #    "show-ts": ["Show time series of given conditions",
-    #                [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
-    #                show_ts],
-    #    "show-ts-compare": ["Show filtered/remaining time series",
-    #                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
-    #                        show_ts_compare],
-    #    "show-filterlog": ["Show preprocessing log",
-    #                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
-    #                       show_filterlog],
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],
     "show-edge": ["Show edges related to given conditions",
                   [OPT_CONFIG, OPT_DEBUG, OPT_INSTRUCTION,
-                   OPT_DETAIL, OPT_HEAD, OPT_FOOT,
+                   OPT_DETAIL, OPT_IGNORE_CACHE,
                    ARG_ARGNAME, ARG_EDGESEARCH],
                   show_edge],
     "show-edge-list": ["Show all edges in a DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
-                        OPT_DETAIL, OPT_HEAD, OPT_FOOT,
+                        OPT_DETAIL, OPT_IGNORE_CACHE,
                         ARG_ARGNAME, ARG_FILTER],
                        show_edge_list],
     "show-subgraphs": ["Show edges in each connected subgraphs",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
-                        OPT_DETAIL, OPT_HEAD, OPT_FOOT,
+                        OPT_DETAIL, OPT_IGNORE_CACHE,
                         ARG_ARGNAME, ARG_FILTER],
                        show_subgraphs],
-    # "show-edge-detail": ["Show time-series samples of detected edges in a DAG",
-    #                      [OPT_CONFIG, OPT_DEBUG,
-    #                       [["--head", ],
-    #                        {"dest": "head", "action": "store",
-    #                         "type": int, "default": 5,
-    #                         "help": "number of lines from log head"}],
-    #                       [["--tail", ],
-    #                        {"dest": "tail", "action": "store",
-    #                         "type": int, "default": 5,
-    #                         "help": "number of lines from log tail"}],
-    #                       ARG_ARGNAME],
-    #                      show_edge_detail],
     "show-list": ["Show abstracted results of DAG generation",
                   [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_GROUPBY],
                   show_list],
@@ -617,7 +540,7 @@ DICT_ARGSET = {
     "show-stats-by-threshold": ["Show sum of edges by thresholds",
                                 [OPT_CONFIG, OPT_DEBUG, OPT_RANGE],
                                 show_stats_by_threshold],
-    "show-node-ts": ["Show time-series of specified nodes",
+    "show-node-ts": ["Show time-series of specified nodes in csv format",
                      [OPT_CONFIG, OPT_DEBUG,
                       ARG_ARGNAME,
                       [["node_ids"],

@@ -165,7 +165,7 @@ class LogEventLoader(evgen_common.EventLoader):
             instruction = self.source.gid_instruction(evdef.gid)
             return "({0}) {1}".format(evdef.host, instruction)
 
-    def details(self, evdef, dt_range, org=False):
+    def details(self, evdef, dt_range, org=True):
         if isinstance(evdef, log2event.MultipleEventDefinition):
             results = []
             for tmp_evdef in evdef.members:
