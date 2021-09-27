@@ -42,6 +42,10 @@ class SNMPEventDefinition(log2event.EventDefinition):
     def series(self):
         return self.measure, self.tags()
 
+    def event(self) -> str:
+        # event attributes without host
+        return self.key()
+
     @classmethod
     def fromfeature(cls, sourcedef, featuredef):
         d = {"source": log2event.SRCCLS_SNMP,

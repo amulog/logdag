@@ -22,6 +22,7 @@ class LogDAG:
         self.graph = graph
 
         # cache
+        self._cache_edges_no_duplication = None
         self._evmap_obj = None
         self._d_el = None
         self._ed = None
@@ -33,6 +34,21 @@ class LogDAG:
         fp = arguments.ArgumentManager.dag_path(conf, args,
                                                 ext=dag_format)
         return fp
+
+    @property
+    def _edges_no_duplication(self):
+        if self._cache_edges_no_duplication is None:
+            self._cache_edges_no_duplication = []
+            undirected = set()
+            for edge in self.graph.edges:
+                if not self.edge_isdirected(edge):
+                    edge_key = frozenset(edge)
+                    if edge_key in undirected:
+                        continue
+                    else:
+                        undirected.add(edge_key)
+                self._cache_edges_no_duplication.append(edge)
+        return self._cache_edges_no_duplication
 
     def _evmap(self):
         if self._evmap_obj is None:
@@ -95,10 +111,9 @@ class LogDAG:
 
     def number_of_edges(self, graph=None):
         if graph is None:
-            graph = self.graph
-        # temp_graph = nx.Graph(graph)
-        temp_graph = graph.to_undirected()
-        return temp_graph.number_of_edges()
+            return len(self._edges_no_duplication)
+        else:
+            return remove_edge_duplication(graph.edges(), self, graph=graph)
 
     def node_evdef(self, node):
         evmap = self._evmap()

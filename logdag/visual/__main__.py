@@ -43,12 +43,12 @@ def show_minor_edges(ns):
         context = "instruction"
     else:
         context = "edge"
-    count = 5 if ns.count is None else ns.count
 
-    print(edge_search.show_edges_by_count(ldag,
-                                          maximum=count, reverse=False,
-                                          context=context,
-                                          load_cache=(not ns.nocache), graph=g))
+    print(edge_search.show_sorted_edges(ldag, feature=ns.feature,
+                                        use_score=ns.use_score,
+                                        reverse=False,
+                                        view_context=context,
+                                        load_cache=(not ns.nocache), graph=g))
 
 
 def show_major_edges(ns):
@@ -66,19 +66,19 @@ def show_major_edges(ns):
         context = "instruction"
     else:
         context = "edge"
-    count = 10 if ns.count is None else ns.count
 
-    print(edge_search.show_edges_by_count(ldag,
-                                          minimum=count, reverse=True,
-                                          context=context,
-                                          load_cache=(not ns.nocache), graph=g))
+    print(edge_search.show_sorted_edges(ldag, feature=ns.feature,
+                                        use_score=ns.use_score,
+                                        reverse=True,
+                                        view_context=context,
+                                        load_cache=(not ns.nocache), graph=g))
 
 
 def show_dag_anomaly_score(ns):
     conf = open_logdag_config(ns)
 
     from . import edge_search
-    d_score = edge_search.dag_anomaly_score(conf, ns.feature)
+    d_score = edge_search.dag_anomaly_score(conf, feature=ns.feature)
 
     if ns.order:
         am = arguments.ArgumentManager(conf)
@@ -346,6 +346,9 @@ OPT_FEATURE = [["--feature"],
                {"dest": "feature", "action": "store",
                 "type": str, "default": "edge",
                 "help": "node or edge"}]
+OPT_USE_SCORE = [["--score"],
+                 {"dest": "use_score", "action": "store_true", "default": True,
+                  "help": "use scores based on tf-idf"}]
 OPT_ORDER = [["--order"],
              {"dest": "order", "action": "store_true",
               "help": "do not sort results by score"}]
@@ -374,15 +377,15 @@ DICT_ARGSET = {
                       "help": "gid to search"}], ],
                    search_gid],
     "show-minor-edges": ["Show minor edges in all data",
-                         [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_COUNT,
-                          OPT_INSTRUCTION,
-                          OPT_DETAIL, OPT_IGNORE_CACHE,
+                         [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
+                          OPT_FEATURE, OPT_USE_SCORE,
+                          OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
                           ARG_ARGNAME, ARG_FILTER],
                          show_minor_edges],
     "show-major-edges": ["Show major edges in all data",
-                         [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_COUNT,
-                          OPT_INSTRUCTION,
-                          OPT_DETAIL, OPT_IGNORE_CACHE,
+                         [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
+                          OPT_FEATURE, OPT_USE_SCORE,
+                          OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
                           ARG_ARGNAME, ARG_FILTER],
                          show_major_edges],
     "show-dag-anomaly-score": ["Show anomaly score of DAGs",
@@ -458,4 +461,6 @@ def main():
 
 
 if __name__ == "__main__":
+    # import cProfile
+    # cProfile.run('main()', filename='main.prof')
     main()

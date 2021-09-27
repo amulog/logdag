@@ -1,7 +1,7 @@
 import os
 import logging
 import pickle
-from abc import ABC
+from abc import ABC, abstractmethod
 import pandas as pd
 import numpy as np
 
@@ -25,6 +25,10 @@ class EventDefinition(ABC):
 
     def key(self):
         return None
+
+    @abstractmethod
+    def event(self) -> str:
+        raise NotImplementedError
 
     @property
     def identifier(self):
@@ -61,6 +65,9 @@ class MultipleEventDefinition(EventDefinition):
     @property
     def identifier(self):
         return "|".join(sorted([str(evdef) for evdef in self._members]))
+
+    def event(self):
+        return "|".join(sorted([evdef.event() for evdef in self._members]))
 
     def all_attr(self, key):
         return {getattr(evdef, key) for evdef in self._members}

@@ -41,6 +41,10 @@ class LogEventDefinition(log2event.EventDefinition):
     def series(self):
         return FEATURE_MEASUREMENT, self.tags()
 
+    def event(self) -> str:
+        # event attributes without host
+        return str(self.gid)
+
 
 class LogEventLoader(evgen_common.EventLoader):
     fields = ["val", ]
