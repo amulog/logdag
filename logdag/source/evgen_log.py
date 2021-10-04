@@ -25,7 +25,8 @@ class LogEventDefinition(log2event.EventDefinition):
 
     def __str__(self):
         # bug of string None: TODO to find the reason
-        if self.group is None or self.group == "None":
+        # if self.group is None or self.group == "None":
+        if self.group is None:
             return "{0}:{1}".format(self.host, str(self.gid))
         else:
             return "{0}:{1}:{2}".format(self.host, str(self.gid),

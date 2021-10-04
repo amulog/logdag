@@ -410,13 +410,13 @@ def isdirected(edge, graph):
 def remove_edge_duplication(edges, ldag, graph=None):
     undirected = set()
     for edge in edges:
-        if not ldag.edge_isdirected(edge, graph=graph):
+        if ldag.edge_isdirected(edge, graph=graph):
+            yield edge
+        else:
             edge_key = frozenset(edge)
-            if edge_key in undirected:
-                continue
-            else:
+            if edge_key not in undirected:
                 undirected.add(edge_key)
-        yield edge
+                yield edge
 
 
 def edge_view(edge, ldag, context="edge",

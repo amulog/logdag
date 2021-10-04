@@ -45,7 +45,7 @@ def show_minor_edges(ns):
         context = "edge"
 
     print(edge_search.show_sorted_edges(ldag, feature=ns.feature,
-                                        use_score=ns.use_score,
+                                        score=ns.score,
                                         reverse=False,
                                         view_context=context,
                                         load_cache=(not ns.nocache), graph=g))
@@ -68,7 +68,7 @@ def show_major_edges(ns):
         context = "edge"
 
     print(edge_search.show_sorted_edges(ldag, feature=ns.feature,
-                                        use_score=ns.use_score,
+                                        score=ns.score,
                                         reverse=True,
                                         view_context=context,
                                         load_cache=(not ns.nocache), graph=g))
@@ -78,7 +78,8 @@ def show_dag_anomaly_score(ns):
     conf = open_logdag_config(ns)
 
     from . import edge_search
-    d_score = edge_search.dag_anomaly_score(conf, feature=ns.feature)
+    d_score = edge_search.dag_anomaly_score(conf, feature=ns.feature,
+                                            score=ns.score)
 
     if ns.order:
         am = arguments.ArgumentManager(conf)
@@ -90,6 +91,31 @@ def show_dag_anomaly_score(ns):
 
     for jobname, score in iterobj:
         print(jobname, score)
+
+
+def search_similar_dag(ns):
+    conf = open_logdag_config(ns)
+    args = arguments.name2args(ns.argname, conf)
+
+    from . import edge_search
+    ldag = showdag.LogDAG(args)
+    ldag.load()
+
+    buf = edge_search.search_similar_dag(ldag, feature=ns.feature,
+                                         weight=ns.score_weight,
+                                         dag_topn=10, cause_topn=10)
+    print(buf)
+
+
+def show_clusters(ns):
+    conf = open_logdag_config(ns)
+
+    from . import edge_search
+    buf = edge_search.show_clusters(conf, feature=ns.feature,
+                                    weight=ns.score_weight,
+                                    clustering_method="kmeans",
+                                    n_cluster=None, cause_topn=10)
+    print(buf)
 
 
 def draw_graph_common(ns):
@@ -345,10 +371,15 @@ OPT_COUNT = [["-n", "--number"],
 OPT_FEATURE = [["--feature"],
                {"dest": "feature", "action": "store",
                 "type": str, "default": "edge",
-                "help": "node or edge"}]
-OPT_USE_SCORE = [["--score"],
-                 {"dest": "use_score", "action": "store_true", "default": True,
-                  "help": "use scores based on tf-idf"}]
+                "help": "one of [node, edge, tfidf]"}]
+OPT_SCORE = [["--score"],
+             {"dest": "score", "action": "store",
+              "type": str, "default": "tfidf",
+              "help": "one of [tfidf, idf, count]"}]
+OPT_SCORE_WEIGHT = [["--score"],
+                    {"dest": "score_weight", "action": "store",
+                     "type": str, "default": "idf",
+                     "help": "one of [none, idf]"}]
 OPT_ORDER = [["--order"],
              {"dest": "order", "action": "store_true",
               "help": "do not sort results by score"}]
@@ -378,20 +409,30 @@ DICT_ARGSET = {
                    search_gid],
     "show-minor-edges": ["Show minor edges in all data",
                          [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
-                          OPT_FEATURE, OPT_USE_SCORE,
+                          OPT_FEATURE, OPT_SCORE,
                           OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
                           ARG_ARGNAME, ARG_FILTER],
                          show_minor_edges],
     "show-major-edges": ["Show major edges in all data",
                          [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
-                          OPT_FEATURE, OPT_USE_SCORE,
+                          OPT_FEATURE, OPT_SCORE,
                           OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
                           ARG_ARGNAME, ARG_FILTER],
                          show_major_edges],
     "show-dag-anomaly-score": ["Show anomaly score of DAGs",
                                [OPT_CONFIG, OPT_DEBUG,
-                                OPT_FEATURE, OPT_ORDER, OPT_REVERSE],
+                                OPT_FEATURE, OPT_SCORE,
+                                OPT_ORDER, OPT_REVERSE],
                                show_dag_anomaly_score],
+    "search-similar-dag": ["Show similar DAG to the specified one",
+                           [OPT_CONFIG, OPT_DEBUG,
+                            OPT_FEATURE, OPT_SCORE_WEIGHT,
+                            ARG_ARGNAME],
+                           search_similar_dag],
+    "show-clusters": ["Show clusters of DAGs",
+                      [OPT_CONFIG, OPT_DEBUG,
+                       OPT_FEATURE, OPT_SCORE_WEIGHT],
+                      show_clusters],
     "draw-graph-common": ["Draw common edges of 2 DAG sets",
                           [OPT_DEBUG, OPT_FILENAME,
                            [["confs"],

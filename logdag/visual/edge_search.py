@@ -5,7 +5,9 @@ from abc import ABC
 import math
 import numpy as np
 import pandas as pd
+from scipy.stats.mstats import gmean
 from sklearn.metrics.pairwise import cosine_similarity
+
 
 from logdag import arguments
 from logdag import showdag
@@ -31,7 +33,14 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
                              smooth_idf=smooth_idf)
         self._counter = self._ec  # to be overwritten
 
-        self._matrix = self._space()
+        if use_cache:
+            if self.has_cache():
+                self.load_cache()
+            else:
+                self._matrix = self._space()
+                self.dump_cache()
+        else:
+            self._matrix = self._space()
 
     def load_cache(self):
         self._matrix = self.load()
@@ -60,6 +69,8 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
             ldag.load()
             l_jobname.append(jobname)
             d_vec[jobname] = self._unit_vec(ldag)
+        import pdb; pdb.set_trace()
+        # TODO under debugging
 
         return pd.DataFrame(d_vec, columns=l_jobname, index=l_key)
 
@@ -67,6 +78,72 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
         data1 = self._matrix[jobname1]
         data2 = self._matrix[jobname2]
         return cosine_similarity(data1, data2)
+
+    @staticmethod
+    def _renumber_clustering(labels):
+        clusters = defaultdict(list)
+        for ind, label in enumerate(labels):
+            clusters[label].append(ind)
+
+        iterable = sorted(clusters.items(),
+                          key=lambda x: x[1], reverse=True)
+        for cid, (label, members) in enumerate(iterable):
+            yield cid, members
+
+    def clustering(self, method="kmeans", cls_kwargs=None,
+                   jobnames=None):
+        if cls_kwargs is None:
+            cls_kwargs = {}
+        all_jobnames = [self._am.jobname(args) for args in self._am]
+        if jobnames:
+            jobname2index = {jobname: ind
+                             for ind, jobname in enumerate(all_jobnames)}
+            jobnames_index = np.array([jobname2index[jobname]
+                                       for jobname in jobnames])
+            x_input = self._matrix[jobnames_index]
+        else:
+            jobnames_index = np.array(range(len(all_jobnames)))
+            x_input = self._matrix
+
+        if method == "kmeans":
+            from sklearn.cluster import KMeans
+            km = KMeans(**cls_kwargs)
+            labels = km.fit_predict(x_input)
+        else:
+            raise NotImplementedError
+
+        assert len(labels) == len(all_jobnames)
+
+        d_cluster = {}
+        for cid, members in self._renumber_clustering(labels):
+            members_in_all = jobnames_index[members]
+            member_jobnames = [all_jobnames[ind] for ind in members_in_all]
+            d_cluster[cid] = member_jobnames
+
+        return d_cluster
+
+    def cluster_similar_components(self, jobnames):
+        vectors = [self._matrix[jobname] for jobname in jobnames]
+        avg_vector = np.mean(vectors, axis=0)
+        l_diff = [np.abs(self._matrix[jobname] - avg_vector)
+                  for jobname in jobnames]
+        diff_vector = np.mean(l_diff, axis=0) / len(jobnames)
+        return np.argsort(diff_vector)
+
+    def cluster_common_components(self, jobnames):
+        vectors = [np.linalg.norm(self._matrix[jobname])
+                   for jobname in jobnames]
+        avg_vector = gmean(vectors, axis=0)
+        return np.argsort(avg_vector)
+
+    def similarity_causes(self, jobnames, topn=None):
+        cnt = 0
+        for ind in self.cluster_common_components(jobnames):
+            key = self._counter.vector_index[ind]
+            yield key
+            cnt += 1
+            if topn is not None and cnt >= topn:
+                return
 
 
 class DAGSimilarityEventPairCount(DAGSimilarity):
@@ -140,6 +217,10 @@ class EventPairCount(arguments.WholeCacheBase):
     def base_name(self):
         return "evpaircount"
 
+    @property
+    def vector_index(self):
+        return self._sorted_evpair_keys
+
     def load_cache(self):
         self._d_evpair_args, self._d_evpair_count = self.load()
         _logger.info("load cache {0}".format(self.cache_path))
@@ -183,19 +264,23 @@ class EventPairCount(arguments.WholeCacheBase):
         udgraph = ldag.graph.to_undirected()
         ldag_keys = {self.evpair_key(edge[0], edge[1], ldag)
                      for edge in udgraph.edges()}
-        return np.array([self._get_dag_idf(key, ldag)
+        return np.array([self._get_idf(key, ldag)
                          for key in self._sorted_evpair_keys
                          if key in ldag_keys])
 
-    def get_edge_counts(self, ldag):
-        ret = []
-        for edge in showdag.remove_edge_duplication(ldag.graph.edges(), ldag):
-            key = self.evpair_key(edge[0], edge[1], ldag)
-            count = len(self._d_evpair_args[key])
-            ret.append((edge, count))
-        return ret
+    def get_evpair_count(self, node1, node2, ldag):
+        """
+        Returns:
+            local_count: number of corresponding edges in the given DAG
+            whole_count: number of corresponding edges in all data
+        """
+        jobname = self._am.jobname(ldag.args)
+        key = self.evpair_key(node1, node2, ldag)
+        local_count = len(self._d_evpair_count[jobname][key])
+        whole_count = len(self._d_evpair_args[key])
+        return local_count, whole_count
 
-    def _get_dag_idf(self, evpair_key, smooth_idf=None):
+    def _get_idf(self, evpair_key, smooth_idf=None):
         count = len(self._d_evpair_args[evpair_key])
         if smooth_idf is None:
             smooth_idf = self._smooth_idf
@@ -205,11 +290,16 @@ class EventPairCount(arguments.WholeCacheBase):
             idf = math.log(len(self._am) / count) + 1
         return idf
 
-    def get_dag_tfidf(self, node1, node2, ldag, smooth_idf=None):
+    def get_idf(self, node1, node2, ldag, smooth_idf=None):
+        evpair_key = self.evpair_key(node1, node2, ldag)
+        idf = self._get_idf(evpair_key, smooth_idf=smooth_idf)
+        return idf
+
+    def get_tfidf(self, node1, node2, ldag, smooth_idf=None):
         jobname = self._am.jobname(ldag.args)
         evpair_key = self.evpair_key(node1, node2, ldag)
         tf = self._d_evpair_count[jobname][evpair_key] / ldag.number_of_edges()
-        idf = self._get_dag_idf(evpair_key, smooth_idf=smooth_idf)
+        idf = self._get_idf(evpair_key, smooth_idf=smooth_idf)
         return tf * idf
 
 
@@ -242,6 +332,10 @@ class NodeCount(arguments.WholeCacheBase):
     @property
     def base_name(self):
         return "nodecount"
+
+    @property
+    def vector_index(self):
+        return self._sorted_node_keys
 
     def load_cache(self):
         self._d_evdef_args, self._d_evdef_count, self._d_total = self.load()
@@ -284,31 +378,25 @@ class NodeCount(arguments.WholeCacheBase):
     def get_dag_idf_vector(self, ldag):
         ldag_keys = {self.node_key(node, ldag)
                      for node in ldag.graph.nodes()}
-        return np.array([self._get_dag_idf(key, ldag)
+        return np.array([self._get_idf(key, ldag)
                          for key in self._sorted_node_keys
                          if key in ldag_keys])
 
-    def get_edge_counts(self, ldag):
-        ret = []
+    def get_edge_count(self, edge, ldag):
         jobname = self._am.jobname(ldag.args)
-        for edge in showdag.remove_edge_duplication(ldag.graph.edges(), ldag):
-            count = 0
-            for node in edge:
-                evdef = ldag.node_evdef(node)
-                count += self._d_evdef_count[jobname][evdef.identifier]
-            ret.append((edge, count / 2))
-        return ret
-
-    def get_node_counts(self, ldag):
-        ret = []
-        jobname = self._am.jobname(ldag.args)
-        for node in ldag.graph.nodes():
+        count = 0
+        for node in edge:
             evdef = ldag.node_evdef(node)
-            count = self._d_evdef_count[jobname][evdef.identifier]
-            ret.append((node, count))
-        return ret
+            count += self._d_evdef_count[jobname][evdef.identifier]
+        return count / len(edge)
 
-    def _get_dag_idf(self, node, ldag, smooth_idf=None):
+    def get_node_counts(self, node, ldag):
+        jobname = self._am.jobname(ldag.args)
+        evdef = ldag.node_evdef(node)
+        count = self._d_evdef_count[jobname][evdef.identifier]
+        return count
+
+    def _get_idf(self, node, ldag, smooth_idf=None):
         if smooth_idf is None:
             smooth_idf = self._smooth_idf
         evdef = ldag.node_evdef(node)
@@ -319,14 +407,17 @@ class NodeCount(arguments.WholeCacheBase):
             idf = math.log(len(self._am) / doc_count) + 1
         return idf
 
-    def get_dag_tfidf(self, node, ldag, smooth_idf=None):
+    def get_idf(self, node, ldag, smooth_idf=None):
+        return self._get_idf(node, ldag, smooth_idf=smooth_idf)
+
+    def get_tfidf(self, node, ldag, smooth_idf=None):
         evdef = ldag.node_evdef(node)
         jobname = self._am.jobname(ldag.args)
         node_count = self._d_evdef_count[jobname][evdef.identifier]
         all_count = sum(self._d_evdef_count[jobname].values())
 
         tf = node_count / all_count
-        idf = self._get_dag_idf(node, ldag, smooth_idf=smooth_idf)
+        idf = self._get_idf(node, ldag, smooth_idf=smooth_idf)
         return tf * idf
 
 
@@ -352,6 +443,10 @@ class EdgeCount(arguments.WholeCacheBase):
     @property
     def base_name(self):
         return "edgecount"
+
+    @property
+    def vector_index(self):
+        return self._sorted_edge_keys
 
     def load_cache(self):
         self._d_edge_args = self.load()
@@ -392,19 +487,16 @@ class EdgeCount(arguments.WholeCacheBase):
         udgraph = ldag.graph.to_undirected()
         ldag_keys = {self.edge_key(edge, ldag)
                      for edge in udgraph.edges()}
-        return np.array([self._get_dag_idf(key)
+        return np.array([self._get_idf(key)
                          for key in self._sorted_edge_keys
                          if key in ldag_keys])
 
-    def get_dag_counts(self, ldag):
-        ret = []
-        for edge in showdag.remove_edge_duplication(ldag.graph.edges(), ldag):
-            key = self.edge_key(edge, ldag)
-            count = len(self._d_edge_args[key])
-            ret.append((edge, count))
-        return ret
+    def get_edge_count(self, edge, ldag):
+        key = self.edge_key(edge, ldag)
+        count = len(self._d_edge_args[key])
+        return count
 
-    def _get_dag_idf(self, edge_key, smooth_idf=None):
+    def _get_idf(self, edge_key, smooth_idf=None):
         count = len(self._d_edge_args[edge_key])
         if smooth_idf is None:
             smooth_idf = self._smooth_idf
@@ -414,10 +506,15 @@ class EdgeCount(arguments.WholeCacheBase):
             idf = math.log(len(self._am) / count) + 1
         return idf
 
-    def get_dag_tfidf(self, edge, ldag, smooth_idf=None):
+    def get_idf(self, edge, ldag, smooth_idf=None):
+        edge_key = self.edge_key(edge, ldag)
+        idf = self._get_idf(edge_key, smooth_idf=smooth_idf)
+        return idf
+
+    def get_tfidf(self, edge, ldag, smooth_idf=None):
         edge_key = self.edge_key(edge, ldag)
         tf = 1 / ldag.number_of_edges()
-        idf = self._get_dag_idf(edge_key, smooth_idf=smooth_idf)
+        idf = self._get_idf(edge_key, smooth_idf=smooth_idf)
         return tf * idf
 
 
@@ -432,31 +529,66 @@ def init_counter(conf, feature="edge", **kwargs):
         raise NotImplementedError
 
 
-def edges_anomaly_score(edges, ldag, feature="edge", counter=None, am=None):
+def init_similarity(conf, feature="edge", **kwargs):
     if feature == "node":
-        if counter is None:
-            counter = NodeCount(ldag.conf, am=am)
-        for edge in edges:
-            score = max(counter.get_dag_tfidf(edge[0], ldag),
-                        counter.get_dag_tfidf(edge[1], ldag))
-            yield score
+        return DAGSimilarityNodeCount(conf, **kwargs)
     elif feature == "edge":
-        if counter is None:
-            counter = EdgeCount(ldag.conf, am=am)
-        for edge in edges:
-            score = counter.get_dag_tfidf(edge, ldag)
-            yield score
+        return DAGSimilarityEdgeCount(conf, **kwargs)
     elif feature == "evpair":
-        if counter is None:
-            counter = EventPairCount(ldag.conf, am=am)
-        for edge in edges:
-            score = counter.get_dag_tfidf(edge[0], edge[1], ldag)
-            yield score
+        return DAGSimilarityEventPairCount(conf, **kwargs)
     else:
         raise NotImplementedError
 
 
-def dag_anomaly_score(conf, feature="edge"):
+def edges_anomaly_score(edges, ldag, feature="edge", score="tfidf",
+                        counter=None, am=None):
+    if feature == "node":
+        if counter is None:
+            counter = NodeCount(ldag.conf, am=am)
+        for edge in edges:
+            if score == "tfidf":
+                val = max(counter.get_tfidf(edge[0], ldag),
+                          counter.get_tfidf(edge[1], ldag))
+                yield edge, val
+            elif score == "idf":
+                val = max(counter.get_idf(edge[0], ldag),
+                            counter.get_idf(edge[1], ldag))
+                yield edge, val
+            elif score == "count":
+                val = counter.get_edge_count(edge, ldag)
+                yield edge, val
+            else:
+                raise NotImplementedError
+    elif feature == "edge":
+        if counter is None:
+            counter = EdgeCount(ldag.conf, am=am)
+        for edge in edges:
+            if score == "tfidf":
+                yield edge, counter.get_tfidf(edge, ldag)
+            elif score == "idf":
+                yield edge, counter.get_tfidf(edge, ldag)
+            elif score == "count":
+                yield edge, counter.get_edge_count(edge, ldag)
+            else:
+                raise NotImplementedError
+    elif feature == "evpair":
+        if counter is None:
+            counter = EventPairCount(ldag.conf, am=am)
+        for edge in edges:
+            if score == "tfidf":
+                yield edge, counter.get_tfidf(edge[0], edge[1], ldag)
+            elif score == "idf":
+                yield edge, counter.get_idf(edge[0], edge[1], ldag)
+            elif score == "count":
+                lcount, wcount = counter.get_evpair_count(edge[0], edge[1], ldag)
+                yield edge, wcount
+            else:
+                raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+
+def dag_anomaly_score(conf, feature="edge", score="tfidf"):
     am = arguments.ArgumentManager(conf)
     am.load()
     counter = init_counter(conf, feature, am=am)
@@ -468,25 +600,21 @@ def dag_anomaly_score(conf, feature="edge"):
         ldag.load()
         edges = showdag.remove_edge_duplication(ldag.graph.edges(), ldag)
         score = sum(edges_anomaly_score(edges, ldag, feature=feature,
+                                        score=score,
                                         counter=counter, am=am))
         d_score[jobname] = score
     return d_score
 
 
-def show_sorted_edges(ldag, feature="edge", use_score=True, reverse=False,
+def show_sorted_edges(ldag, feature="edge", score="tfidf", reverse=False,
                       view_context="edge", load_cache=True, graph=None):
     am = arguments.ArgumentManager(ldag.conf)
     am.load()
 
     edges = showdag.remove_edge_duplication(ldag.graph.edges(), ldag)
-    if use_score:
-        scores = edges_anomaly_score(edges, ldag, feature=feature, am=am)
-        items = zip(edges, scores)
-        order_reverse = not reverse
-    else:
-        counter = init_counter(ldag.conf, feature, am=am)
-        items = counter.get_edge_counts(ldag)
-        order_reverse = reverse
+    items = list(edges_anomaly_score(edges, ldag,
+                                     feature=feature, score=score, am=am))
+    order_reverse = reverse if score == "count" else not reverse
 
     l_buf = []
     prev = None
@@ -495,14 +623,58 @@ def show_sorted_edges(ldag, feature="edge", use_score=True, reverse=False,
         if score != prev:
             if prev is not None:
                 l_buf.append("")
-            if use_score:
-                l_buf.append("[count={0}]".format(score))
-            else:
-                l_buf.append("[score={0}]".format(score))
+            l_buf.append("[score={0}]".format(score))
             prev = score
         msg = showdag.edge_view(edge, ldag, context=view_context,
                                 load_cache=load_cache, graph=graph)
         l_buf.append(msg)
+    return "\n".join(l_buf)
+
+
+def search_similar_dag(ldag, feature="edge", weight="idf",
+                       dag_topn=10, cause_topn=10):
+    am = arguments.ArgumentManager(ldag.conf)
+    am.load()
+    ldag_jobname = am.jobname(ldag.args)
+
+    sim = init_similarity(ldag.conf, feature, am=am, weight=weight)
+    d_val = {}
+    for args in am:
+        jobname = am.jobname(args)
+        if jobname != ldag_jobname:
+            d_val[jobname] = sim.similarity(ldag_jobname, jobname)
+
+    l_buf = []
+    cnt = 0
+    for jobname, val in sorted(d_val.items(), key=lambda x: x[1], reverse=True):
+        jobnames = [ldag_jobname, jobname]
+        causes = list(sim.similarity_causes(jobnames, topn=cause_topn))
+        l_buf.append("{0} {1}: {2}".format(val, jobname, causes))
+        cnt += 1
+        if cnt >= dag_topn:
+            break
+
+    return "\n".join(l_buf)
+
+
+def show_clusters(conf, feature="edge", weight="idf",
+                  clustering_method="kmeans", n_cluster=None, cause_topn=10):
+    am = arguments.ArgumentManager(conf)
+    am.load()
+
+    if n_cluster is None:
+        n_cluster = int(math.sqrt(len(am)))
+
+    sim = init_similarity(conf, feature, am=am, weight=weight)
+    cls_kwargs = {"n_cluster": n_cluster}
+    d_cluster = sim.clustering(clustering_method, cls_kwargs=cls_kwargs)
+
+    l_buf = []
+    for cid, jobnames in d_cluster.items():
+        causes = list(sim.similarity_causes(jobnames, topn=cause_topn))
+        l_buf.append("[cluster {0}]: {1}".format(cid, jobnames))
+        l_buf.append("main components: {0}".format(causes))
+        l_buf.append("\n")
     return "\n".join(l_buf)
 
 
