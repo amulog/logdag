@@ -74,6 +74,37 @@ def show_major_edges(ns):
                                         load_cache=(not ns.nocache), graph=g))
 
 
+def show_edges_temporal_sort(ns):
+    conf = open_logdag_config(ns)
+    args = arguments.name2args(ns.argname, conf)
+
+    from . import edge_search
+    ldag = showdag.LogDAG(args)
+    ldag.load()
+    g = showdag.apply_filter(ldag, ns.filters, th=ns.threshold)
+
+    if ns.detail:
+        context = "detail"
+    elif ns.instruction:
+        context = "instruction"
+    else:
+        context = "edge"
+
+    from logdag import dtutil
+    if ns.timestr_end is None:
+        dt = dtutil.shortstr2dt(ns.timestr)
+        condition = {"time": dt}
+    else:
+        dts = dtutil.shortstr2dt(ns.timestr)
+        dte = dtutil.shortstr2dt(ns.timestr_end)
+        condition = {"time_range": (dts, dte)}
+
+    print(edge_search.edge_temporal_sort(ldag, condition,
+                                         reverse=ns.reverse,
+                                         view_context=context,
+                                         load_cache=(not ns.nocache), graph=g))
+
+
 def show_dag_anomaly_score(ns):
     conf = open_logdag_config(ns)
 
@@ -114,7 +145,7 @@ def show_clusters(ns):
     buf = edge_search.show_clusters(conf, feature=ns.feature,
                                     weight=ns.score_weight,
                                     clustering_method="kmeans",
-                                    n_cluster=None, cause_topn=10)
+                                    n_clusters=None, cause_topn=10)
     print(buf)
 
 
@@ -396,6 +427,11 @@ ARG_FILTER = [["filters"],
 ARG_TIMESTR = [["timestr"],
                {"metavar": "TIMESTR", "action": "store",
                 "help": "%%Y%%m%%d(_%%H%%M%%S) style time string"}]
+OPT_TIMESTR_END = [["--range"],
+                   {"dest": "timestr_end", "metavar": "TIMESTR_END",
+                    "action": "store", "type": str, "default": None,
+                    "help": "%%Y%%m%%d(_%%H%%M%%S) style time string, "
+                            "used as the time range with TIMESTR"}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -419,6 +455,12 @@ DICT_ARGSET = {
                           OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
                           ARG_ARGNAME, ARG_FILTER],
                          show_major_edges],
+    "show-edges-temporal-sort": ["Show sorted edges with difference from given time",
+                                 [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
+                                  OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
+                                  OPT_TIMESTR_END, OPT_REVERSE,
+                                  ARG_ARGNAME, ARG_TIMESTR, ARG_FILTER],
+                                 show_edges_temporal_sort],
     "show-dag-anomaly-score": ["Show anomaly score of DAGs",
                                [OPT_CONFIG, OPT_DEBUG,
                                 OPT_FEATURE, OPT_SCORE,

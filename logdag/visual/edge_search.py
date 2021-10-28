@@ -26,6 +26,8 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
             self._am.load()
         else:
             self._am = am
+        self._all_jobnames = [self._am.jobname(args) for args in self._am]
+
         assert weight in ("none", "idf")
         self._weight = weight
 
@@ -60,7 +62,6 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
             raise NotImplementedError
 
     def _space(self):
-        l_key = sorted(list(self._ec.get_all_edges()))
         l_jobname = []
         d_vec = {}
         for args in self._am:
@@ -69,10 +70,9 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
             ldag.load()
             l_jobname.append(jobname)
             d_vec[jobname] = self._unit_vec(ldag)
-        import pdb; pdb.set_trace()
-        # TODO under debugging
 
-        return pd.DataFrame(d_vec, columns=l_jobname, index=l_key)
+        return pd.DataFrame(d_vec, columns=l_jobname,
+                            index=self._counter.vector_index)
 
     def similarity(self, jobname1, jobname2):
         data1 = self._matrix[jobname1]
@@ -86,7 +86,7 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
             clusters[label].append(ind)
 
         iterable = sorted(clusters.items(),
-                          key=lambda x: x[1], reverse=True)
+                          key=lambda x: x[1], reverse=False)
         for cid, (label, members) in enumerate(iterable):
             yield cid, members
 
@@ -94,16 +94,15 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
                    jobnames=None):
         if cls_kwargs is None:
             cls_kwargs = {}
-        all_jobnames = [self._am.jobname(args) for args in self._am]
         if jobnames:
             jobname2index = {jobname: ind
-                             for ind, jobname in enumerate(all_jobnames)}
+                             for ind, jobname in enumerate(self._all_jobnames)}
             jobnames_index = np.array([jobname2index[jobname]
                                        for jobname in jobnames])
-            x_input = self._matrix[jobnames_index]
+            x_input = self._matrix[jobnames_index].T
         else:
-            jobnames_index = np.array(range(len(all_jobnames)))
-            x_input = self._matrix
+            jobnames_index = np.array(range(len(self._all_jobnames)))
+            x_input = self._matrix.T
 
         if method == "kmeans":
             from sklearn.cluster import KMeans
@@ -112,17 +111,20 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
         else:
             raise NotImplementedError
 
-        assert len(labels) == len(all_jobnames)
+        assert len(labels) == len(self._all_jobnames)
 
         d_cluster = {}
         for cid, members in self._renumber_clustering(labels):
             members_in_all = jobnames_index[members]
-            member_jobnames = [all_jobnames[ind] for ind in members_in_all]
+            member_jobnames = [self._all_jobnames[ind] for ind in members_in_all]
             d_cluster[cid] = member_jobnames
 
         return d_cluster
 
     def cluster_similar_components(self, jobnames):
+        if len(jobnames) < 2:
+            raise ValueError
+
         vectors = [self._matrix[jobname] for jobname in jobnames]
         avg_vector = np.mean(vectors, axis=0)
         l_diff = [np.abs(self._matrix[jobname] - avg_vector)
@@ -131,19 +133,31 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
         return np.argsort(diff_vector)
 
     def cluster_common_components(self, jobnames):
-        vectors = [np.linalg.norm(self._matrix[jobname])
-                   for jobname in jobnames]
+        if len(jobnames) < 2:
+            raise ValueError
+
+        vectors = []
+        for jobname in jobnames:
+            vector = self._matrix[jobname]
+            size = np.linalg.norm(vector)
+            vectors.append(vector / size)
+
         avg_vector = gmean(vectors, axis=0)
         return np.argsort(avg_vector)
 
     def similarity_causes(self, jobnames, topn=None):
+        if len(jobnames) < 2:
+            raise ValueError
+
+        ret = []
         cnt = 0
         for ind in self.cluster_common_components(jobnames):
             key = self._counter.vector_index[ind]
-            yield key
+            ret.append(key)
             cnt += 1
             if topn is not None and cnt >= topn:
-                return
+                break
+        return ret
 
 
 class DAGSimilarityEventPairCount(DAGSimilarity):
@@ -265,8 +279,8 @@ class EventPairCount(arguments.WholeCacheBase):
         ldag_keys = {self.evpair_key(edge[0], edge[1], ldag)
                      for edge in udgraph.edges()}
         return np.array([self._get_idf(key, ldag)
-                         for key in self._sorted_evpair_keys
-                         if key in ldag_keys])
+                         if key in ldag_keys else float(0)
+                         for key in self._sorted_evpair_keys])
 
     def get_evpair_count(self, node1, node2, ldag):
         """
@@ -379,8 +393,8 @@ class NodeCount(arguments.WholeCacheBase):
         ldag_keys = {self.node_key(node, ldag)
                      for node in ldag.graph.nodes()}
         return np.array([self._get_idf(key, ldag)
-                         for key in self._sorted_node_keys
-                         if key in ldag_keys])
+                         if key in ldag_keys else float(0)
+                         for key in self._sorted_node_keys])
 
     def get_edge_count(self, edge, ldag):
         jobname = self._am.jobname(ldag.args)
@@ -488,8 +502,8 @@ class EdgeCount(arguments.WholeCacheBase):
         ldag_keys = {self.edge_key(edge, ldag)
                      for edge in udgraph.edges()}
         return np.array([self._get_idf(key)
-                         for key in self._sorted_edge_keys
-                         if key in ldag_keys])
+                         if key in ldag_keys else float(0)
+                         for key in self._sorted_edge_keys])
 
     def get_edge_count(self, edge, ldag):
         key = self.edge_key(edge, ldag)
@@ -552,7 +566,7 @@ def edges_anomaly_score(edges, ldag, feature="edge", score="tfidf",
                 yield edge, val
             elif score == "idf":
                 val = max(counter.get_idf(edge[0], ldag),
-                            counter.get_idf(edge[1], ldag))
+                          counter.get_idf(edge[1], ldag))
                 yield edge, val
             elif score == "count":
                 val = counter.get_edge_count(edge, ldag)
@@ -631,6 +645,60 @@ def show_sorted_edges(ldag, feature="edge", score="tfidf", reverse=False,
     return "\n".join(l_buf)
 
 
+def edge_temporal_sort(ldag, condition, reverse=False,
+                       view_context="edge", load_cache=True, graph=None):
+    assert "time" in condition or "time_range" in condition
+    if graph is None:
+        graph = ldag.graph
+
+    from amulog import config
+    ci_bin_size = config.getdur(ldag.conf, "dag", "ci_bin_size")
+
+    nodes = set()  # nodes with any adjacent edges
+    for edge in graph.edges():
+        nodes.add(edge[0])
+        nodes.add(edge[1])
+    df_ts = ldag.node_ts(list(nodes))
+
+    if "time" in condition:
+        dt = condition["time"]
+        sr_diff_td = (df_ts.index.to_series() + (0.5 * ci_bin_size) - dt).abs()
+        sr_diff = sr_diff_td.map(lambda x: x.total_seconds())
+        df_score = df_ts.apply(lambda x: x * sr_diff / sum(x))
+    else:
+        dts, dte = condition["time_range"]
+        diff = []
+        for tmp_ts in df_ts.index:
+            ts = tmp_ts + 0.5 * ci_bin_size
+            if ts < dts:
+                diff.append((dts - ts).total_seconds())
+            elif ts > dte:
+                diff.append((ts - dte).total_seconds())
+            else:  # dts <= ts <= dte
+                diff.append(float(0))
+        sr_diff = pd.Series(diff, index=df_ts.index)
+        df_score = df_ts.apply(lambda x: x * sr_diff / sum(x))
+
+    items = []
+    for edge in showdag.remove_edge_duplication(graph.edges(), ldag):
+        score = (sum(df_score[edge[0]]) + sum(df_score[edge[1]])) / 2
+        items.append((edge, score))
+
+    l_buf = []
+    prev = None
+    for edge, score in sorted(items, key=lambda x: x[1],
+                              reverse=reverse):
+        if score != prev:
+            if prev is not None:
+                l_buf.append("")
+            l_buf.append("[average_diff_sec={0}]".format(score))
+            prev = score
+        msg = showdag.edge_view(edge, ldag, context=view_context,
+                                load_cache=load_cache, graph=graph)
+        l_buf.append(msg)
+    return "\n".join(l_buf)
+
+
 def search_similar_dag(ldag, feature="edge", weight="idf",
                        dag_topn=10, cause_topn=10):
     am = arguments.ArgumentManager(ldag.conf)
@@ -658,23 +726,24 @@ def search_similar_dag(ldag, feature="edge", weight="idf",
 
 
 def show_clusters(conf, feature="edge", weight="idf",
-                  clustering_method="kmeans", n_cluster=None, cause_topn=10):
+                  clustering_method="kmeans", n_clusters=None, cause_topn=10):
     am = arguments.ArgumentManager(conf)
     am.load()
 
-    if n_cluster is None:
-        n_cluster = int(math.sqrt(len(am)))
+    if n_clusters is None:
+        n_clusters = int(math.sqrt(len(am)))
 
     sim = init_similarity(conf, feature, am=am, weight=weight)
-    cls_kwargs = {"n_cluster": n_cluster}
+    cls_kwargs = {"n_clusters": n_clusters}
     d_cluster = sim.clustering(clustering_method, cls_kwargs=cls_kwargs)
 
     l_buf = []
     for cid, jobnames in d_cluster.items():
-        causes = list(sim.similarity_causes(jobnames, topn=cause_topn))
-        l_buf.append("[cluster {0}]: {1}".format(cid, jobnames))
-        l_buf.append("main components: {0}".format(causes))
-        l_buf.append("\n")
+        l_buf.append("[cluster {0}]: {1} ({2})".format(cid, jobnames, len(jobnames)))
+        if len(jobnames) > 2:
+            causes = list(sim.similarity_causes(jobnames, topn=cause_topn))
+            l_buf.append("main components: {0}".format(causes))
+        l_buf.append("")
     return "\n".join(l_buf)
 
 
