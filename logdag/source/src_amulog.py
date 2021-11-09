@@ -89,8 +89,8 @@ class AmulogLoader(object):
         return sorted(self.iter_dt(ev, dt_range))
 
     def load_org(self, ev, dt_range):
-        restored_ev = (self.restore_host(ev[0]), ev[1])
-        for lm in self._iter_lines(restored_ev, dt_range):
+        # restored_ev = (self.restore_host(ev[0]), ev[1])
+        for lm in self._iter_lines(ev, dt_range):
             lm.dt = lm.dt.replace(tzinfo=tzlocal())
             yield lm
 
