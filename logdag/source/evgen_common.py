@@ -66,3 +66,6 @@ class EventLoader(ABC):
             if not self.dry:
                 self.evdb.drop_measure(measure)
             print(measure)
+
+    def restore_host(self, host):
+        return host

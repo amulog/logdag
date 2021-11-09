@@ -160,6 +160,9 @@ class LogEventLoader(evgen_common.EventLoader):
                  "gid": gid}
             yield LogEventDefinition(**d)
 
+    def restore_host(self, host):
+        return self.source.restore_host(host)
+
     def instruction(self, evdef):
         if isinstance(evdef, log2event.MultipleEventDefinition):
             l_buf = []

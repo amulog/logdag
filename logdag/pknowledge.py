@@ -97,7 +97,7 @@ class PriorKnowledge:
                       "exogenous_variables": self._exogenous_variables,
                       "sink_variables": self._sink_variables,
                       "paths": self._paths,
-                      "nopaths": self._nopaths}
+                      "no_paths": self._nopaths}
         else:
             possible_paths = set(permutations(node_ids, 2))
             exv = set(node_ids) & self._exogenous_variables
@@ -108,7 +108,7 @@ class PriorKnowledge:
                       "exogenous_variables": exv,
                       "sink_variables": siv,
                       "paths": paths,
-                      "nopaths": nopaths}
+                      "no_paths": nopaths}
         return make_prior_knowledge(**kwargs)
 
 
@@ -329,6 +329,8 @@ class AdditionalSource(RuleBasedPruning):
 def init_prior_knowledge(conf, args, evmap):
     from amulog import config
     methods = config.getlist(conf, "prior_knowledge", "methods")
+    if len(methods) == 0:
+        return None
 
     node_ids = evmap.eids()
     pk = PriorKnowledge(node_ids)

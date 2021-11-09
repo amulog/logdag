@@ -20,6 +20,8 @@ class LogDAG:
         self.conf, self.dt_range, self.area = self.args
         self.name = arguments.args2name(self.args)
         self.graph = graph
+        self._use_mapping = self.conf.getboolean("database_amulog",
+                                                 "use_anonymize_mapping")
 
         # cache
         self._cache_edges_no_duplication = None
@@ -115,9 +117,23 @@ class LogDAG:
         else:
             return remove_edge_duplication(graph.edges(), self, graph=graph)
 
+    def _remap_evdef(self, evdef):
+        if isinstance(evdef, log2event.MultipleEventDefinition):
+            new_members = [self._remap_evdef(tmp_evdef)
+                           for tmp_evdef in evdef.members]
+            evdef.update_members(new_members)
+            return evdef
+        else:
+            new_host = self._evloader()[evdef.source].restore_host(evdef.host)
+            evdef.host = new_host
+            return evdef
+
     def node_evdef(self, node):
         evmap = self._evmap()
-        return evmap.evdef(node)
+        evdef = evmap.evdef(node)
+        if self._use_mapping:
+            evdef = self._remap_evdef(evdef)
+        return evdef
 
     def evdef2node(self, evdef, graph=None):
         if graph is None:
@@ -127,8 +143,7 @@ class LogDAG:
         return node, graph.get_node_data(node)
 
     def edge_evdef(self, edge):
-        evmap = self._evmap()
-        return [evmap.evdef(node) for node in edge[0:2]]
+        return [self.node_evdef(node) for node in edge[0:2]]
 
     def evdef2edge(self, evdef1, evdef2, graph=None, allow_reverse=False):
         """
@@ -237,8 +252,10 @@ class LogDAG:
         if graph is None:
             graph = self.graph
         for u, v, ddict in graph.edges(data=True):
-            src_info, dst_info = self.edge_evdef((u, v))
-            if src_info.host == dst_info.host:
+            src_evdef, dst_evdef = self.edge_evdef((u, v))
+            src_hosts = set(src_evdef.all_attr("host"))
+            dst_hosts = set(dst_evdef.all_attr("host"))
+            if len(src_hosts & dst_hosts) > 0:
                 g_same.add_edge(u, v, **ddict)
             else:
                 g_diff.add_edge(u, v, **ddict)
@@ -589,6 +606,27 @@ def stat_by_threshold(conf, thresholds, dt_range=None, groupby=None):
 #    table.append(["number of all edges", fmt_int(edge_num), ""])
 #    return common.cli_table(table, align="right")
 
+def check_conditions(edge, ldag, conditions):
+    if "node" in conditions:
+        if conditions["node"] not in edge:
+            return False
+    if "gid" in conditions:
+        src_evdef = ldag.node_evdef(edge[0])
+        dst_evdef = ldag.node_evdef(edge[1])
+        s_gid = src_evdef.all_attr("gid") | dst_evdef.all_attr("gid")
+        if conditions["gid"] not in s_gid:
+            return False
+    if "host" in conditions:
+        src_evdef = ldag.node_evdef(edge[0])
+        dst_evdef = ldag.node_evdef(edge[1])
+        src_hosts = set(src_evdef.all_attr("host"))
+        dst_hosts = set(dst_evdef.all_attr("host"))
+        cnt = sum(1 for host in src_hosts | dst_hosts
+                  if conditions["host"] in host)
+        if cnt == 0:
+            return False
+    return True
+
 
 def show_edge(ldag: LogDAG, conditions, context="edge",
               load_cache=True, graph=None):
@@ -597,22 +635,8 @@ def show_edge(ldag: LogDAG, conditions, context="edge",
 
     edges_to_show = []
     for edge in graph.edges():
-        if "node" in conditions:
-            if conditions["node"] not in edge:
-                continue
-        if "gid" in conditions:
-            src_evdef = ldag.node_evdef(edge[0])
-            dst_evdef = ldag.node_evdef(edge[1])
-            s_gid = src_evdef.all_attr("gid") | dst_evdef.all_attr("gid")
-            if conditions["gid"] not in s_gid:
-                continue
-        if "host" in conditions:
-            src_evdef = ldag.node_evdef(edge[0])
-            dst_evdef = ldag.node_evdef(edge[1])
-            s_host = src_evdef.all_attr("host") | dst_evdef.all_attr("host")
-            if conditions["host"] not in s_host:
-                continue
-        edges_to_show.append(edge)
+        if check_conditions(edge, ldag, conditions):
+            edges_to_show.append(edge)
 
     l_buf = []
     for edge in remove_edge_duplication(edges_to_show, ldag, graph=graph):

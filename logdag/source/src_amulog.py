@@ -23,7 +23,7 @@ class AmulogLoader(object):
             self._mapper = anonymize.AnonymizeMapper(self.conf)
             self._mapper.load()
 
-    def _restore_host(self, host):
+    def restore_host(self, host):
         if self._mapper:
             return self._mapper.restore_host(host)
         else:
@@ -89,7 +89,7 @@ class AmulogLoader(object):
         return sorted(self.iter_dt(ev, dt_range))
 
     def load_org(self, ev, dt_range):
-        restored_ev = (self._restore_host(ev[0]), ev[1])
+        restored_ev = (self.restore_host(ev[0]), ev[1])
         for lm in self._iter_lines(restored_ev, dt_range):
             lm.dt = lm.dt.replace(tzinfo=tzlocal())
             yield lm

@@ -417,13 +417,18 @@ OPT_ORDER = [["--order"],
 OPT_REVERSE = [["--reverse"],
                {"dest": "reverse", "action": "store_true",
                 "help": "reversed sort"}]
+OPT_FILTER = [["-f", "--filter"],
+              {"dest": "filters", "action": "append",
+               "help": ("filters for dag stats or plots. "
+                        "see showdag_filter.py for more detail")}]
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
-ARG_FILTER = [["filters"],
-              {"metavar": "FILTER", "nargs": "*",
-               "help": ("filters for dag stats or plots. "
-                        "see showdag_filter.py for more detail")}]
+ARG_EDGESEARCH = [["conditions"],
+                  {"metavar": "CONDITION", "nargs": "+",
+                   "help": ("Conditions to search edges."
+                            "Example: MODE gid=24 host=host01 ..., "
+                            "Keys: node, gid, host.")}]
 ARG_TIMESTR = [["timestr"],
                {"metavar": "TIMESTR", "action": "store",
                 "help": "%%Y%%m%%d(_%%H%%M%%S) style time string"}]
@@ -447,19 +452,21 @@ DICT_ARGSET = {
                          [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
                           OPT_FEATURE, OPT_SCORE,
                           OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
-                          ARG_ARGNAME, ARG_FILTER],
+                          OPT_FILTER,
+                          ARG_ARGNAME, ARG_EDGESEARCH],
                          show_minor_edges],
     "show-major-edges": ["Show major edges in all data",
                          [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
                           OPT_FEATURE, OPT_SCORE,
                           OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
-                          ARG_ARGNAME, ARG_FILTER],
+                          OPT_FILTER,
+                          ARG_ARGNAME, ARG_EDGESEARCH],
                          show_major_edges],
     "show-edges-temporal-sort": ["Show sorted edges with difference from given time",
                                  [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD,
                                   OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
-                                  OPT_TIMESTR_END, OPT_REVERSE,
-                                  ARG_ARGNAME, ARG_TIMESTR, ARG_FILTER],
+                                  OPT_TIMESTR_END, OPT_REVERSE, OPT_FILTER,
+                                  ARG_ARGNAME, ARG_TIMESTR, ARG_EDGESEARCH],
                                  show_edges_temporal_sort],
     "show-dag-anomaly-score": ["Show anomaly score of DAGs",
                                [OPT_CONFIG, OPT_DEBUG,

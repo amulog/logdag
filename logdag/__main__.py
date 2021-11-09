@@ -118,7 +118,7 @@ def dump_input(ns):
     args = am.jobname2args(ns.argname, conf)
 
     input_df, _ = makedag.make_input(args)
-    input_df.to_csv(ns.filename)
+    input_df.to_csv(ns.output)
 
 
 def dump_events(ns):
@@ -341,7 +341,7 @@ def plot_dag(ns):
     conf = open_logdag_config(ns)
 
     args = arguments.name2args(ns.argname, conf)
-    output = ns.filename
+    output = ns.output
 
     r = showdag.LogDAG(args)
     r.load()
@@ -357,7 +357,7 @@ def plot_node_ts(ns):
     conf = open_logdag_config(ns)
 
     args = arguments.name2args(ns.argname, conf)
-    output = ns.filename
+    output = ns.output
 
     l_nodeid = [int(n) for n in ns.node_ids]
     showdag.plot_node_ts(args, l_nodeid, output)
@@ -418,10 +418,10 @@ OPT_PARALLEL = [["-p", "--parallel"],
                 {"dest": "parallel", "metavar": "PARALLEL",
                  "type": int, "default": 1,
                  "help": "number of processes in parallel"}]
-OPT_FILENAME = [["-f", "--filename"],
-                {"dest": "filename", "metavar": "FILENAME", "action": "store",
-                 "default": "output",
-                 "help": "output filename"}]
+OPT_OUTPUT = [["-o", "--output"],
+              {"dest": "output", "metavar": "OUTPUT", "action": "store",
+               "default": "output",
+               "help": "output filename"}]
 OPT_DIRNAME = [["-d", "--dirname"],
                {"dest": "dirname", "metavar": "DIRNAME", "action": "store",
                 "default": ".",
@@ -464,14 +464,14 @@ OPT_GROUPBY = [["--groupby"],
                {"dest": "groupby", "metavar": "GROUPBY",
                 "action": "store", "default": None,
                 "help": "aggregate results by given metrics (like day, area)"}]
+OPT_FILTER = [["-f", "--filter"],
+              {"dest": "filters", "action": "append",
+               "help": ("filters for dag stats or plots. "
+                        "see showdag_filter.py for more detail")}]
 
 ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
-ARG_FILTER = [["filters"],
-              {"metavar": "FILTER", "nargs": "*",
-               "help": ("filters for dag stats or plots. "
-                        "see showdag_filter.py for more detail")}]
 ARG_EDGESEARCH = [["conditions"],
                   {"metavar": "CONDITION", "nargs": "+",
                    "help": ("Conditions to search edges."
@@ -495,7 +495,7 @@ DICT_ARGSET = {
                            [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                            update_event_label],
     "dump-input": ["Output causal analysis input in pandas csv format",
-                   [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME,
+                   [OPT_CONFIG, OPT_DEBUG, OPT_OUTPUT,
                     [["-b", "--binary"],
                      {"dest": "binary", "action": "store_true",
                       "help": "dump binarized dataframe csv"}],
@@ -517,13 +517,13 @@ DICT_ARGSET = {
                   show_edge],
     "show-edge-list": ["Show all edges in a DAG",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
-                        OPT_DETAIL, OPT_IGNORE_CACHE,
-                        ARG_ARGNAME, ARG_FILTER],
+                        OPT_DETAIL, OPT_IGNORE_CACHE, OPT_FILTER,
+                        ARG_ARGNAME],
                        show_edge_list],
     "show-subgraphs": ["Show edges in each connected subgraphs",
                        [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_INSTRUCTION,
-                        OPT_DETAIL, OPT_IGNORE_CACHE,
-                        ARG_ARGNAME, ARG_FILTER],
+                        OPT_DETAIL, OPT_IGNORE_CACHE, OPT_FILTER,
+                        ARG_ARGNAME],
                        show_subgraphs],
     "show-list": ["Show abstracted results of DAG generation",
                   [OPT_CONFIG, OPT_DEBUG, OPT_THRESHOLD, OPT_GROUPBY],
@@ -560,11 +560,12 @@ DICT_ARGSET = {
                             [],
                             show_default_config],
     "plot-dag": ["Generate causal DAG view",
-                 [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME, OPT_THRESHOLD,
-                  ARG_ARGNAME, ARG_FILTER],
+                 [OPT_CONFIG, OPT_DEBUG,
+                  OPT_OUTPUT, OPT_THRESHOLD, OPT_FILTER,
+                  ARG_ARGNAME],
                  plot_dag],
     "plot-node-ts": ["Generate node time-series view",
-                     [OPT_CONFIG, OPT_DEBUG, OPT_FILENAME,
+                     [OPT_CONFIG, OPT_DEBUG, OPT_OUTPUT,
                       ARG_ARGNAME,
                       [["node_ids"],
                        {"metavar": "NODE_IDs", "nargs": "+",

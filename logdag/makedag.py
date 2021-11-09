@@ -35,7 +35,7 @@ def makedag_main(args, do_dump=False):
     input_df, evmap = log2event.makeinput(conf, dt_range, area)
     if input_df is None:
         return None
-    _logger.info("{0} pc input shape: {1}".format(jobname, input_df.shape))
+    _logger.info("{0} input shape: {1}".format(jobname, input_df.shape))
     if do_dump:
         evmap.dump(args)
     timer.lap("load-nodes")

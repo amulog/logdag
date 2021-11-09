@@ -62,6 +62,9 @@ class MultipleEventDefinition(EventDefinition):
     def members(self):
         return self._members
 
+    def update_members(self, members):
+        self._members = members
+
     @property
     def identifier(self):
         return "|".join(sorted([str(evdef) for evdef in self._members]))
