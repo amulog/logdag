@@ -203,7 +203,7 @@ def show_subgraphs(ns):
     else:
         context = "edge"
 
-    print(showdag.show_subgraphs(r, context,
+    print(showdag.show_subgraphs(ldag, context,
                                  load_cache=(not ns.nocache), graph=g))
 
 
