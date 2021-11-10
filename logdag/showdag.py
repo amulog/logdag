@@ -56,6 +56,8 @@ class LogDAG:
         if self._evmap_obj is None:
             evmap = log2event.EventDefinitionMap()
             evmap.load(self.args)
+            if self._use_mapping:
+                evmap = self._remap_evmap(evmap)
             self._evmap_obj = evmap
         return self._evmap_obj
 
@@ -117,6 +119,11 @@ class LogDAG:
         else:
             return remove_edge_duplication(graph.edges(), self, graph=graph)
 
+    def _remap_evmap(self, evmap):
+        mapping = {eid: self._remap_evdef(evdef)
+                   for eid, evdef in evmap.items()}
+        return log2event.EventDefinitionMap.from_dict(mapping)
+
     def _remap_evdef(self, evdef):
         if isinstance(evdef, log2event.MultipleEventDefinition):
             new_members = [self._remap_evdef(tmp_evdef)
@@ -131,8 +138,8 @@ class LogDAG:
     def node_evdef(self, node):
         evmap = self._evmap()
         evdef = evmap.evdef(node)
-        if self._use_mapping:
-            evdef = self._remap_evdef(evdef)
+        # if self._use_mapping:
+        #     evdef = self._remap_evdef(evdef)
         return evdef
 
     def evdef2node(self, evdef, graph=None):
@@ -456,6 +463,9 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
         g = ldag.graph
     else:
         g = graph
+
+    if l_filtername is None or len(l_filtername) == 0:
+        return g
 
     filters = []
 

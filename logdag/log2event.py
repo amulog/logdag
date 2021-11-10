@@ -135,6 +135,14 @@ class EventDefinitionMap(object):
         for eid in self.iter_eid():
             yield self._emap[eid]
 
+    @staticmethod
+    def from_dict(mapping):
+        evmap = EventDefinitionMap()
+        evmap._emap = mapping
+        for eid, evdef in mapping.items():
+            evmap._ermap[evdef.identifier] = eid
+        return evmap
+
     def dump(self, args):
         fp = arguments.ArgumentManager.evdef_path(args)
         obj = (self._emap, self._ermap)

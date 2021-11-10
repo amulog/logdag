@@ -192,9 +192,9 @@ def show_subgraphs(ns):
     conf = open_logdag_config(ns)
     args = arguments.name2args(ns.argname, conf)
 
-    r = showdag.LogDAG(args)
-    r.load()
-    g = showdag.apply_filter(r, ns.filters, th=ns.threshold)
+    ldag = showdag.LogDAG(args)
+    ldag.load()
+    g = showdag.apply_filter(ldag, ns.filters, th=ns.threshold)
 
     if ns.detail:
         context = "detail"
