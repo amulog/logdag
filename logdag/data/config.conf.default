@@ -31,10 +31,17 @@ host_alias_filename =
 
 
 [database_amulog]
-
+# amulog config path
 source_conf = amulog.conf
+
+# one of [ltgid, ltid]
 event_gid = ltgid
+
 use_anonymize_mapping = false
+
+# "anonymized" if amulog db specified in database_amulog.source_conf is anonymized
+# "original" if amulog db specified in database_amulog.source_conf is not anonymized (differ from logdag input)
+given_amulog_database = anonymized
 
 
 [database_rrd]
@@ -198,7 +205,7 @@ pass_dag_exists = false
 # values for event detail output
 event_detail_head = 5
 event_detail_foot = 5
-event_detail_cache = True
+event_detail_cache = true
 
 
 [prior_knowledge]

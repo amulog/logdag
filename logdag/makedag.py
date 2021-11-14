@@ -53,7 +53,7 @@ def makedag_main(args, do_dump=False):
         return None
 
     # record dag
-    ldag = showdag.LogDAG(args, graph)
+    ldag = showdag.LogDAG(args, graph=graph, evmap=evmap)
     if do_dump:
         ldag.dump()
     timer.stop()

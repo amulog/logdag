@@ -32,6 +32,10 @@ class LogEventDefinition(log2event.EventDefinition):
             return "{0}:{1}:{2}".format(self.host, str(self.gid),
                                         self.group)
 
+    @property
+    def _attribute_keys(self):
+        return self._l_attr + self._l_attr_log
+
     def key(self):
         return str(self.gid)
 
@@ -84,6 +88,7 @@ class LogEventLoader(evgen_common.EventLoader):
             self._lf = filter_log.init_logfilter(conf, self.source)
         self._feature_unit_diff = config.getdur(conf,
                                                 "general", "evdb_unit_diff")
+        self._given_amulog_database = conf["database_amulog"]["given_amulog_database"]
 
     @staticmethod
     def _evdef(host, gid, group):
@@ -173,26 +178,41 @@ class LogEventLoader(evgen_common.EventLoader):
             instruction = self.source.gid_instruction(evdef.gid)
             return "({0}) {1}".format(evdef.host, instruction)
 
-    def details(self, evdef, dt_range, org=True):
-        if isinstance(evdef, log2event.MultipleEventDefinition):
-            results = []
-            for tmp_evdef in evdef.members:
-                results += self.details(tmp_evdef, dt_range, org)
-            return sorted(results, key=lambda x: x[0])
+    def details(self, evdef, dt_range, evdef_org=None, show_org=True):
+        if evdef_org:
+            if isinstance(evdef, log2event.MultipleEventDefinition):
+                results = []
+                for tmp_evdef, tmp_evdef_org in zip(evdef.members, evdef_org.members):
+                    results += self.details(tmp_evdef, dt_range,
+                                            evdef_org=tmp_evdef_org, show_org=show_org)
+                return sorted(results, key=lambda x: x[0])
+        else:
+            if isinstance(evdef, log2event.MultipleEventDefinition):
+                results = []
+                for tmp_evdef in evdef.members:
+                    results += self.details(tmp_evdef, dt_range, show_org=show_org)
+                return sorted(results, key=lambda x: x[0])
+            evdef_org = evdef
 
         measure = "log_feature"
-        if org:
+        if show_org:
             # It extracts timestamps on valid bins after preprocessing
             # Note: it is impossible to distinguish counts in one bin
             # if it includes periodic and aperiodic components
             s_dt = {dt for dt, values
-                    in self.load_items(measure, evdef.tags(), dt_range)}
+                    in self.load_items(measure, evdef_org.tags(), dt_range)}
             if len(s_dt) == 0:
+                import pdb; pdb.set_trace()
                 msg = ("No time-series for {0}, ".format(evdef) +
                        "inconsistent with tsdb")
                 raise ValueError(msg)
 
-            ev = (evdef.host, evdef.gid)
+            if self._given_amulog_database == "anonymized":
+                ev = (evdef_org.host, evdef_org.gid)
+            elif self._given_amulog_database == "original":
+                ev = (evdef.host, evdef.gid)
+            else:
+                raise ValueError
             l_org_lm = [lm for lm in self.load_org(ev, dt_range)]
             if len(l_org_lm) == 0:
                 msg = ("No logs for {0}, ".format(evdef) +

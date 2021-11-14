@@ -23,6 +23,10 @@ class EventDefinition(ABC):
         for attr in self._l_attr:
             setattr(self, attr, kwargs[attr])
 
+    @property
+    def _attribute_keys(self):
+        return self._l_attr
+
     def key(self):
         return None
 
@@ -47,6 +51,24 @@ class EventDefinition(ABC):
     def all_attr(self, key):
         return {getattr(self, key)}
 
+    def member_identifiers(self):
+        return [self.identifier]
+
+    def match(self, evdef):
+        if isinstance(evdef, MultipleEventDefinition):
+            return any([self.match(tmp_evdef)
+                        for tmp_evdef in evdef.members])
+        else:
+            return self.identifier == evdef.identifier
+
+    def replaced_copy(self, **kwargs):
+        input_kwargs = {}
+        for attr in self._attribute_keys:
+            input_kwargs[attr] = getattr(self, attr)
+
+        input_kwargs.update(kwargs)
+        return type(self)(**input_kwargs)
+
 
 class MultipleEventDefinition(EventDefinition):
     _l_attr = []
@@ -57,6 +79,10 @@ class MultipleEventDefinition(EventDefinition):
 
     def __str__(self):
         return "|".join([str(evdef) for evdef in self._members])
+
+    @property
+    def _attribute_keys(self):
+        return self._l_attr + ["_members"]
 
     @property
     def members(self):
@@ -74,6 +100,20 @@ class MultipleEventDefinition(EventDefinition):
 
     def all_attr(self, key):
         return {getattr(evdef, key) for evdef in self._members}
+
+    def member_identifiers(self):
+        ret = []
+        for evdef in self.members:
+            ret += evdef.member_identifiers()
+        return ret
+
+    def match(self, evdef):
+        self_identifiers = set(self.member_identifiers())
+        if isinstance(evdef, MultipleEventDefinition):
+            given_identifiers = set(evdef.member_identifiers())
+            return len(self_identifiers & given_identifiers) > 0
+        else:
+            return evdef.identifier in self_identifiers
 
 
 class EventDefinitionMap(object):
@@ -231,13 +271,13 @@ class EventDetail:
         with open(path, "w") as f:
             f.write(buf)
 
-    def get_detail(self, args, evdef):
+    def get_detail(self, args, evdef, evdef_org=None):
         if self._load_cache and self.has_cache(args, evdef):
             buf = self.load(args, evdef)
         else:
             conf, dt_range, area = args
             el = self._d_el[evdef.source]
-            data = list(el.details(evdef, dt_range))
+            data = list(el.details(evdef, dt_range, evdef_org=evdef_org))
 
             buf = common.show_repr(
                 data, self._head, self._foot, indent=0,

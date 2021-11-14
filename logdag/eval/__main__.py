@@ -132,13 +132,11 @@ def show_trouble_info(ns):
     tm = trouble.TroubleManager(dirname)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
-    from amulog import lt_label
-    ll = lt_label.init_ltlabel(amulog_conf)
-    gid_name = conf.get("dag", "event_gid")
+    gid_name = conf.get("database_amulog", "event_gid")
 
     tr = tm[tid]
     d_ev, d_gid, d_host = trouble.event_stat(tr, ld, gid_name)
-    d_group = trouble.event_label(d_gid, ld, ll)
+    d_group = trouble.event_label(d_gid, ld, gid_name)
 
     print(tr)
     print("{0} related events".format(len(d_ev)))
@@ -159,13 +157,11 @@ def list_trouble_label(ns):
     tm = trouble.TroubleManager(dirname)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
-    from amulog import lt_label
-    ll = lt_label.init_ltlabel(amulog_conf)
-    gid_name = conf.get("dag", "event_gid")
+    gid_name = conf.get("database_amulog", "event_gid")
 
     for tr in tm:
         d_ev, d_gid, d_host = trouble.event_stat(tr, ld, gid_name)
-        d_group = trouble.event_label(d_gid, ld, ll)
+        d_group = trouble.event_label(d_gid, ld, gid_name)
 
         buf = "{0} ({1}): ".format(tr.tid, tr.data["group"])
         for group, l_gid in sorted(d_group.items(), key=lambda x: len(x[1]),
@@ -183,9 +179,7 @@ def list_trouble_stat(ns):
     tm = trouble.TroubleManager(dirname)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
-    from amulog import lt_label
-    ll = lt_label.init_ltlabel(amulog_conf)
-    gid_name = conf.get("dag", "event_gid")
+    gid_name = conf.get("database_amulog", "event_gid")
 
     from scipy.stats import entropy
 
@@ -195,7 +189,7 @@ def list_trouble_stat(ns):
     for tr in tm:
         line = []
         d_ev, d_gid, d_host = trouble.event_stat(tr, ld, gid_name)
-        d_group = trouble.event_label(d_gid, ld, ll)
+        d_group = trouble.event_label(d_gid, ld, gid_name)
         ent_ev = entropy(list(d_ev.values()), base=2)
         ent_group = entropy([sum([d_gid[gid] for gid in l_gid])
                              for l_gid in d_group.values()],
@@ -252,9 +246,9 @@ def show_match_all(ns):
 def show_match_diff(ns):
     l_conffp = ns.confs
     assert len(l_conffp) == 2
-    openconf = lambda c: config.open_config(
-        c, ex_defaults=[arguments.DEFAULT_CONFIG])
-    conf1, conf2 = [openconf(c) for c in l_conffp]
+    kwargs = {"ex_defaults": [arguments.DEFAULT_CONFIG]}
+    conf1 = config.open_config(l_conffp[0], **kwargs)
+    conf2 = config.open_config(l_conffp[1], **kwargs)
     lv = logging.DEBUG if ns.debug else logging.INFO
     am_logger = logging.getLogger("amulog")
     config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
@@ -319,10 +313,9 @@ def show_match_info(ns):
                 msg = "DAG incompleted for ticket {0}, passed".format(tr.tid)
                 _logger.info(msg)
 
-
     match_edge_sum = sum(d_num.values())
-    #valid_ticket_num = sum([1 for tr in tm
-    #                        if not tr.data["group"] == trouble.EMPTY_GROUP])
+    # valid_ticket_num = sum([1 for tr in tm
+    #                         if not tr.data["group"] == trouble.EMPTY_GROUP])
     detected_ticket_num = sum([1 for v in d_num.values() if v > 0])
 
     valid_ratio = valid_cnt / len(tm)
@@ -345,7 +338,7 @@ def search_trouble(ns):
     tm = trouble.TroubleManager(dirname)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
-    gid_name = conf.get("dag", "event_gid")
+    gid_name = conf.get("database_amulog", "event_gid")
 
     # match group
     if "group" in d:
@@ -362,7 +355,7 @@ def search_trouble(ns):
             for lid in tr.data["message"]:
                 lm = ld.get_line(lid)
                 gid = lm.lt.get(gid_name)
-                host = lm._host
+                host = lm.host
                 if (search_gid is None or search_gid == gid) and \
                         (search_host is None or search_host == host):
                     ret.append(tr)

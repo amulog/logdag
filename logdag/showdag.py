@@ -15,17 +15,18 @@ KEY_WEIGHT = "weight"
 
 class LogDAG:
 
-    def __init__(self, args, graph=None):
+    def __init__(self, args, graph=None, evmap=None):
         self.args = args
         self.conf, self.dt_range, self.area = self.args
         self.name = arguments.args2name(self.args)
         self.graph = graph
+        self._evmap_org = evmap
         self._use_mapping = self.conf.getboolean("database_amulog",
                                                  "use_anonymize_mapping")
 
         # cache
+        self._evmap_valid = None
         self._cache_edges_no_duplication = None
-        self._evmap_obj = None
         self._d_el = None
         self._ed = None
 
@@ -52,14 +53,23 @@ class LogDAG:
                 self._cache_edges_no_duplication.append(edge)
         return self._cache_edges_no_duplication
 
-    def _evmap(self):
-        if self._evmap_obj is None:
+    def _evmap_original(self):
+        if self._evmap_org is None:
             evmap = log2event.EventDefinitionMap()
             evmap.load(self.args)
+        else:
+            evmap = self._evmap_org
+        return evmap
+
+    def _evmap(self):
+        if self._evmap_valid is None:
+            evmap_org = self._evmap_original()
             if self._use_mapping:
-                evmap = self._remap_evmap(evmap)
-            self._evmap_obj = evmap
-        return self._evmap_obj
+                self._evmap_valid = self._remap_evmap(evmap_org)
+            else:
+                self._evmap_valid = evmap_org
+
+        return self._evmap_valid
 
     def _evloader(self):
         if self._d_el is None:
@@ -132,14 +142,15 @@ class LogDAG:
             return evdef
         else:
             new_host = self._evloader()[evdef.source].restore_host(evdef.host)
-            evdef.host = new_host
-            return evdef
+            new_evdef = evdef.replaced_copy(host=new_host)
+            return new_evdef
 
-    def node_evdef(self, node):
-        evmap = self._evmap()
+    def node_evdef(self, node, original=False):
+        if original:
+            evmap = self._evmap_original()
+        else:
+            evmap = self._evmap()
         evdef = evmap.evdef(node)
-        # if self._use_mapping:
-        #     evdef = self._remap_evdef(evdef)
         return evdef
 
     def evdef2node(self, evdef, graph=None):
@@ -149,8 +160,9 @@ class LogDAG:
         node = evmap.get_eid(evdef)
         return node, graph.get_node_data(node)
 
-    def edge_evdef(self, edge):
-        return [self.node_evdef(node) for node in edge[0:2]]
+    def edge_evdef(self, edge, original=False):
+        return [self.node_evdef(node, original=original)
+                for node in edge[0:2]]
 
     def evdef2edge(self, evdef1, evdef2, graph=None, allow_reverse=False):
         """
@@ -325,11 +337,15 @@ class LogDAG:
         return "\n".join(buf)
 
     def node_detail(self, node, header="# ", load_cache=True):
-        evdef = self.node_evdef(node)
+        evdef = self.node_evdef(node, original=False)
+        if self._use_mapping:
+            evdef_org = self.node_evdef(node, original=True)
+        else:
+            evdef_org = None
         buf = [header + "Node {0}: {1}".format(self.node_str(node),
                                                self.node_instruction(node))]
         ed = self._eventdetail(load_cache)
-        detail_output = ed.get_detail(self.args, evdef)
+        detail_output = ed.get_detail(self.args, evdef, evdef_org=evdef_org)
         buf.append(common.add_indent(detail_output, indent=2))
         # buf.append(common.show_repr(
         #     data, head, foot, indent=2,

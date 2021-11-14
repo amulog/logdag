@@ -32,6 +32,10 @@ class SNMPEventDefinition(log2event.EventDefinition):
         return "{0}, {1}@{2}({3})".format(self.host, self.measure,
                                           self.key(), self.group)
 
+    @property
+    def _attribute_keys(self):
+        return self._l_attr + self._l_attr_key + self._l_attr_snmp
+
     def key(self):
         return "@".join([getattr(self, attr) for attr in self._l_attr_key])
 

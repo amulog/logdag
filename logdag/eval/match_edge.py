@@ -29,8 +29,8 @@ def separate_args(conf, tr):
 
 def _match_edge(s_evdef, edge_evdef, rule):
     src_evdef, dst_evdef = edge_evdef
-    src_bool = str(src_evdef) in s_evdef
-    dst_bool = str(dst_evdef) in s_evdef
+    src_bool = len(set(src_evdef.member_identifiers()) & s_evdef) > 0
+    dst_bool = len(set(dst_evdef.member_identifiers()) & s_evdef) > 0
 
     if rule == "all":
         return src_bool or dst_bool
@@ -73,7 +73,7 @@ def match_edges(conf, tr, rule="all", cond=None):
             gid = lm.lt.get(gid_name)
             evdef = evgen_log.LogEventDefinition(
                 source="log", gid=gid, host=lm.host, group=al.label(gid))
-            s_evdef.add(str(evdef))
+            s_evdef = set(evdef.member_identifiers())
 
         r = showdag.LogDAG(args)
         r.load()
