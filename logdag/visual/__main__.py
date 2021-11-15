@@ -425,7 +425,7 @@ ARG_ARGNAME = [["argname"],
                {"metavar": "TASKNAME", "action": "store",
                 "help": "argument name"}]
 ARG_EDGESEARCH = [["conditions"],
-                  {"metavar": "CONDITION", "nargs": "+",
+                  {"metavar": "CONDITION", "nargs": "*",
                    "help": ("Conditions to search edges."
                             "Example: MODE gid=24 host=host01 ..., "
                             "Keys: node, gid, host.")}]
