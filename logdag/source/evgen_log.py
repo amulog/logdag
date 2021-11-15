@@ -200,7 +200,7 @@ class LogEventLoader(evgen_common.EventLoader):
             # Note: it is impossible to distinguish counts in one bin
             # if it includes periodic and aperiodic components
             s_dt = {dt for dt, values
-                    in self.load_items(measure, evdef_org.tags(), dt_range)}
+                    in self.load_items(measure, evdef.tags(), dt_range)}
             if len(s_dt) == 0:
                 import pdb; pdb.set_trace()
                 msg = ("No time-series for {0}, ".format(evdef) +
@@ -208,19 +208,19 @@ class LogEventLoader(evgen_common.EventLoader):
                 raise ValueError(msg)
 
             if self._given_amulog_database == "anonymized":
-                ev = (evdef_org.host, evdef_org.gid)
-            elif self._given_amulog_database == "original":
                 ev = (evdef.host, evdef.gid)
+            elif self._given_amulog_database == "original":
+                ev = (evdef_org.host, evdef_org.gid)
             else:
                 raise ValueError
             l_org_lm = [lm for lm in self.load_org(ev, dt_range)]
             if len(l_org_lm) == 0:
-                msg = ("No logs for {0}, ".format(evdef) +
+                msg = ("No logs for {0}, ".format(ev) +
                        "inconsistent with source")
                 raise ValueError(msg)
             ret = [(lm.dt, lm.host, lm.restore_message()) for lm in l_org_lm]
             if len(ret) == 0:
-                msg = ("No matching logs for {0}, ".format(evdef) +
+                msg = ("No matching logs for {0}, ".format(ev) +
                        "inconsistent with source")
                 raise ValueError(msg)
             assert len(ret) >= len(s_dt), "sanity check failure {0}".format(ev)

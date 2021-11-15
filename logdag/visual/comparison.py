@@ -167,9 +167,9 @@ def edge_direction_diff(conf1, conf2, dt_range):
         for tmp_args in am.args_in_time(dt_range):
             r = showdag.LogDAG(tmp_args)
             r.load()
-            if not r._evmap().has_evdef(ev1):
+            if not r._evmap_original().has_evdef(ev1):
                 continue
-            if not r._evmap().has_evdef(ev2):
+            if not r._evmap_original().has_evdef(ev2):
                 continue
             n1, n2 = [r.evdef2node(ev) for ev in (ev1, ev2)]
             if (n1, n2) in r.graph.edges():

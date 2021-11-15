@@ -53,7 +53,8 @@ class LogDAG:
                 self._cache_edges_no_duplication.append(edge)
         return self._cache_edges_no_duplication
 
-    def _evmap_original(self):
+    def _evmap_input(self):
+        """EventDefinitionMap used in logdag causal analysis"""
         if self._evmap_org is None:
             evmap = log2event.EventDefinitionMap()
             evmap.load(self.args)
@@ -61,9 +62,10 @@ class LogDAG:
             evmap = self._evmap_org
         return evmap
 
-    def _evmap(self):
+    def _evmap_original(self):
+        """EventDefinitionMap where anonymization is restored"""
         if self._evmap_valid is None:
-            evmap_org = self._evmap_original()
+            evmap_org = self._evmap_input()
             if self._use_mapping:
                 self._evmap_valid = self._remap_evmap(evmap_org)
             else:
@@ -145,26 +147,30 @@ class LogDAG:
             new_evdef = evdef.replaced_copy(host=new_host)
             return new_evdef
 
-    def node_evdef(self, node, original=False):
+    def node_evdef(self, node, original=True):
         if original:
             evmap = self._evmap_original()
         else:
-            evmap = self._evmap()
+            evmap = self._evmap_input()
         evdef = evmap.evdef(node)
         return evdef
 
-    def evdef2node(self, evdef, graph=None):
+    def evdef2node(self, evdef, original=True, graph=None):
         if graph is None:
             graph = self.graph
-        evmap = self._evmap()
+        if original:
+            evmap = self._evmap_original()
+        else:
+            evmap = self._evmap_input()
         node = evmap.get_eid(evdef)
         return node, graph.get_node_data(node)
 
-    def edge_evdef(self, edge, original=False):
+    def edge_evdef(self, edge, original=True):
         return [self.node_evdef(node, original=original)
                 for node in edge[0:2]]
 
-    def evdef2edge(self, evdef1, evdef2, graph=None, allow_reverse=False):
+    def evdef2edge(self, evdef1, evdef2, original=True,
+                   graph=None, allow_reverse=False):
         """
         Returns:
             u (int): source node of the edge
@@ -173,7 +179,10 @@ class LogDAG:
         """
         if graph is None:
             graph = self.graph
-        evmap = self._evmap()
+        if original:
+            evmap = self._evmap_original()
+        else:
+            evmap = self._evmap_input()
         node1 = evmap.get_eid(evdef1)
         node2 = evmap.get_eid(evdef2)
 
@@ -184,13 +193,21 @@ class LogDAG:
                 return node2, node1, graph.get_edge_data(node2, node1)
         return None
 
-    def has_node(self, evdef):
-        return self._evmap().has_evdef(evdef)
+    def has_node(self, evdef, original=True):
+        if original:
+            evmap = self._evmap_original()
+        else:
+            evmap = self._evmap_input()
+        return evmap.has_evdef(evdef)
 
-    def has_edge(self, evdef1, evdef2, graph=None, allow_reverse=False):
+    def has_edge(self, evdef1, evdef2, original=True,
+                 graph=None, allow_reverse=False):
         if graph is None:
             graph = self.graph
-        evmap = self._evmap()
+        if original:
+            evmap = self._evmap_original()
+        else:
+            evmap = self._evmap_input()
         if self.has_node(evdef1) and self.has_node(evdef2):
             node1 = evmap.get_eid(evdef1)
             node2 = evmap.get_eid(evdef2)
@@ -315,17 +332,18 @@ class LogDAG:
             return "{0} <-> {1}".format(src_str, dst_str)
 
     def node_str(self, node):
-        return str(node) + "@" + str(self.node_evdef(node))
+        return str(node) + "@" + str(self.node_evdef(node, original=True))
 
     def edge_identifier(self, edge):
-        return "-".join([evdef.identifier for evdef in self.edge_evdef(edge)])
+        return "-".join([evdef.identifier
+                         for evdef in self.edge_evdef(edge, original=True)])
 
     def edge_instruction(self, edge):
         return "\n".join(["< " + self.node_instruction(edge[0]),
                           "> " + self.node_instruction(edge[1])])
 
     def node_instruction(self, node):
-        evdef = self.node_evdef(node)
+        evdef = self.node_evdef(node, original=True)
         return log2event.evdef_instruction(self.conf, evdef, d_el=self._evloader())
 
     def edge_detail(self, edge, load_cache=True, graph=None):
@@ -355,7 +373,7 @@ class LogDAG:
     def node_ts(self, nodes):
         if isinstance(nodes, int):
             nodes = [nodes]
-        l_evdef = [self.node_evdef(node) for node in nodes]
+        l_evdef = [self.node_evdef(node, original=False) for node in nodes]
         df = log2event.load_merged_events(self.conf, self.dt_range, self.area,
                                           l_evdef, self._evloader())
         df.columns = nodes
