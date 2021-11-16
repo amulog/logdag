@@ -44,11 +44,19 @@ def show_minor_edges(ns):
     else:
         context = "edge"
 
-    print(edge_search.show_sorted_edges(ldag, feature=ns.feature,
-                                        score=ns.score,
-                                        reverse=False,
-                                        view_context=context,
-                                        load_cache=(not ns.nocache), graph=g))
+    from ..__main__ import _parse_condition
+    search_condition = _parse_condition(ns.conditions)
+
+    print(edge_search.show_sorted_edges(
+        ldag,
+        search_condition=search_condition,
+        feature=ns.feature,
+        score=ns.score,
+        reverse=False,
+        view_context=context,
+        load_cache=(not ns.nocache),
+        graph=g
+    ))
 
 
 def show_major_edges(ns):
@@ -67,11 +75,19 @@ def show_major_edges(ns):
     else:
         context = "edge"
 
-    print(edge_search.show_sorted_edges(ldag, feature=ns.feature,
-                                        score=ns.score,
-                                        reverse=True,
-                                        view_context=context,
-                                        load_cache=(not ns.nocache), graph=g))
+    from ..__main__ import _parse_condition
+    search_condition = _parse_condition(ns.conditions)
+
+    print(edge_search.show_sorted_edges(
+        ldag,
+        search_condition=search_condition,
+        feature=ns.feature,
+        score=ns.score,
+        reverse=True,
+        view_context=context,
+        load_cache=(not ns.nocache),
+        graph=g
+    ))
 
 
 def show_edges_temporal_sort(ns):
@@ -93,16 +109,24 @@ def show_edges_temporal_sort(ns):
     from logdag import dtutil
     if ns.timestr_end is None:
         dt = dtutil.shortstr2dt(ns.timestr)
-        condition = {"time": dt}
+        time_condition = {"time": dt}
     else:
         dts = dtutil.shortstr2dt(ns.timestr)
         dte = dtutil.shortstr2dt(ns.timestr_end)
-        condition = {"time_range": (dts, dte)}
+        time_condition = {"time_range": (dts, dte)}
 
-    print(edge_search.edge_temporal_sort(ldag, condition,
-                                         reverse=ns.reverse,
-                                         view_context=context,
-                                         load_cache=(not ns.nocache), graph=g))
+    from ..__main__ import _parse_condition
+    search_condition = _parse_condition(ns.conditions)
+
+    print(edge_search.edge_temporal_sort(
+        ldag,
+        time_condition,
+        search_condition=search_condition,
+        reverse=ns.reverse,
+        view_context=context,
+        load_cache=(not ns.nocache),
+        graph=g
+    ))
 
 
 def show_dag_anomaly_score(ns):

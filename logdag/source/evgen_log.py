@@ -36,6 +36,10 @@ class LogEventDefinition(log2event.EventDefinition):
     def _attribute_keys(self):
         return self._l_attr + self._l_attr_log
 
+    @property
+    def identifier(self):
+        return "{0}:{1}".format(self.host, str(self.gid))
+
     def key(self):
         return str(self.gid)
 

@@ -120,6 +120,19 @@ class LogDAG:
             with open(fp, 'rb') as f:
                 self.graph = pickle.load(f)
 
+    def nodes(self):
+        return self.graph.nodes()
+
+    def edges(self, allow_duplication=False, graph=None):
+        if allow_duplication:
+            if graph is None:
+                graph = self.graph
+            return graph.edges()
+        elif graph is None:
+            return self._edges_no_duplication
+        else:
+            return remove_edge_duplication(graph.edges(), self, graph=graph)
+
     def number_of_nodes(self, graph=None):
         if graph is None:
             graph = self.graph

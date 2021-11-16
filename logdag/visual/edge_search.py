@@ -620,12 +620,14 @@ def dag_anomaly_score(conf, feature="edge", score="tfidf"):
     return d_score
 
 
-def show_sorted_edges(ldag, feature="edge", score="tfidf", reverse=False,
+def show_sorted_edges(ldag, search_condition=None, feature="edge", score="tfidf", reverse=False,
                       view_context="edge", load_cache=True, graph=None):
     am = arguments.ArgumentManager(ldag.conf)
     am.load()
 
-    edges = showdag.remove_edge_duplication(ldag.graph.edges(), ldag)
+    edges = [edge for edge
+             in showdag.remove_edge_duplication(ldag.graph.edges(), ldag)
+             if showdag.check_conditions(edge, ldag, search_condition)]
     items = list(edges_anomaly_score(edges, ldag,
                                      feature=feature, score=score, am=am))
     order_reverse = reverse if score == "count" else not reverse
@@ -645,9 +647,9 @@ def show_sorted_edges(ldag, feature="edge", score="tfidf", reverse=False,
     return "\n".join(l_buf)
 
 
-def edge_temporal_sort(ldag, condition, reverse=False,
+def edge_temporal_sort(ldag, time_condition, search_condition=None, reverse=False,
                        view_context="edge", load_cache=True, graph=None):
-    assert "time" in condition or "time_range" in condition
+    assert "time" in time_condition or "time_range" in time_condition
     if graph is None:
         graph = ldag.graph
 
@@ -660,13 +662,13 @@ def edge_temporal_sort(ldag, condition, reverse=False,
         nodes.add(edge[1])
     df_ts = ldag.node_ts(list(nodes))
 
-    if "time" in condition:
-        dt = condition["time"]
+    if "time" in time_condition:
+        dt = time_condition["time"]
         sr_diff_td = (df_ts.index.to_series() + (0.5 * ci_bin_size) - dt).abs()
         sr_diff = sr_diff_td.map(lambda x: x.total_seconds())
         df_score = df_ts.apply(lambda x: x * sr_diff / sum(x))
     else:
-        dts, dte = condition["time_range"]
+        dts, dte = time_condition["time_range"]
         diff = []
         for tmp_ts in df_ts.index:
             ts = tmp_ts + 0.5 * ci_bin_size
@@ -680,7 +682,10 @@ def edge_temporal_sort(ldag, condition, reverse=False,
         df_score = df_ts.apply(lambda x: x * sr_diff / sum(x))
 
     items = []
-    for edge in showdag.remove_edge_duplication(graph.edges(), ldag):
+    edges = [edge for edge
+             in showdag.remove_edge_duplication(ldag.graph.edges(), ldag)
+             if showdag.check_conditions(edge, ldag, search_condition)]
+    for edge in edges:
         score = (sum(df_score[edge[0]]) + sum(df_score[edge[1]])) / 2
         items.append((edge, score))
 
@@ -688,14 +693,15 @@ def edge_temporal_sort(ldag, condition, reverse=False,
     prev = None
     for edge, score in sorted(items, key=lambda x: x[1],
                               reverse=reverse):
-        if score != prev:
-            if prev is not None:
-                l_buf.append("")
-            l_buf.append("[average_diff_sec={0}]".format(score))
-            prev = score
-        msg = showdag.edge_view(edge, ldag, context=view_context,
-                                load_cache=load_cache, graph=graph)
-        l_buf.append(msg)
+        if showdag.check_conditions(edge, ldag, search_condition):
+            if score != prev:
+                if prev is not None:
+                    l_buf.append("")
+                l_buf.append("[average_diff_sec={0}]".format(score))
+                prev = score
+            msg = showdag.edge_view(edge, ldag, context=view_context,
+                                    load_cache=load_cache, graph=graph)
+            l_buf.append(msg)
     return "\n".join(l_buf)
 
 

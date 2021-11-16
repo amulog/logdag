@@ -93,7 +93,7 @@ class MultipleEventDefinition(EventDefinition):
 
     @property
     def identifier(self):
-        return "|".join(sorted([str(evdef) for evdef in self._members]))
+        return "|".join(sorted([evdef.identifier for evdef in self._members]))
 
     def event(self):
         return "|".join(sorted([evdef.event() for evdef in self._members]))

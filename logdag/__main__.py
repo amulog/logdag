@@ -297,6 +297,32 @@ def show_stats_by_threshold(ns):
     print(common.cli_table(list(zip(thresholds, data)), align="right"))
 
 
+def show_group_stats(ns):
+    from . import showdag
+    conf = open_logdag_config(ns)
+
+    from collections import defaultdict
+    d_node = defaultdict(int)
+    d_edge = defaultdict(int)
+    d_event = defaultdict(int)
+    for ldag in showdag.iter_results(conf):
+        l_node = list(ldag.nodes())
+        df = ldag.node_ts(l_node)
+        for node in l_node:
+            evdef = ldag.node_evdef(node)
+            d_node[evdef.group] += 1
+            d_event[evdef.group] += df[node].sum()
+        for edge in ldag.edges():
+            src_evdef, dst_evdef = ldag.edge_evdef(edge)
+            d_edge[src_evdef.group] += 1
+            d_edge[dst_evdef.group] += 1
+
+    table = [["group", "nodes", "edges", "logs"]]
+    for key in d_node.keys():
+        table.append([key, str(d_node[key]), str(d_edge[key]), str(d_event[key])])
+    print(common.cli_table(table))
+
+
 def show_node_ts(ns):
     from . import showdag
     conf = open_logdag_config(ns)
@@ -540,6 +566,9 @@ DICT_ARGSET = {
     "show-stats-by-threshold": ["Show sum of edges by thresholds",
                                 [OPT_CONFIG, OPT_DEBUG, OPT_RANGE],
                                 show_stats_by_threshold],
+    "show-group-stats": ["Show stats classified by amulog tags",
+                         [OPT_CONFIG, OPT_DEBUG],
+                         show_group_stats],
     "show-node-ts": ["Show time-series of specified nodes in csv format",
                      [OPT_CONFIG, OPT_DEBUG,
                       ARG_ARGNAME,
