@@ -1,0 +1,16 @@
+language: python
+python:
+- '3.7'
+- '3.8'
+install:
+- pip install -r requirements.txt
+script:
+- python -m unittest tests/*.py
+deploy:
+  provider: pypi
+  username: __token__
+  password:
+    secure: jb1xIW1o9KPx0lK8JgQ+rXJm/97j8DozjBln43NivMKxlwgkEAteS4JpD3RHjcE5/LeLTzP4IuXztrzH6mdRdM9hTcm6UvUkJUn1CYZc0vEpJyou5AGPdj2f9CmLHtmRoQ5LS5mYEV1ZvqgRQB1XmDebhQ7x4E8/Z700AUQZJWpCLX6fAyKsgibNWT/gpKZN3qg3iRZhYMVW7vpjsjIrQUmxfbteVFD6jDs/nh3/Kx+kFUcl1IebaK2upMnumSyZh+LU0MPO8Y7NHpT1nlwJM7OGWV62QfQmfoVBhKyxNinOplZKNlX81TQOabu706uousA6tGHi83pwOgkKi1JAKgGsnITdBpn4xTceAqtw7FeCsRitJbAQhouSA8LIWhguqUISLnRj1BAT10Br9vqH0Qj3NK0rSwWKknmZtabnQTPsPfb2KcpdzuS6j/tj19N5A4UCdF4v9zQE8WuVpzKSPLdT+viy8kEwDdj3HUFKH50L3mRI6OQ1kXtokAPoD9KG/DAjZjJkq8NGVptEH4ebGNHXY7d1gJlQBLH9+jIKwre8zatU1NGH/wG3vNSZjZym12Ze/oPHCfRY4mbqjbfmKydOe39ytQmq9iGudWyPs3a3T54xPLi4ZMRtxZPLnlPurYtRTMkpHUlfimKjFIMt0ENNrJ0W+seoKsDZH0UhhZQ=
+  skip_existing: true
+  on:
+    tags: true
