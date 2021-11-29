@@ -74,7 +74,7 @@ def match_edges(conf, tr, rule="all", cond=None):
             evdef = evgen_log.LogEventDefinition(
                 source="log", gid=gid, host=lm.host, group=al.group(gid)
             )
-            s_evdef = set(evdef.member_identifiers())
+            s_evdef = s_evdef | set(evdef.member_identifiers())
 
         r = showdag.LogDAG(args)
         r.load()

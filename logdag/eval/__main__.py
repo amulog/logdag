@@ -21,8 +21,7 @@ def add_trouble(ns):
     conf = open_logdag_config(ns)
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     tr = tm.add(ns.date, ns.group, ns.title)
     print(tr.tid)
@@ -32,8 +31,7 @@ def add_lids(ns):
     conf = open_logdag_config(ns)
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     tm.add_lids(ns.tid, ns.lids)
 
@@ -42,8 +40,7 @@ def add_lids_stdin(ns):
     conf = open_logdag_config(ns)
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     lids = [int(v) for v in input()]
     tm.add_lids(ns.tid, lids)
@@ -53,8 +50,7 @@ def label_trouble(ns):
     conf = open_logdag_config(ns)
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     tm.update(ns.tid, group=ns.group)
 
@@ -63,8 +59,7 @@ def list_trouble(ns):
     conf = open_logdag_config(ns)
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     for tr in tm:
         print(tr)
@@ -73,8 +68,7 @@ def list_trouble(ns):
 def list_group(ns):
     conf = open_logdag_config(ns)
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     d = defaultdict(list)
     for tr in tm:
@@ -98,8 +92,7 @@ def show_lids(ns):
     tid = ns.tid
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     tr = tm[tid]
     print(tr)
@@ -112,8 +105,7 @@ def show_trouble(ns):
     tid = ns.tid
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
 
@@ -128,8 +120,7 @@ def show_trouble_info(ns):
     tid = ns.tid
 
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
     gid_name = conf.get("database_amulog", "event_gid")
@@ -153,8 +144,7 @@ def list_trouble_label(ns):
     conf = open_logdag_config(ns)
     amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
     gid_name = conf.get("database_amulog", "event_gid")
@@ -175,8 +165,7 @@ def list_trouble_stat(ns):
     conf = open_logdag_config(ns)
     amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
     gid_name = conf.get("database_amulog", "event_gid")
@@ -211,8 +200,7 @@ def list_trouble_stat(ns):
 def show_match(ns):
     conf = open_logdag_config(ns)
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     from logdag import showdag
     from . import match_edge
@@ -231,8 +219,7 @@ def show_match(ns):
 def show_match_all(ns):
     conf = open_logdag_config(ns)
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     from . import match_edge
     for tr in tm:
@@ -254,8 +241,7 @@ def show_match_diff(ns):
     config.set_common_logging(conf1, logger=[_logger, am_logger], lv=lv)
 
     from . import trouble
-    dirname = conf1.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf1)
 
     def _dag_from_name(conf, name):
         args = arguments.name2args(name, conf)
@@ -295,8 +281,7 @@ def show_match_diff(ns):
 def show_match_info(ns):
     conf = open_logdag_config(ns)
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
 
     from . import match_edge
     valid_cnt = 0
@@ -334,8 +319,7 @@ def search_trouble(ns):
     amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
     d = parse_condition(ns.conditions)
     from . import trouble
-    dirname = conf.get("eval", "path")
-    tm = trouble.TroubleManager(dirname)
+    tm = trouble.init_trouble_manager(conf)
     from amulog import log_db
     ld = log_db.LogData(amulog_conf)
     gid_name = conf.get("database_amulog", "event_gid")

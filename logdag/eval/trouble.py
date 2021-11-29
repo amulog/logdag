@@ -18,6 +18,8 @@ class Trouble:
         if len(kwargs) > 0:
             self.set(**kwargs)
 
+        self._dirname = None
+
     def __str__(self):
         header = "Trouble {0}:".format(self.tid)
         for k in ("date", "group", "title"):
@@ -60,9 +62,14 @@ class Trouble:
         fp = cls._filepath(tid, dirname)
         with open(fp, 'r', encoding='utf-8') as f:
             tr.data = json.load(f)
+        tr._dirname = dirname
         return tr
 
-    def dump(self, dirname):
+    def dump(self, dirname=None):
+        if dirname is None:
+            if self._dirname is None:
+                raise ValueError("dirname required for new Trouble object")
+            dirname = self._dirname
         fp = self._filepath(self.tid, dirname)
         obj = self.data
         with open(fp, 'w', encoding='utf-8') as f:
@@ -131,6 +138,11 @@ class TroubleManager:
         tr.set(**kwargs)
         tr.dump(self._dirname)
         return tr
+
+
+def init_trouble_manager(conf):
+    dirname = conf.get("eval", "path")
+    return TroubleManager(dirname=dirname)
 
 
 def event_stat(tr, ld, gid_name):
