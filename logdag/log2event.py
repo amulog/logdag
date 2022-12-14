@@ -2,6 +2,7 @@ import os
 import logging
 import pickle
 from abc import ABC, abstractmethod
+from typing import Iterable
 import pandas as pd
 import numpy as np
 
@@ -48,8 +49,27 @@ class EventDefinition(ABC):
         else:
             return [group]
 
-    def all_attr(self, key):
+    def all_attr(self, key: str) -> set:
         return {getattr(self, key)}
+
+    @staticmethod
+    def attr_and(iterable: Iterable, key: str):
+        tmp = None
+        for evdef in iterable:
+            assert isinstance(evdef, EventDefinition)
+            if tmp is None:
+                tmp = evdef.all_attr(key)
+            else:
+                tmp = tmp & evdef.all_attr(key)
+        return tmp
+
+    @staticmethod
+    def attr_or(iterable: Iterable, key: str):
+        tmp = set()
+        for evdef in iterable:
+            assert isinstance(evdef, EventDefinition)
+            tmp = tmp | evdef.all_attr(key)
+        return tmp
 
     def member_identifiers(self):
         return [self.identifier]

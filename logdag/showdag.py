@@ -1,3 +1,4 @@
+import os
 import pickle
 import networkx as nx
 from collections import defaultdict
@@ -105,7 +106,7 @@ class LogDAG:
         dag_format = self.conf["dag"]["output_dag_format"]
         fp = arguments.ArgumentManager.dag_path(self.conf, self.args,
                                                 ext=dag_format)
-        try:
+        if os.path.exists(fp):
             if dag_format == "pickle":
                 with open(fp, 'rb') as f:
                     self.graph = pickle.load(f)
@@ -114,11 +115,8 @@ class LogDAG:
                 with open(fp, 'r', encoding='utf-8') as f:
                     obj = json.load(f)
                     self.graph = nx.node_link_graph(obj, directed=True)
-        except:
-            # compatibility
-            fp = arguments.ArgumentManager.dag_path_old(self.args)
-            with open(fp, 'rb') as f:
-                self.graph = pickle.load(f)
+        else:
+            self.graph = nx.DiGraph()
 
     def nodes(self):
         return self.graph.nodes()

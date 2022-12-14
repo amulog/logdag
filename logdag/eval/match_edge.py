@@ -48,7 +48,8 @@ def _match_edge(s_evdef, edge_evdef, rule):
         raise ValueError
 
 
-def match_edges(conf, tr, rule="all", cond=None):
+def match_edges(conf, tr,
+                rule="all", cond=None, get_ldag_objects=False):
 
     def _pass_condition(edge_evdef, condition):
         if condition is None:
@@ -67,6 +68,7 @@ def match_edges(conf, tr, rule="all", cond=None):
     gid_name = conf.get("database_amulog", "event_gid")
 
     d_results = defaultdict(list)
+    d_ldag = {}
     for args, l_lm in separate_args(conf, tr):
         s_evdef = set()
         for lm in l_lm:
@@ -76,13 +78,17 @@ def match_edges(conf, tr, rule="all", cond=None):
             )
             s_evdef = s_evdef | set(evdef.member_identifiers())
 
-        r = showdag.LogDAG(args)
-        r.load()
-        g = r.graph.to_undirected()
+        ldag = showdag.LogDAG(args)
+        ldag.load()
+        g = ldag.graph.to_undirected()
         for edge in g.edges():
-            edevdef = r.edge_evdef(edge)
+            edevdef = ldag.edge_evdef(edge)
             if _pass_condition(edevdef, cond) and \
                     _match_edge(s_evdef, edevdef, rule):
-                d_results[r.name].append(edge)
+                d_results[ldag.name].append(edge)
+        d_ldag[ldag.name] = ldag
 
-    return d_results
+    if get_ldag_objects:
+        return d_results, d_ldag
+    else:
+        return d_results

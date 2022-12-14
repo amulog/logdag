@@ -25,8 +25,9 @@ short usage:
 2. Prepare logdag config file by referring :code:`logdag/data/config.conf.default`
 3. Generate time-series db by :code:`logdag.source` features
 4. Generate DAGs by subcommand :code:`makedag`
-5. See results by commands such as :code:`show-edge-list`
+5. See results by commands such as :code:`show-subgraphs`
 
+See tutorial directory for more information.
 
 Reference
 =========

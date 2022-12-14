@@ -185,7 +185,7 @@ skeleton_verbose = false
 
 # merge event nodes that have completely same values
 merge_syncevent = false
-merge_syncevent_rules = host, group
+merge_syncevent_rules = source, host, group
 
 # Argument manager file
 # default: args_<config_filename>

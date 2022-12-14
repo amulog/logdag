@@ -51,7 +51,7 @@ if __name__ == "__main__":
                           for lm in ld2.iter_lines(**kwargs)]
             if len(candidates) == 0:
                 with open(FAILURE_OUTPUT, 'a') as f:
-                    f.write("Ticket {0} lid {1}: {2}".format(
+                    f.write("Ticket {0} lid {1}: {2}\n".format(
                         src_tr.tid, lid, src_lm.restore_line()
                     ))
             else:

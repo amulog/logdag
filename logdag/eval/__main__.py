@@ -202,6 +202,13 @@ def show_match(ns):
     from . import trouble
     tm = trouble.init_trouble_manager(conf)
 
+    if ns.detail:
+        context = "detail"
+    elif ns.instruction:
+        context = "instruction"
+    else:
+        context = "edge"
+
     from logdag import showdag
     from . import match_edge
     tr = tm[ns.tid]
@@ -209,11 +216,13 @@ def show_match(ns):
     cnt = sum([len(l_edge) for l_edge in d_args.values()])
     print("{0[date]} ({0[group]}): {1}".format(tr.data, cnt))
     for name, l_edge in d_args.items():
-        r = showdag.LogDAG(arguments.name2args(name, conf))
-        r.load()
+        ldag = showdag.LogDAG(arguments.name2args(name, conf))
+        ldag.load()
         for edge in l_edge:
-            edgestr = r.edge_str(edge, graph=r.graph.to_undirected())
-            print(name, edgestr)
+            msg = showdag.edge_view(edge, ldag, context=context,
+                                    load_cache=(not ns.nocache),
+                                    graph=ldag.graph.to_undirected())
+            print(name, msg)
 
 
 def show_match_all(ns):
@@ -390,6 +399,15 @@ OPT_CONDITION = [["-e", "--edge-condition"],
                  {"dest": "cond", "action": "store",
                   "type": str, "default": None,
                   "help": "rules for matched edges, [xhost] is now available"}]
+OPT_INSTRUCTION = [["--instruction"],
+                   {"dest": "instruction", "action": "store_true",
+                    "help": "show event definition with source information"}]
+OPT_DETAIL = [["-d", "--detail"],
+              {"dest": "detail", "action": "store_true",
+               "help": "show event time-series samples"}]
+OPT_IGNORE_CACHE = [["--nocache"],
+                    {"dest": "nocache", "action": "store_true",
+                     "help": "ignore existing cache"}]
 ARG_TID = [["tid"],
            {"metavar": "TID", "action": "store", "type": int,
             "help": "trouble identifier"}]
@@ -453,7 +471,10 @@ DICT_ARGSET = {
                        [OPT_CONFIG, OPT_DEBUG, ARG_SEARCH],
                        search_trouble],
     "show-match": ["Show matching edges with a ticket",
-                   [OPT_CONFIG, OPT_DEBUG, OPT_RULE, OPT_CONDITION, ARG_TID],
+                   [OPT_CONFIG, OPT_DEBUG,
+                    OPT_RULE, OPT_CONDITION,
+                    OPT_INSTRUCTION, OPT_DETAIL, OPT_IGNORE_CACHE,
+                    ARG_TID],
                    show_match],
     "show-match-all": ["Show matching edges with all tickets",
                        [OPT_CONFIG, OPT_DEBUG, OPT_RULE, OPT_CONDITION],
