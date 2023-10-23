@@ -2,12 +2,14 @@
 # coding: utf-8
 
 import pandas as pd
+import numpy as np
 import logging
 
 from amulog import config
 from logdag import log2event
 from . import evgen_common
 from . import filter_log
+from . import convert
 
 _logger = logging.getLogger(__package__)
 
@@ -55,17 +57,17 @@ class LogEventDefinition(log2event.EventDefinition):
         return str(self.gid)
 
 
-class LogEventLoader(evgen_common.EventLoader):
-    fields = ["val", ]
+class LogEventLoaderBase(object):
 
-    def __init__(self, conf, dry=False):
-        super().__init__(conf, dry=dry)
+    def __init__(self, conf):
         src = conf["general"]["log_source"]
         if src == "amulog":
             from . import src_amulog
+            conf_path = conf["database_amulog"]["source_conf"]
+            amulog_conf = config.open_config(conf_path)
             args = [
+                amulog_conf,
                 config.getterm(conf, "general", "evdb_whole_term"),
-                conf["database_amulog"]["source_conf"],
                 conf["database_amulog"]["event_gid"],
                 conf.getboolean("database_amulog",
                                 "use_anonymize_mapping")
@@ -73,26 +75,8 @@ class LogEventLoader(evgen_common.EventLoader):
             self.source = src_amulog.AmulogLoader(*args)
         else:
             raise NotImplementedError
-        self._filter_rules = config.getlist(conf, "filter", "rules")
-        for method in self._filter_rules:
-            assert method in filter_log.FUNCTIONS
 
-        self.evdb = self._init_evdb(conf, "log_dbname")
-#        dst = conf["general"]["evdb"]
-#        if dst == "influx":
-#            dbname = conf["database_influx"]["log_dbname"]
-#            from . import influx
-#            self.evdb = influx.init_influx(conf, dbname, df=False)
-#            # self.evdb_df = influx.init_influx(conf, dbname, df = True)
-#        else:
-#            raise NotImplementedError
-
-        self._lf = None
-        if len(self._filter_rules) > 0:
-            self._lf = filter_log.init_logfilter(conf, self.source)
-        self._feature_unit_diff = config.getdur(conf,
-                                                "general", "evdb_unit_diff")
-        self._given_amulog_database = conf["database_amulog"]["given_amulog_database"]
+        self._lf = self._init_filters(conf)
 
     @staticmethod
     def _evdef(host, gid, group):
@@ -102,20 +86,44 @@ class LogEventLoader(evgen_common.EventLoader):
              "gid": gid}
         return LogEventDefinition(**d)
 
-    def _apply_filter(self, l_dt, dt_range, ev):
-        tmp_l_dt = l_dt
+    def iter_evdef(self, dt_range=None):
+        for host, gid in self.source.iter_event(dt_range=dt_range):
+            group = self.source.group(gid)
+            d = {"source": log2event.SRCCLS_LOG,
+                 "host": host,
+                 "group": group,
+                 "gid": gid}
+            yield LogEventDefinition(**d)
+
+    def _init_filters(self, conf):
+        self._filter_rules = config.getlist(conf, "filter", "rules")
         for method in self._filter_rules:
-            args = (tmp_l_dt, dt_range, ev)
-            tmp_l_dt = getattr(self._lf, method)(*args)
-            if method == "sizetest" and tmp_l_dt is None:
-                # sizetest failure means skipping later tests
-                # and leave all events
-                return l_dt
-            elif tmp_l_dt is None or len(tmp_l_dt) == 0:
-                msg = "event {0} removed with {1}".format(ev, method)
-                _logger.info(msg)
-                return None
-        return tmp_l_dt
+            assert method in filter_log.FUNCTIONS
+
+        if len(self._filter_rules) > 0:
+            return filter_log.init_logfilter(conf, mode="evdb", loader=self.source)
+        else:
+            return None
+
+    def _apply_filters(self, l_dt, dt_range, ev):
+        if self._lf is None:
+            return l_dt
+        else:
+            return self._lf.apply_filters(l_dt, dt_range, ev)
+
+
+class LogEventLoader(evgen_common.EventLoader, LogEventLoaderBase):
+    fields = ["val", ]
+
+    def __init__(self, conf, dry=False):
+        evgen_common.EventLoader.__init__(self, conf, dry=dry)
+        LogEventLoaderBase.__init__(self, conf)
+
+        self.evdb = self._init_evdb(conf, "log_dbname")
+
+        self._feature_unit_diff = config.getdur(conf,
+                                                "general", "evdb_unit_diff")
+        self._given_amulog_database = conf["database_amulog"]["given_amulog_database"]
 
     def read_all(self, dump_org=False):
         return self.read(dt_range=None, dump_org=dump_org)
@@ -136,7 +144,7 @@ class LogEventLoader(evgen_common.EventLoader):
                 _logger.info("added org {0} size {1}".format(
                     (host, gid), len(l_dt)))
                 pass
-            feature_dt = self._apply_filter(l_dt, dt_range, ev)
+            feature_dt = self._apply_filters(l_dt, dt_range, ev)
             if feature_dt is not None:
                 self.dump(FEATURE_MEASUREMENT, host, gid, feature_dt)
                 _logger.info("added feature {0} size {1}".format(
@@ -159,15 +167,6 @@ class LogEventLoader(evgen_common.EventLoader):
     def load_org(self, ev, dt_range):
         """Yields: LogMessage"""
         return self.source.load_org(ev, dt_range)
-
-    def iter_evdef(self, dt_range=None):
-        for host, gid in self.source.iter_event(dt_range=dt_range):
-            group = self.source.group(gid)
-            d = {"source": log2event.SRCCLS_LOG,
-                 "host": host,
-                 "group": group,
-                 "gid": gid}
-            yield LogEventDefinition(**d)
 
     def restore_host(self, host):
         return self.source.restore_host(host)
@@ -237,3 +236,32 @@ class LogEventLoader(evgen_common.EventLoader):
                 raise ValueError(msg)
 
         return ret
+
+
+class LogEventLoaderDirect(evgen_common.EventLoader, LogEventLoaderBase):
+    fields = ["val", ]
+
+    def __init__(self, conf, dry=False):
+        evgen_common.EventLoader.__init__(self, conf, dry=dry)
+        LogEventLoaderBase.__init__(self, conf)
+
+    def load(self, measure, tags, dt_range, binsize):
+        host = tags["host"]
+        gid = int(tags["key"])
+        ev = (host, gid)
+        l_dt = self.source.load(ev)
+        l_values = [[float(1)] * len(self.fields)] * len(l_dt)
+        df = convert.timestamps2df(l_dt, l_values, self.fields, dt_range, binsize)
+        return df
+
+    def load_items(self, measure, tags, dt_range):
+        host = tags["host"]
+        gid = int(tags["key"])
+        ev = (host, gid)
+        l_dt = self.source.load(ev)
+        feature_dt = self._apply_filters(l_dt, dt_range, ev)
+
+        for dt in feature_dt:
+            yield dt, np.array([1.0])
+
+

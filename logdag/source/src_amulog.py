@@ -4,15 +4,17 @@
 from collections import defaultdict
 from dateutil.tz import tzlocal
 
-from amulog import config
 from amulog import log_db
 
 
 class AmulogLoader(object):
 
-    def __init__(self, dt_range, conf_path, gid_name, use_mapping):
-        self.conf = config.open_config(conf_path)
-        self._ld = log_db.LogData(self.conf)
+    def __init__(self, conf, dt_range=None, gid_name="ltid", use_mapping=False, ld=None):
+        self.conf = conf
+        if ld is not None:
+            self._ld = ld
+        else:
+            self._ld = log_db.LogData(self.conf)
         self._gid_name = gid_name
         self.dt_range = dt_range
 
@@ -22,6 +24,10 @@ class AmulogLoader(object):
             from amulog import anonymize
             self._mapper = anonymize.AnonymizeMapper(self.conf)
             self._mapper.load()
+
+    @classmethod
+    def from_ld(cls, ld):
+        return AmulogLoader(ld.conf, ld=ld)
 
     def restore_host(self, host):
         if self._mapper:

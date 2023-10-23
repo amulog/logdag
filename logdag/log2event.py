@@ -375,9 +375,13 @@ def load_event(measure, tags, dt_range, ci_bin_size, ci_bin_diff,
 
 
 def load_event_log_all(conf, dt_range, area, d_el=None):
+    use_evdb = conf.getboolean("general", "use_evdb")
     if d_el is None:
         from .source import evgen_log
-        el = evgen_log.LogEventLoader(conf)
+        if use_evdb:
+            el = evgen_log.LogEventLoader(conf)
+        else:
+            el = evgen_log.LogEventLoaderDirect(conf)
     else:
         el = d_el[SRCCLS_LOG]
 
@@ -386,6 +390,7 @@ def load_event_log_all(conf, dt_range, area, d_el=None):
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
+    import pdb; pdb.set_trace()
     for evdef in el.iter_evdef(dt_range):
         measure, tags = evdef.series()
         if not areatest.test(area, tags["host"]):

@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import datetime
+import logging
 import math
 import numpy as np
 
@@ -9,11 +10,13 @@ from amulog import config
 from logdag import dtutil
 from . import period
 
+_logger = logging.getLogger(__package__)
+
 FUNCTIONS = ["sizetest", "filter_periodic",
              "remove_periodic", "remove_corr", "remove_linear"]
 
 
-class LogFilter():
+class LogFilter(object):
     """Filter log time-series and record their periodicity."""
 
     defaults = {"pre_count": 5,
@@ -37,23 +40,54 @@ class LogFilter():
                 "linear_th": 0.5,
                 }
 
-    def __init__(self, source, **kwargs):
+    def __init__(self,
+                 rules=None,
+                 pre_count=defaults["pre_count"],
+                 pre_term=defaults["pre_term"],
+                 fourier_sample_rule=defaults["fourier_sample_rule"],
+                 fourier_th_spec=defaults["fourier_th_spec"],
+                 fourier_th_eval=defaults["fourier_th_eval"],
+                 fourier_th_restore=defaults["fourier_th_restore"],
+                 fourier_peak_order=defaults["fourier_peak_order"],
+                 corr_sample_rule=defaults["corr_sample_rule"],
+                 corr_th=defaults["corr_th"],
+                 corr_diff=defaults["corr_diff"],
+                 linear_sample_rule=defaults["linear_sample_rule"],
+                 linear_count=defaults["linear_count"],
+                 linear_th=defaults["linear_th"],
+                 ):
+        self._rules = [] if rules is None else rules
         self._log = {}
-        self._source = source
-        for k in self.defaults:
-            if k in kwargs:
-                setattr(self, "_" + k, kwargs[k])
-            else:
-                setattr(self, "_" + k, self.defaults[k])
+        self._pre_count = pre_count
+        self._pre_term = pre_term
+        self._fourier_sample_rule = fourier_sample_rule
+        self._fourier_th_spec = fourier_th_spec
+        self._fourier_th_eval = fourier_th_eval
+        self._fourier_th_restore = fourier_th_restore
+        self._fourier_peak_order = fourier_peak_order
+        self._corr_sample_rule = corr_sample_rule
+        self._corr_th = corr_th
+        self._corr_diff = corr_diff
+        self._linear_sample_rule = linear_sample_rule
+        self._linear_count = linear_count
+        self._linear_th = linear_th
+
+        #for k in self.defaults:
+        #    if k in kwargs:
+        #        setattr(self, "_" + k, kwargs[k])
+        #    else:
+        #        setattr(self, "_" + k, self.defaults[k])
 
     def sizetest(self, l_dt, dt_range, evdef):
         if len(l_dt) < self._pre_count or \
                 max(l_dt) - min(l_dt) < self._pre_term:
-            l = ("sizetest", None, None)
-            self._log[(dt_range, evdef)] = l
+            self._log[(dt_range, evdef)] = ("sizetest", None, None)
             return None
         else:
             return l_dt
+
+    def _get_additional_data(self, dt_range, evdef):
+        raise NotImplementedError
 
     def _resize_input(self, l_dt, dt_range, sample_dt_length, evdef):
         dt_length = dt_range[1] - dt_range[0]
@@ -65,7 +99,7 @@ class LogFilter():
             return new_l_dt
         else:
             add_dt_range = (dt_range[1] - sample_dt_length, dt_range[0])
-            add_dt = self._source.load(evdef, dt_range=add_dt_range)
+            add_dt = self._get_additional_data(evdef, add_dt_range)
             return sorted(add_dt + l_dt)
 
     @staticmethod
@@ -150,9 +184,48 @@ class LogFilter():
         else:
             return l_dt
 
+    def apply_filters(self, l_dt, dt_range, ev):
+        tmp_l_dt = l_dt
+        for method in self._rules:
+            args = (tmp_l_dt, dt_range, ev)
+            # import pdb; pdb.set_trace()
+            tmp_l_dt = getattr(self, method)(*args)
+            if method == "sizetest" and tmp_l_dt is None:
+                # sizetest failure means skipping later tests
+                # and leave all events
+                return l_dt
+            elif tmp_l_dt is None or len(tmp_l_dt) == 0:
+                msg = "event {0} removed with {1}".format(ev, method)
+                _logger.info(msg)
+                return None
+        return tmp_l_dt
 
-def init_logfilter(conf, source):
-    kwargs = dict(conf["filter"])
+
+class LogFilterEVDB(LogFilter):
+
+    def __init__(self, source, **kwargs):
+        super().__init__(**kwargs)
+        self._source = source
+
+    def _get_additional_data(self, evdef, dt_range):
+        return self._source.load(evdef, dt_range=dt_range)
+
+
+class LogFilterAmulogLoader(LogFilter):
+
+    def __init__(self, al, **kwargs):
+        super().__init__(**kwargs)
+        self._al = al
+
+    def _get_additional_data(self, evdef, dt_range):
+        ev = (evdef.host, evdef.gid)
+        return self._al.iter_dt(ev, dt_range=dt_range)
+
+
+def init_logfilter(conf, mode="direct", loader=None):
+    # kwargs = dict(conf["filter"])
+    kwargs = {}
+    kwargs["rules"] = config.getlist(conf, "filter", "rules")
     kwargs["pre_count"] = conf.getint("filter", "pre_count")
     kwargs["pre_term"] = config.getdur(conf, "filter", "pre_term")
     kwargs["fourier_sample_rule"] = [
@@ -179,4 +252,7 @@ def init_logfilter(conf, source):
     kwargs["linear_count"] = conf.getint("filter", "linear_count")
     kwargs["linear_th"] = conf.getfloat("filter", "linear_th")
 
-    return LogFilter(source, **kwargs)
+    if mode == "evdb":
+        return LogFilterEVDB(loader, **kwargs)
+    elif mode == "direct":
+        return LogFilterAmulogLoader(loader, **kwargs)

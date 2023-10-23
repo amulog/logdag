@@ -2,6 +2,8 @@
 
 [general]
 
+use_evdb = true
+
 # Fetching term of RRD data for DB
 evdb_whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
 
