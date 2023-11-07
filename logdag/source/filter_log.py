@@ -99,7 +99,7 @@ class LogFilter(object):
             return new_l_dt
         else:
             add_dt_range = (dt_range[1] - sample_dt_length, dt_range[0])
-            add_dt = self._get_additional_data(evdef, add_dt_range)
+            add_dt = list(self._get_additional_data(evdef, add_dt_range))
             return sorted(add_dt + l_dt)
 
     @staticmethod
