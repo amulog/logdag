@@ -3,7 +3,6 @@
 
 import datetime
 import logging
-import math
 import numpy as np
 
 from amulog import config
@@ -95,7 +94,7 @@ class LogFilter(object):
             return l_dt
         elif dt_length > sample_dt_length:
             new_dt_range = (dt_range[1] - sample_dt_length, dt_range[1])
-            new_l_dt = [dt >= new_dt_range[0] for dt in l_dt]
+            new_l_dt = [dt for dt in l_dt if dt >= new_dt_range[0]]
             return new_l_dt
         else:
             add_dt_range = (dt_range[1] - sample_dt_length, dt_range[0])
@@ -165,18 +164,20 @@ class LogFilter(object):
             if len(tmp_l_dt) < self._linear_count:
                 continue
 
-            # generate time-series cumulative sum
-            length = (dt_range[1] - dt_range[0]).total_seconds()
-            bin_length = binsize.total_seconds()
-            bins = math.ceil(1.0 * length / bin_length)
-            a_stat = np.array([0] * int(bins))
-            for dt in l_dt:
-                cnt = int((dt - dt_range[0]).total_seconds() / bin_length)
-                assert cnt < len(a_stat)
-                a_stat[cnt:] += 1
+            # cumulative count over dt_range bins (resized input, consistent
+            # with filter_periodic / remove_corr; out-of-range dt is ignored
+            # by discretize_sequential)
+            a_cnt = dtutil.discretize_sequential(tmp_l_dt, dt_range, binsize,
+                                                 binarize=False)
+            bins = len(a_cnt)
+            a_stat = np.cumsum(a_cnt)
+            n = int(a_stat[-1]) if bins > 0 else 0
+            if n == 0:
+                continue
 
-            a_linear = np.linspace(0, len(l_dt), bins, endpoint=False)
-            val = sum((a_stat - a_linear) ** 2) / (bins * len(l_dt))
+            # deviation from an ideal straight line (uniform rate) reaching n
+            a_linear = np.linspace(0, n, bins)
+            val = sum((a_stat - a_linear) ** 2) / (bins * n)
             if val < self._linear_th:
                 l = ("remove_linear", (sample_dt_length, binsize), None)
                 self._log[(dt_range, evdef)] = l

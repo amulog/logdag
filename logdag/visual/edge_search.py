@@ -75,9 +75,11 @@ class DAGSimilarity(arguments.WholeCacheBase, ABC):
                             index=self._counter.vector_index)
 
     def similarity(self, jobname1, jobname2):
-        data1 = self._matrix[jobname1]
-        data2 = self._matrix[jobname2]
-        return cosine_similarity(data1, data2)
+        # columns are 1-D Series; cosine_similarity expects 2-D
+        # (n_samples, n_features), so reshape and return the scalar score.
+        data1 = np.asarray(self._matrix[jobname1]).reshape(1, -1)
+        data2 = np.asarray(self._matrix[jobname2]).reshape(1, -1)
+        return cosine_similarity(data1, data2)[0][0]
 
     @staticmethod
     def _renumber_clustering(labels):
@@ -290,7 +292,7 @@ class EventPairCount(arguments.WholeCacheBase):
         """
         jobname = self._am.jobname(ldag.args)
         key = self.evpair_key(node1, node2, ldag)
-        local_count = len(self._d_evpair_count[jobname][key])
+        local_count = self._d_evpair_count[jobname][key]
         whole_count = len(self._d_evpair_args[key])
         return local_count, whole_count
 
@@ -580,7 +582,7 @@ def edges_anomaly_score(edges, ldag, feature="edge", score="tfidf",
             if score == "tfidf":
                 yield edge, counter.get_tfidf(edge, ldag)
             elif score == "idf":
-                yield edge, counter.get_tfidf(edge, ldag)
+                yield edge, counter.get_idf(edge, ldag)
             elif score == "count":
                 yield edge, counter.get_edge_count(edge, ldag)
             else:
@@ -613,10 +615,11 @@ def dag_anomaly_score(conf, feature="edge", score="tfidf"):
         ldag = showdag.LogDAG(args)
         ldag.load()
         edges = showdag.remove_edge_duplication(ldag.graph.edges(), ldag)
-        score = sum(edges_anomaly_score(edges, ldag, feature=feature,
-                                        score=score,
-                                        counter=counter, am=am))
-        d_score[jobname] = score
+        total = sum(val for _edge, val
+                    in edges_anomaly_score(edges, ldag, feature=feature,
+                                           score=score,
+                                           counter=counter, am=am))
+        d_score[jobname] = total
     return d_score
 
 

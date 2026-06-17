@@ -180,8 +180,9 @@ class ImportDAG(KnowledgeGenerator):
         evdef2 = evmap.evdef(node2)
         src_node1, _ = self._ldag.evdef2node(evdef1, self._src_ugraph)
         src_node2, _ = self._ldag.evdef2node(evdef2, self._src_ugraph)
-        if not self._src_ugraph.has_path(src_node1, src_node2):
+        if not nx.has_path(self._src_ugraph, src_node1, src_node2):
             pk.add_noedge_rule((node1, node2))
+        return pk
 
     def update(self, pk, evmap):
         if self._rule == "prune":

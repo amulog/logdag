@@ -205,7 +205,6 @@ class LogEventLoader(evgen_common.EventLoader, LogEventLoaderBase):
             s_dt = {dt for dt, values
                     in self.load_items(measure, evdef.tags(), dt_range)}
             if len(s_dt) == 0:
-                import pdb; pdb.set_trace()
                 msg = ("No time-series for {0}, ".format(evdef) +
                        "inconsistent with tsdb")
                 raise ValueError(msg)

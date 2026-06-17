@@ -390,7 +390,6 @@ def load_event_log_all(conf, dt_range, area, d_el=None):
     ci_bin_size = config.getdur(conf, "dag", "ci_bin_size")
     ci_bin_diff = config.getdur(conf, "dag", "ci_bin_diff")
 
-    import pdb; pdb.set_trace()
     for evdef in el.iter_evdef(dt_range):
         measure, tags = evdef.series()
         if not areatest.test(area, tags["host"]):

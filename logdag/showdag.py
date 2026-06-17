@@ -174,7 +174,7 @@ class LogDAG:
         else:
             evmap = self._evmap_input()
         node = evmap.get_eid(evdef)
-        return node, graph.get_node_data(node)
+        return node, graph.nodes[node]
 
     def edge_evdef(self, edge, original=True):
         return [self.node_evdef(node, original=original)

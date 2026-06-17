@@ -171,7 +171,7 @@ def edge_direction_diff(conf1, conf2, dt_range):
                 continue
             if not r._evmap_original().has_evdef(ev2):
                 continue
-            n1, n2 = [r.evdef2node(ev) for ev in (ev1, ev2)]
+            n1, n2 = [r.evdef2node(ev)[0] for ev in (ev1, ev2)]
             if (n1, n2) in r.graph.edges():
                 if (n2, n1) in r.graph.edges():
                     di = "-"
@@ -179,18 +179,17 @@ def edge_direction_diff(conf1, conf2, dt_range):
                     di = "->"
             elif (n2, n1) in r.graph.edges():
                 di = "<-"
+            else:
+                continue
             return di
         else:
-            raise ValueError("Edge {0} - {1} not found in {2}".format(
-                ev1, ev2, r.name))
+            raise ValueError("Edge {0} - {1} not found".format(ev1, ev2))
 
     ret = []
     am1 = arguments.ArgumentManager(conf1)
     am1.load()
     am2 = arguments.ArgumentManager(conf2)
     am2.load()
-    for args in am1.args_in_time(dt_range):
-        r2 = showdag.LogDAG(args)
 
     cevmap, cgraph = edge_set_common(conf1, conf2, dt_range)
     for edge in cgraph.edges():

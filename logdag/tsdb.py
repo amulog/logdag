@@ -181,7 +181,8 @@ class TimeSeriesDB():
 
     def iter_ts(self, **kwargs):
         if "area" in kwargs:
-            if kwargs["area"] is None or kwargs["area"] == "all":
+            area = kwargs["area"]
+            if area is None or area == "all":
                 del kwargs["area"]
             elif area[:5] == "host_":
                 assert not "host" in kwargs
@@ -221,7 +222,8 @@ class TimeSeriesDB():
     
     def iter_filter(self, **kwargs):
         if "area" in kwargs:
-            if kwargs["area"] is None or kwargs["area"] == "all":
+            area = kwargs["area"]
+            if area is None or area == "all":
                 del kwargs["area"]
             elif area[:5] == "host_":
                 assert not "host" in kwargs

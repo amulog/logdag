@@ -64,7 +64,7 @@ class EventLoader(ABC):
     def drop_features(self):
         for measure in self.all_feature():
             if not self.dry:
-                self.evdb.drop_measure(measure)
+                self.evdb.drop_measurement(measure)
             print(measure)
 
     def restore_host(self, host):
