@@ -34,7 +34,7 @@ setup(name=package_name,
       description='A tool to generate causal DAGs from syslog time-series.',
       long_description=load_readme(),
       author='Satoru Kobayashi',
-      author_email='sat@nii.ac.jp',
+      author_email='sat@3at.work',
       url='https://github.com/cpflat/logdag/',
       classifiers=[
           'Development Status :: 4 - Beta',
