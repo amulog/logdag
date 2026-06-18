@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import pickle
 from abc import ABC, abstractmethod
@@ -101,7 +102,14 @@ class ArgumentManager(object):
 
     @staticmethod
     def jobname2args(name, conf):
-        area, dtstr = name.split("_", 1)
+        # jobname = "<area>_<dtstr>" where dtstr is YYYYmmdd or YYYYmmdd_HHMMSS.
+        # area may itself contain "_" (e.g. "host_xxx"), so match the dtstr
+        # suffix instead of splitting on the first "_".
+        m = re.search(r"_(\d{8}(?:_\d{6})?)$", name)
+        if m is None:
+            raise ValueError("cannot parse jobname: {0}".format(name))
+        area = name[:m.start()]
+        dtstr = m.group(1)
         dts = dtutil.shortstr2dt(dtstr)
         term = config.getdur(conf, "dag", "unit_term")
         dte = dts + term
@@ -135,11 +143,12 @@ class ArgumentManager(object):
     def dag_path(cls, conf, args, ext="pickle"):
         dirname = cls._arg_dirname(cls._output_dir(conf),
                                    cls.jobname(args))
-        # try <- compatibility
+        # tolerate "already exists"; do not swallow into a None return value
+        # (callers open() the result, and open(None) is an opaque TypeError)
         try:
             common.mkdir(dirname)
         except OSError:
-            return
+            pass
         return dirname + "/dag.{0}".format(ext)
 
     @classmethod
@@ -147,11 +156,11 @@ class ArgumentManager(object):
         conf, dt_range, area = args
         dirname = cls._arg_dirname(cls._output_dir(conf),
                                    cls.jobname(args))
-        # try <- compatibility
+        # tolerate "already exists"; do not swallow into a None return value
         try:
             common.mkdir(dirname)
         except OSError:
-            return
+            pass
         return dirname + "/evdef.pickle"
 
     # @classmethod

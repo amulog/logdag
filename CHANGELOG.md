@@ -75,6 +75,12 @@ regression test (failing on the old code, passing on the fix).
   the across-host stats
 - **showdag_filter `directed` / `undirected`**: the directed graph dropped edge
   attributes (e.g. `weight`), breaking a downstream `ate_prune`
+- **arguments.jobname2args**: split the jobname on the first `_`, breaking the
+  round-trip when the area name contained `_` (e.g. `host_xxx`); now matches the
+  datetime suffix
+- **arguments.dag_path / evdef_path**: returned `None` when `mkdir` raised
+  (missing parent / path is a file), so callers hit `open(None)`; now always
+  return the path
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
