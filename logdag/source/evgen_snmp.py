@@ -319,7 +319,7 @@ class SNMPEventLoader(evgen_common.EventLoader):
                     if df is None or self.isallnan(df):
                         _logger.info("source {0} {1} is empty".format(
                             sourcename, tags))
-                        return
+                        continue
                     self.dump(sourcename, tags, df)
                     _logger.info("added org {0} size {1}".format(
                         tags, df.shape))
@@ -331,7 +331,7 @@ class SNMPEventLoader(evgen_common.EventLoader):
                     if df is None or self.isallnan(df):
                         _logger.info("source {0} {1} is empty".format(
                             sourcename, tags))
-                        return
+                        continue
                     self.dump(sourcename, tags, df)
                     _logger.info("added org {0} size {1}".format(
                         tags, df.shape))

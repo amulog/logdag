@@ -5,12 +5,14 @@ Use CausalDiscoveryToolbox
 https://github.com/FenTechSolutions/CausalDiscoveryToolbox
 """
 
+import warnings
+
 
 def estimate(data, category, algorithm, max_iter=2000, tolerance=0.0001,
              use_deconvolution=True, deconvolution_algorithm="aracne",
              init_graph=None):
     if init_graph is not None:
-        raise Warning("init_graph is not available on cdt now")
+        warnings.warn("init_graph is not available on cdt now")
 
     if category == "independence":
         return independence_graph(data, algorithm, max_iter, tolerance,

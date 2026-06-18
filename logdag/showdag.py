@@ -512,12 +512,14 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
     if l_filtername is None or len(l_filtername) == 0:
         return g
 
+    # copy: the caller's list must not be mutated by the remove() calls below
+    l_filtername = list(l_filtername)
     filters = []
 
     # make to_undirected the first filter
     if "to_undirected" in l_filtername:
         l_filtername.remove("to_undirected")
-        filters.append("to_undirected")
+        filters.append(("to_undirected", {}))
 
     has_no_isolated = False
     if "no_isolated" in l_filtername:

@@ -98,7 +98,7 @@ def anomaly_if(sr, **kwargs):
     data = pd.concat((x, y), axis=1)
 
     clf = IsolationForest(n_estimators=100, max_samples="auto",
-                          contamination="auto", behaviour="new")
+                          contamination="auto")
     result = clf.fit_predict(data)
     anomaly = (result == -1) * 1.0
     return pd.Series(anomaly, index=sr.index)

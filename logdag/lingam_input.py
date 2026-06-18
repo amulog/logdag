@@ -4,6 +4,8 @@
 Use LiNGAM https://github.com/cdt15/lingam
 """
 
+import warnings
+
 import numpy as np
 import networkx as nx
 from itertools import combinations
@@ -28,7 +30,7 @@ def estimate(data, algorithm="ica", lower_limit=0.01,
     import lingam
     if algorithm == "ica":
         if prior_knowledge is not None:
-            raise Warning("ICA-LiNGAM does not use prior knowledge")
+            warnings.warn("ICA-LiNGAM does not use prior knowledge")
         kwargs = {"max_iter": ica_max_iter}
         model = _fit_back(data, lingam.ICALiNGAM, kwargs)
     elif algorithm == "direct":

@@ -287,6 +287,11 @@ def show_match_diff(ns):
             print("")
 
 
+def _safe_ratio(num, den):
+    """num / den, or float('nan') when den == 0 (avoids ZeroDivisionError)."""
+    return num / den if den else float("nan")
+
+
 def show_match_info(ns):
     conf = open_logdag_config(ns)
     from . import trouble
@@ -312,15 +317,15 @@ def show_match_info(ns):
     #                         if not tr.data["group"] == trouble.EMPTY_GROUP])
     detected_ticket_num = sum([1 for v in d_num.values() if v > 0])
 
-    valid_ratio = valid_cnt / len(tm)
+    valid_ratio = _safe_ratio(valid_cnt, len(tm))
     print("valid: {0} in {1} ({2})".format(valid_cnt,
                                            len(tm),
                                            valid_ratio))
-    detected_ratio = detected_ticket_num / valid_cnt
+    detected_ratio = _safe_ratio(detected_ticket_num, valid_cnt)
     print("detected: {0} in {1} ({2})".format(detected_ticket_num,
                                               valid_cnt,
                                               detected_ratio))
-    print("average edges: {0}".format(1.0 * match_edge_sum / valid_cnt))
+    print("average edges: {0}".format(_safe_ratio(match_edge_sum, valid_cnt)))
 
 
 def search_trouble(ns):

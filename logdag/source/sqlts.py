@@ -263,8 +263,8 @@ class SQLTimeSeries(TimeSeriesDB):
             dtstr, values = self._get_row_values(row)
             # obtained as naive(utc), converted into aware(local)
             l_dt.append(self.pdtimestamp(self._db.strptime(dtstr)))
-            if fill:
-                values = values.nan_to_num(fill)
+            if fill is not None:
+                values = np.nan_to_num(values, nan=fill)
             l_values.append(values)
 
         sortidx = np.argsort(l_dt)
@@ -272,8 +272,8 @@ class SQLTimeSeries(TimeSeriesDB):
         sorted_l_values = [l_values[idx] for idx in sortidx]
 
         if func is None:
-            dtindex = self.pdtimestamps(l_dt)
-            return pd.DataFrame(l_values, index=dtindex, columns=fields)
+            dtindex = self.pdtimestamps(sorted_l_dt)
+            return pd.DataFrame(sorted_l_values, index=dtindex, columns=fields)
         elif func == "sum":
             assert str_bin is not None
             binsize = config.str2dur(str_bin)

@@ -86,5 +86,66 @@ class TestPruneUnconnected(unittest.TestCase):
         self.assertFalse(result.is_noedge((0, 1)))
 
 
+class _FakeLDAGEdges:
+    """Records how has_edge was called and reports membership."""
+
+    def __init__(self, edges):
+        self._edges = set(edges)
+        self.last_original = None
+        self.last_allow_reverse = None
+
+    def has_edge(self, evdef1, evdef2, original=True, graph=None,
+                 allow_reverse=False):
+        self.last_original = original
+        self.last_allow_reverse = allow_reverse
+        return (evdef1, evdef2) in self._edges
+
+
+def _make_with_ldag(rule, ldag, allow_reverse=True):
+    obj = pknowledge.ImportDAG.__new__(pknowledge.ImportDAG)
+    obj._rule = rule
+    obj._ldag = ldag
+    obj._allow_reverse = allow_reverse
+    return obj
+
+
+class TestPruneForce(unittest.TestCase):
+    """_update_edge_prune_force must do BOTH prune and force (it used to be a
+    copy of _update_edge_force and never pruned)."""
+
+    def test_adds_edge_rule_when_edge_present(self):
+        ldag = _FakeLDAGEdges(edges={("a", "b")})
+        obj = _make_with_ldag("prune+force", ldag)
+        pk = pknowledge.PriorKnowledge([0, 1])
+        evmap = _FakeEvmap({0: "a", 1: "b"})
+        obj._update_edge_prune_force(pk, evmap, 0, 1)
+        self.assertTrue(pk.is_edge((0, 1)))
+        self.assertFalse(pk.is_noedge((0, 1)))
+
+    def test_adds_noedge_rule_when_edge_absent(self):
+        ldag = _FakeLDAGEdges(edges=set())
+        obj = _make_with_ldag("prune+force", ldag)
+        pk = pknowledge.PriorKnowledge([0, 1])
+        evmap = _FakeEvmap({0: "a", 1: "b"})
+        obj._update_edge_prune_force(pk, evmap, 0, 1)
+        self.assertTrue(pk.is_noedge((0, 1)))
+        self.assertFalse(pk.is_edge((0, 1)))
+
+
+class TestAllowReverseKeyword(unittest.TestCase):
+    """has_edge's 3rd positional arg is `original`, not `allow_reverse`; the
+    force rules must pass allow_reverse as a keyword."""
+
+    def test_force_passes_allow_reverse_as_keyword(self):
+        ldag = _FakeLDAGEdges(edges=set())
+        # sentinel makes the misbinding visible
+        obj = _make_with_ldag("force", ldag, allow_reverse="REV")
+        pk = pknowledge.PriorKnowledge([0, 1])
+        evmap = _FakeEvmap({0: "a", 1: "b"})
+        obj._update_edge_force(pk, evmap, 0, 1)
+        self.assertEqual(ldag.last_allow_reverse, "REV")
+        self.assertIs(ldag.last_original, True)
+
+
 if __name__ == "__main__":
     unittest.main()

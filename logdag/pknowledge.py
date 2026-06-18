@@ -164,15 +164,19 @@ class ImportDAG(KnowledgeGenerator):
     def _update_edge_force(self, pk, evmap, node1, node2):
         evdef1 = evmap.evdef(node1)
         evdef2 = evmap.evdef(node2)
-        if self._ldag.has_edge(evdef1, evdef2, self._allow_reverse):
+        if self._ldag.has_edge(evdef1, evdef2,
+                               allow_reverse=self._allow_reverse):
             pk.add_edge_rule((node1, node2))
         return pk
 
     def _update_edge_prune_force(self, pk, evmap, node1, node2):
         evdef1 = evmap.evdef(node1)
         evdef2 = evmap.evdef(node2)
-        if self._ldag.has_edge(evdef1, evdef2, self._allow_reverse):
+        if self._ldag.has_edge(evdef1, evdef2,
+                               allow_reverse=self._allow_reverse):
             pk.add_edge_rule((node1, node2))
+        else:
+            pk.add_noedge_rule((node1, node2))
         return pk
 
     def _update_edge_prune_unconnected(self, pk, evmap, node1, node2):

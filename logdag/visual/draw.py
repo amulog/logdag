@@ -14,5 +14,9 @@ def relabel_nodes(graph, evmap):
 
 def graph_nx(output, graph):
     ag = nx.nx_agraph.to_agraph(graph)
-    ag.draw(output, prog='circo')
+    try:
+        ag.draw(output, prog='circo')
+    finally:
+        # AGraph holds a C-level handle; release it even on draw failure
+        ag.close()
     return output
