@@ -1,0 +1,72 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+Bug fixes from a code review, each verified against the source and covered by a
+regression test (failing on the old code, passing on the fix).
+
+### Fixed
+
+#### critical
+- **Leftover debuggers**: removed `pdb.set_trace()` left in the main pipeline
+  (`log2event.load_event_log_all`) and in `source.evgen_log.LogEventLoader.details`
+- **pknowledge prune-unconnected**: `_update_edge_prune_unconnected` called a
+  non-existent `nx.Graph.has_path` method (now `nx.has_path(G, s, d)`) and was
+  missing `return pk`, so `update()` overwrote `pk` with `None`
+- **showdag.evdef2node**: returned `graph.get_node_data(node)`, which networkx
+  has no such method; now `graph.nodes[node]`. Reachable via `pknowledge` and
+  `visual.comparison`
+- **filter_log `_resize_input`**: the shrink branch returned a list of booleans
+  instead of filtering datetimes (companion to the 737928c fix of the grow branch)
+- **filter_log `remove_linear`**: gated on the resized input but computed the
+  cumulative curve / normalization from the pre-resize data; now consistent with
+  the other filters (`discretize_sequential` + `np.cumsum`)
+- **edge_search.dag_anomaly_score**: summed the `(edge, value)` generator directly
+  (`int + tuple` TypeError) and shadowed the `score` argument inside the loop
+- **edge_search.get_evpair_count**: applied `len()` to an int Counter value
+- **edge_search.edges_anomaly_score**: `feature="edge"`/`score="idf"` called
+  `get_tfidf` instead of `get_idf` (copy-paste)
+- **edge_search.DAGSimilarity.similarity**: passed 1-D Series to
+  `cosine_similarity` (needs 2-D) and returned a matrix instead of a scalar
+- **comparison.edge_direction_diff**: removed a dead loop, fixed the
+  `evdef2node` tuple unpacking that made the direction check always false, and an
+  `UnboundLocalError` when `args_in_time` was empty
+
+#### major
+- **`raise Warning(...)` anti-pattern**: `cdt_input.estimate` and
+  `lingam_input.estimate` raised the `Warning` class (halting) where a non-fatal
+  `warnings.warn` was intended
+- **pknowledge `_update_edge_prune_force`**: had no prune logic (identical to
+  `_update_edge_force`); now does both prune and force. `allow_reverse` is passed
+  by keyword to `has_edge` (its 3rd positional arg is `original`, so it was
+  mis-bound)
+- **evgen_snmp.store_all_source**: an empty `(tags, df)` pair did `return`,
+  aborting the whole method and skipping every remaining source; now `continue`
+- **evpost.anomaly_if**: dropped `IsolationForest(behaviour="new")`
+  (scikit-learn removed `behaviour` in 0.24)
+- **eval.show_match_info**: guarded the ratio computations against
+  ZeroDivisionError (no tickets / no valid tickets) via `_safe_ratio`
+- **visual.draw.graph_nx**: close the pygraphviz `AGraph` in a `finally` block
+- **showdag.apply_filter**: no longer mutates the caller's filter-name list
+  (operated in place via `remove()`); also fixed `to_undirected` being appended
+  as a bare string instead of a `(name, kwargs)` tuple
+- **sqlts.get_df**: `values.nan_to_num(fill)` (tuples have no such method) is now
+  `np.nan_to_num(values, nan=fill)`; the `func is None` branch returns
+  time-sorted rows; `if fill:` is `if fill is not None:` so `fill=0` works
+- **evgen_common.drop_features**: called `drop_measure`; the backends only
+  implement `drop_measurement`
+
+### Removed
+- **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
+  `source/_common.py` stub
+
+### Added
+- **Regression test suite** under `tests/` for the fixes above, using stubbed
+  collaborators to avoid heavy DB / DAG fixtures; plus a static guard
+  (`test_source_hygiene.py`) against committing live `pdb.set_trace()` /
+  `breakpoint()`
