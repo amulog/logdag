@@ -64,9 +64,12 @@ regression test (failing on the old code, passing on the fix).
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
   `source/_common.py` stub
+- **Travis CI** configuration (`.travis.yml`)
 
 ### Added
 - **Regression test suite** under `tests/` for the fixes above, using stubbed
   collaborators to avoid heavy DB / DAG fixtures; plus a static guard
   (`test_source_hygiene.py`) against committing live `pdb.set_trace()` /
   `breakpoint()`
+- **GitHub Actions CI**: a test workflow (pytest on Python 3.8–3.12, push / PR)
+  and a tag-triggered publish workflow (PyPI trusted publishing + GitHub Release)
