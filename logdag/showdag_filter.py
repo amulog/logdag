@@ -26,15 +26,20 @@ def to_undirected(graph, **_):
 def _sep_directed(graph, **_):
     g_di = nx.DiGraph()
     g_nodi = nx.Graph()
-    l_temp_edge = []
+    pending = []       # full edges (u, v, data) seen but not yet paired
+    pending_keys = []  # parallel (u, v) keys for reverse lookup
     for edge in graph.edges(data=True):
-        rev_edge = (edge[1], edge[0])
-        if rev_edge in l_temp_edge:
+        rev_key = (edge[1], edge[0])
+        if rev_key in pending_keys:
+            # reverse already seen -> bidirectional -> undirected (keep data)
             g_nodi.add_edges_from([edge])
-            l_temp_edge.remove(rev_edge)
+            idx = pending_keys.index(rev_key)
+            pending_keys.pop(idx)
+            pending.pop(idx)
         else:
-            l_temp_edge.append(edge[0:2])
-    g_di.add_edges_from(l_temp_edge)
+            pending.append(edge)
+            pending_keys.append(edge[0:2])
+    g_di.add_edges_from(pending)  # keep edge data (weight) on directed edges
     return g_di, g_nodi
 
 

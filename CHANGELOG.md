@@ -68,6 +68,13 @@ regression test (failing on the old code, passing on the fix).
   `fromtimestamp(ut, tz=...)`
 - **log2event.merge_sync_event**: renamed a column on the caller's input
   DataFrame in place; now copies first
+- **evgen_log.load_items**: crashed with `for dt in None` when the filters
+  removed the whole event series; now returns early
+- **showdag.number_of_edges / edges**: with an explicit `graph` they returned
+  `remove_edge_duplication` (a generator) instead of a count / list, breaking
+  the across-host stats
+- **showdag_filter `directed` / `undirected`**: the directed graph dropped edge
+  attributes (e.g. `weight`), breaking a downstream `ate_prune`
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty

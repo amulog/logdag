@@ -259,6 +259,9 @@ class LogEventLoaderDirect(evgen_common.EventLoader, LogEventLoaderBase):
         ev = (host, gid)
         l_dt = self.source.load(ev)
         feature_dt = self._apply_filters(l_dt, dt_range, ev)
+        if feature_dt is None:
+            # filters removed the whole event series
+            return
 
         for dt in feature_dt:
             yield dt, np.array([1.0])

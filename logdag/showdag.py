@@ -129,7 +129,8 @@ class LogDAG:
         elif graph is None:
             return self._edges_no_duplication
         else:
-            return remove_edge_duplication(graph.edges(), self, graph=graph)
+            # list (not a generator) to match the graph=None return type
+            return list(remove_edge_duplication(graph.edges(), self, graph=graph))
 
     def number_of_nodes(self, graph=None):
         if graph is None:
@@ -140,7 +141,9 @@ class LogDAG:
         if graph is None:
             return len(self._edges_no_duplication)
         else:
-            return remove_edge_duplication(graph.edges(), self, graph=graph)
+            # count (remove_edge_duplication is a generator), not the edges
+            return sum(1 for _ in remove_edge_duplication(
+                graph.edges(), self, graph=graph))
 
     def _remap_evmap(self, evmap):
         mapping = {eid: self._remap_evdef(evdef)
