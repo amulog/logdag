@@ -494,7 +494,8 @@ def merge_sync_event(evlist, evmap, rules):
         if "group" in rules:
             new_evdef.group = l_evdef[0].group
         new_eid = new_evmap.add_evdef(new_evdef)
-        new_df = evlist[l_old_eid[0]]
+        # copy: renaming the column must not mutate the caller's input df
+        new_df = evlist[l_old_eid[0]].copy()
         new_df.columns = [new_eid, ]
         new_evlist.append(new_df)
 

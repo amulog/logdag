@@ -48,8 +48,10 @@ def range_dt(dts, dte, interval):
 
     tzinfo = dts.tzinfo
     tmp = np.arange(dts.timestamp(), dte.timestamp(), interval.total_seconds())
-    return [datetime.datetime.fromtimestamp(ut).replace(tzinfo=tzinfo)
-            for ut in tmp]
+    # fromtimestamp(ut, tz=...) converts the epoch value to the given tz;
+    # fromtimestamp(ut) alone interprets it in the local tz, then replace()
+    # would mislabel the wall clock when tzinfo is not the local zone.
+    return [datetime.datetime.fromtimestamp(ut, tz=tzinfo) for ut in tmp]
 
     #temp_dt = dt_range[0]
     #while temp_dt < dt_range[1] or (include_end is True and temp_dt == dt_range[1]):
@@ -150,7 +152,9 @@ def discretize(l_dt, l_term, dt_range, binarize, l_dt_values=None):
                     next_key = None
                     break
         # following is processed only if key <= dt < next_key
-        if sum(current_idxs) > 0:
+        # (len, not sum: current_idxs holds bin indices, so sum() wrongly
+        # skips the case where the only active bin is index 0)
+        if len(current_idxs) > 0:
             if binarize:
                 a_ret[current_idxs] = 1
             else:

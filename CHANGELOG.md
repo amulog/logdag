@@ -60,6 +60,14 @@ regression test (failing on the old code, passing on the fix).
   time-sorted rows; `if fill:` is `if fill is not None:` so `fill=0` works
 - **evgen_common.drop_features**: called `drop_measure`; the backends only
   implement `drop_measurement`
+- **dtutil.discretize**: the first bin (index 0) was silently dropped — the
+  guard used `sum` over an array of bin indices, so `sum([0]) == 0` skipped it;
+  now `len`
+- **dtutil.range_dt**: built times via `fromtimestamp(ut).replace(tzinfo=...)`,
+  which shifts any non-local-tz input by the local UTC offset; now
+  `fromtimestamp(ut, tz=...)`
+- **log2event.merge_sync_event**: renamed a column on the caller's input
+  DataFrame in place; now copies first
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
