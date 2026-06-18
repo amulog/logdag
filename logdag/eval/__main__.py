@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
 import logging
 from collections import defaultdict
 
@@ -42,8 +43,15 @@ def add_lids_stdin(ns):
     from . import trouble
     tm = trouble.init_trouble_manager(conf)
 
-    lids = [int(v) for v in input()]
+    lids = _parse_lids(sys.stdin.read())
     tm.add_lids(ns.tid, lids)
+
+
+def _parse_lids(text):
+    # whitespace-separated integer line ids over all of stdin.
+    # (the old ``[int(v) for v in input()]`` read one line and parsed each
+    # *character*: "123" -> [1, 2, 3], and any space raised ValueError.)
+    return [int(v) for v in text.split()]
 
 
 def label_trouble(ns):

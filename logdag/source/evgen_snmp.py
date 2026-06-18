@@ -288,9 +288,16 @@ class SNMPEventLoader(evgen_common.EventLoader):
                 tmp_tags = self._seriesdef2tags(seriesdef)
                 if self._tags_equal(tags, tmp_tags):
                     ret.append((sname, seriesdef, featuredef))
-        # if there are multiple definition sets for 1 measure/tag set,
-        # it causes duplicated write into influxdb
-        assert len(ret) == 1, "duplicated feature definition"
+        # exactly one definition set is expected for a measure/tag set; zero
+        # means "not found", more than one would duplicate the influxdb write.
+        # (explicit checks, not assert: assert is stripped under -O and "not
+        # found" would otherwise surface as an IndexError on ret[0].)
+        if len(ret) == 0:
+            raise ValueError("no feature definition for {0} {1}".format(
+                featurename, tags))
+        elif len(ret) > 1:
+            raise ValueError("duplicated feature definition for {0} {1}".format(
+                featurename, tags))
         return ret[0]
 
     @staticmethod

@@ -81,6 +81,16 @@ regression test (failing on the old code, passing on the fix).
 - **arguments.dag_path / evdef_path**: returned `None` when `mkdir` raised
   (missing parent / path is a file), so callers hit `open(None)`; now always
   return the path
+- **evpost diff helpers** (`root_square_diff` / `diff_abs` / `anomaly_lof` /
+  `anomaly_if`): set the first diff element via `ret.iloc[0]`; `ret[0]` is a
+  label assignment on a DatetimeIndex (deprecated now, adds a spurious label-0
+  entry on future pandas)
+- **evgen_snmp._search_feature_source**: replaced `assert len(ret) == 1`
+  (stripped under `-O`, an `IndexError` on zero matches, and a misleading
+  "duplicated" message) with explicit not-found / duplicated `ValueError`s
+- **eval.add_lids_stdin**: parsed each character of a single input line
+  (`[int(v) for v in input()]`); now reads whitespace-separated ids from all of
+  stdin
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty

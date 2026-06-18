@@ -35,13 +35,13 @@ def norm_fillavg(sr, **kwargs):
 
 def root_square_diff(sr, **kwargs):
     ret = sr.diff()
-    ret[0] = float(0)
+    ret.iloc[0] = float(0)
     return ((ret ** 2) / sr) ** 0.5
 
 
 def diff_abs(sr, **kwargs):
     ret = sr.diff()
-    ret[0] = float(0)
+    ret.iloc[0] = float(0)
     return np.abs(ret)
 
 
@@ -75,7 +75,7 @@ def anomaly_lof(sr, **kwargs):
     from sklearn.neighbors import LocalOutlierFactor
     x = sr
     y = sr.diff()
-    y[0] = float(0)
+    y.iloc[0] = float(0)
     data = pd.concat((x, y), axis=1)
 
     clf = LocalOutlierFactor(n_neighbors=20, contamination="auto")
@@ -94,7 +94,7 @@ def anomaly_if(sr, **kwargs):
     from sklearn.ensemble import IsolationForest
     x = sr
     y = sr.diff()
-    y[0] = float(0)
+    y.iloc[0] = float(0)
     data = pd.concat((x, y), axis=1)
 
     clf = IsolationForest(n_estimators=100, max_samples="auto",

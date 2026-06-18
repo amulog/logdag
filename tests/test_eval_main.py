@@ -29,5 +29,22 @@ class TestSafeRatio(unittest.TestCase):
         self.assertTrue(math.isnan(eval_main._safe_ratio(0, 0)))
 
 
+class TestParseLids(unittest.TestCase):
+    """add_lids_stdin used ``[int(v) for v in input()]``, which read one line
+    and parsed each character; _parse_lids reads whitespace-separated ids."""
+
+    def test_single_multidigit_id(self):
+        self.assertEqual(eval_main._parse_lids("123"), [123])
+
+    def test_space_separated(self):
+        self.assertEqual(eval_main._parse_lids("1 2 34"), [1, 2, 34])
+
+    def test_multiline(self):
+        self.assertEqual(eval_main._parse_lids("1\n2\n3\n"), [1, 2, 3])
+
+    def test_empty(self):
+        self.assertEqual(eval_main._parse_lids(""), [])
+
+
 if __name__ == "__main__":
     unittest.main()
