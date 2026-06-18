@@ -91,6 +91,8 @@ regression test (failing on the old code, passing on the fix).
 - **eval.add_lids_stdin**: parsed each character of a single input line
   (`[int(v) for v in input()]`); now reads whitespace-separated ids from all of
   stdin
+- **makedag.make_input**: crashed with `None.dump` when `log2event.makeinput`
+  returned `(None, None)` (no data loaded); now returns early
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty

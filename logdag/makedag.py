@@ -63,6 +63,9 @@ def makedag_main(args, do_dump=False):
 def make_input(args):
     conf, dt_range, area = args
     input_df, evmap = log2event.makeinput(conf, dt_range, area)
+    if evmap is None:
+        # makeinput returns (None, None) when no data was loaded
+        return input_df, evmap
     evmap.dump(args)
     return input_df, evmap
 
