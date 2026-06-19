@@ -44,7 +44,7 @@ jobs:
       - name: Install package and integration deps
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest influxdb
+          pip install -e .[influx]
+          pip install pytest
       - name: Run integration and contract tests (incl. influx backend)
         run: pytest tests/integration tests/contract

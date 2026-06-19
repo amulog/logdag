@@ -8,7 +8,7 @@ SKIP (never fail) when either is missing, so the normal unit run is unaffected.
 
 Local:
     docker compose up -d            # InfluxDB 1.8 on :8086 (see docker-compose.yml)
-    pip install influxdb
+    pip install -e .[influx]        # InfluxDB v1 client (optional extra)
     pytest tests/integration
     docker compose down
 

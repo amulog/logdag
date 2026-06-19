@@ -2,7 +2,7 @@
 # Not required for the normal (unit) test run.
 #
 #   docker compose up -d        # start InfluxDB v1.8 on localhost:8086
-#   pip install influxdb        # client (not a runtime dependency of logdag)
+#   pip install -e .[influx]    # InfluxDB v1 client (optional extra)
 #   pytest tests/integration    # run the integration tests
 #   docker compose down         # stop and remove
 #

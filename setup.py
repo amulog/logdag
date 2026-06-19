@@ -51,6 +51,11 @@ setup(name=package_name,
 
       packages=['logdag'],
       install_requires=load_requirements(),
+      extras_require={
+          # optional InfluxDB v1 backend (logdag.source.influx) and the tests
+          # that exercise it; install with `pip install -e .[influx]`
+          'influx': ['influxdb'],
+      },
       package_data={'logdag': data_files},
       entry_points={
           'console_scripts': [

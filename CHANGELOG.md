@@ -121,3 +121,5 @@ regression test (failing on the old code, passing on the fix).
   behavioural suite parametrized over the storage backends (sqlts always;
   influx_v1 when a server is reachable) — a shared safety net as backends are
   added (the v1 -> v3 migration)
+- **Optional `influx` extra**: `pip install -e .[influx]` installs the InfluxDB
+  v1 client needed by the `source.influx` backend and its tests
