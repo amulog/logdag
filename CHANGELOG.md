@@ -100,6 +100,11 @@ regression test (failing on the old code, passing on the fix).
 - **TimeSeriesDB backend consistency**: the backends disagreed on empty-range
   results; unified the contract — `get_count` returns `0` (was `None` in influx)
   and `get_df(func=None)` returns `None` (was an empty DataFrame in sqlts)
+- **Packaging**: the wheel/sdist shipped only the top-level `logdag` package —
+  the `source` / `visual` / `eval` subpackages (`visual` and `eval` had no
+  `__init__.py`) and the `data/` files (incl. the default config) were omitted,
+  so a non-editable `pip install` was broken. Now uses `find_packages()` and
+  ships `logdag/data/*`
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty

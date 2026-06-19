@@ -3,7 +3,7 @@
 import sys
 import os
 import re
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 def load_readme():
@@ -20,10 +20,6 @@ def load_requirements():
 
 
 sys.path.append("./tests")
-package_name = 'logdag'
-data_dir = "/".join((package_name, "data"))
-data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
-
 package_name = 'logdag'
 
 with open(os.path.join(os.path.dirname(__file__), package_name, '__init__.py')) as f:
@@ -49,14 +45,14 @@ setup(name=package_name,
           'Topic :: Software Development :: Libraries :: Python Modules'],
       license='The 3-Clause BSD License',
 
-      packages=['logdag'],
+      packages=find_packages(exclude=['tests', 'tests.*']),
       install_requires=load_requirements(),
       extras_require={
           # optional InfluxDB v1 backend (logdag.source.influx) and the tests
           # that exercise it; install with `pip install -e .[influx]`
           'influx': ['influxdb'],
       },
-      package_data={'logdag': data_files},
+      package_data={'logdag': ['data/*']},
       entry_points={
           'console_scripts': [
               'logdag = logdag.__main__:main',
