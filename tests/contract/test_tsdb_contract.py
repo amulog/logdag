@@ -97,10 +97,22 @@ def _make_influx_v1():
     return db, teardown
 
 
+def _make_influx_v3():
+    # Slot prepared for the future InfluxDB v3 backend. When it is implemented,
+    # complete this factory and it inherits the whole contract suite:
+    #   1. construct the v3 backend (it uses a different client / API and port
+    #      than v1 -- SQL/FlightSQL, not InfluxQL);
+    #   2. skip (pytest.skip) when the v3 client or server is unavailable, the
+    #      same way _make_influx_v1 does;
+    #   3. create/drop a temp database and return (db, teardown).
+    # See the (commented) influxdb-v3 service in docker-compose.yml.
+    pytest.skip("InfluxDBv3 backend not implemented yet")
+
+
 _BACKENDS = {
     "sqlts": _make_sqlts,
     "influx_v1": _make_influx_v1,
-    # "influx_v3": _make_influx_v3,   # add when v3 lands
+    "influx_v3": _make_influx_v3,   # skips until the v3 backend exists
 }
 
 
