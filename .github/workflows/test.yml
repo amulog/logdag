@@ -24,5 +24,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
           pip install pytest
-      - name: Run tests
-        run: pytest tests/
+      - name: Run unit tests
+        run: pytest tests/ --ignore=tests/integration
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      influxdb:
+        image: influxdb:1.8
+        ports:
+          - 8086:8086
+        env:
+          INFLUXDB_HTTP_AUTH_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package and integration deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest influxdb
+      - name: Run integration tests
+        run: pytest tests/integration

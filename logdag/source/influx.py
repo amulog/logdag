@@ -94,6 +94,11 @@ class InfluxDBv1(TimeSeriesDB):
     def commit(self):
         pass
 
+    @staticmethod
+    def _escape_str(v):
+        # escape a value for an InfluxQL single-quoted string literal
+        return str(v).replace("\\", "\\\\").replace("'", "\\'")
+
     def _get(self, measure, d_tags, fields, dt_range,
              str_bin=None, func=None, fill=None, limit=None):
         ut_range = tuple(dt.timestamp() for dt in dt_range)
@@ -106,10 +111,12 @@ class InfluxDBv1(TimeSeriesDB):
                                   for s in fields])
         s_from = "\"{0}\".\"{1}\".\"{2}\"".format(self.dbname, self._rpolicy,
                                                   measure)
-        s_where = " AND ".join(["\"{0}\" = '{1}'".format(k, v)
+        s_where = " AND ".join(["\"{0}\" = '{1}'".format(k, self._escape_str(v))
                                 for k, v in d_tags.items()])
-        s_where += " AND time >= {0}s AND time < {1}s".format(
-            int(ut_range[0]), int(ut_range[1]))
+        # nanosecond bounds (a bare integer is ns in InfluxQL); int()+"s" would
+        # truncate sub-second precision and mis-count data near the boundary
+        s_where += " AND time >= {0} AND time < {1}".format(
+            int(ut_range[0] * 1e9), int(ut_range[1] * 1e9))
         if str_bin is None:
             s_gb = ""
         else:
@@ -164,13 +171,14 @@ class InfluxDBv1(TimeSeriesDB):
         return pd.DataFrame(l_array, index=dtindex, columns=fields)
 
     def get_count(self, measure, d_tags, fields, dt_range):
-        func = "count"
-        rs = self._get(measure, d_tags, fields, dt_range,
-                       func=func)
+        if fields is None:
+            fields = self.list_fields(measure)
+        rs = self._get(measure, d_tags, fields, dt_range, func="count")
         if len(rs) == 0:
             return None
-        count = rs.get_points().__next__()["val"]
-        return count
+        # the count query aliases each field as its own name ("count(f) as f"),
+        # so read the field name, not a hard-coded "val"
+        return rs.get_points().__next__()[fields[0]]
 
     def drop_measurement(self, measure):
         self.client.drop_measurement(measure)

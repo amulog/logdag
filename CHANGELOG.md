@@ -93,6 +93,10 @@ regression test (failing on the old code, passing on the fix).
   stdin
 - **makedag.make_input**: crashed with `None.dump` when `log2event.makeinput`
   returned `(None, None)` (no data loaded); now returns early
+- **influx `_get` / `get_count`**: escape tag values in the InfluxQL string
+  (a value with `'` produced a broken/injectable query); use nanosecond time
+  bounds instead of truncating to whole seconds (`int(ut)` + `"s"`); `get_count`
+  reads the aliased field name rather than a hard-coded `"val"`
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
@@ -106,3 +110,7 @@ regression test (failing on the old code, passing on the fix).
   `breakpoint()`
 - **GitHub Actions CI**: a test workflow (pytest on Python 3.8–3.12, push / PR)
   and a tag-triggered publish workflow (PyPI trusted publishing + GitHub Release)
+- **Optional InfluxDB integration tests** (`tests/integration/`,
+  `docker-compose.yml`) exercising `source.influx` against a real InfluxDB 1.8;
+  run in CI via a service container and skipped locally when no server/client is
+  present
