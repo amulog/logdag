@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+"""Regression tests for logdag.__main__._parse_condition.
+
+Code-review finding: a condition whose key was not node/gid/host matched no
+branch and was silently dropped, so a mistyped key (e.g. ``hots=x``) produced a
+wrong filter with no error. Unknown keys now raise SyntaxError.
+"""
+
+import unittest
+
+from logdag import __main__ as logdag_main
+
+
+class TestParseCondition(unittest.TestCase):
+
+    def test_parses_known_keys(self):
+        d = logdag_main._parse_condition(["node=5", "gid=3", "host=h1"])
+        self.assertEqual(d, {"node": 5, "gid": 3, "host": "h1"})
+
+    def test_value_with_equals_is_kept(self):
+        # partition keeps everything after the first '='
+        d = logdag_main._parse_condition(["host=a=b"])
+        self.assertEqual(d, {"host": "a=b"})
+
+    def test_unknown_key_raises(self):
+        # was silently ignored -> wrong filter
+        with self.assertRaises(SyntaxError):
+            logdag_main._parse_condition(["hots=x"])
+
+    def test_missing_equals_raises(self):
+        with self.assertRaises(SyntaxError):
+            logdag_main._parse_condition(["node"])
+
+    def test_non_int_value_raises(self):
+        with self.assertRaises(ValueError):
+            logdag_main._parse_condition(["node=abc"])
+
+
+if __name__ == "__main__":
+    unittest.main()

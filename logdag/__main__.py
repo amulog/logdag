@@ -156,14 +156,17 @@ def _parse_condition(conditions):
     d = {}
     for arg in conditions:
         if "=" not in arg:
-            raise SyntaxError
-        key = arg.partition("=")[0]
+            raise SyntaxError("condition must be key=value: {0}".format(arg))
+        key, _, value = arg.partition("=")
         if key == "node":
-            d["node"] = int(arg.partition("=")[-1])
+            d["node"] = int(value)
         elif key == "gid":
-            d["gid"] = int(arg.partition("=")[-1])
+            d["gid"] = int(value)
         elif key == "host":
-            d["host"] = arg.partition("=")[-1]
+            d["host"] = value
+        else:
+            # do not silently drop an unknown (e.g. mistyped) key
+            raise SyntaxError("unknown condition key: {0}".format(key))
     return d
 
 

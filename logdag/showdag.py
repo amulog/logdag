@@ -397,23 +397,6 @@ class LogDAG:
         df = self.node_ts([node])
         return df[node].sum(axis=0)
 
-    def ate_prune(self, threshold, graph=None):
-        """Prune edges with smaller ATE (average treatment effect).
-        Effective if DAG estimation algorithm is LiNGAM."""
-        if graph is None:
-            graph = self.graph
-        ret = graph.copy()
-
-        try:
-            edge_label = {(u, v): d["weight"]
-                          for (u, v, d) in graph.edges(data=True)}
-            for (src, dst), val in edge_label.items():
-                if float(val) < threshold:
-                    ret.remove_edge(src, dst)
-            return ret
-        except KeyError:
-            return None
-
     def graph_no_orphan(self, graph=None):
         if graph is None:
             graph = self.graph

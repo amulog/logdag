@@ -93,6 +93,13 @@ regression test (failing on the old code, passing on the fix).
   stdin
 - **makedag.make_input**: crashed with `None.dump` when `log2event.makeinput`
   returned `(None, None)` (no data loaded); now returns early
+- **__main__._parse_condition**: a condition with an unknown key (e.g. a typo
+  like `hots=`) was silently dropped, producing a wrong filter; now raises
+  `SyntaxError`
+- **showdag ate_prune duplication**: removed the dead, signed-comparison
+  `LogDAG.ate_prune` method (it would drop strong negative-effect edges); the
+  live `showdag_filter.ate_prune` (magnitude / `abs`) is now the single
+  implementation
 - **influx `_get` / `get_count`**: escape tag values in the InfluxQL string
   (a value with `'` produced a broken/injectable query); use nanosecond time
   bounds instead of truncating to whole seconds (`int(ut)` + `"s"`); `get_count`
