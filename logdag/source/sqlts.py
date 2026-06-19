@@ -272,6 +272,10 @@ class SQLTimeSeries(TimeSeriesDB):
         sorted_l_values = [l_values[idx] for idx in sortidx]
 
         if func is None:
+            if len(sorted_l_dt) == 0:
+                # contract: no rows -> None, not an empty DataFrame (see
+                # tests/contract/test_tsdb_contract.py)
+                return None
             dtindex = self.pdtimestamps(sorted_l_dt)
             return pd.DataFrame(sorted_l_values, index=dtindex, columns=fields)
         elif func == "sum":

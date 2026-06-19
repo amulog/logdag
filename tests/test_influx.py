@@ -100,10 +100,11 @@ class TestGetCount(unittest.TestCase):
         n = db.get_count("m", {"host": "h"}, ["myfield"], (_dt(0), _dt(10)))
         self.assertEqual(n, 42)
 
-    def test_empty_result_returns_none(self):
+    def test_empty_result_returns_zero(self):
+        # contract: empty range -> 0 (see tests/contract/test_tsdb_contract.py)
         db = _make_db(points=[])
         n = db.get_count("m", {"host": "h"}, ["myfield"], (_dt(0), _dt(10)))
-        self.assertIsNone(n)
+        self.assertEqual(n, 0)
 
 
 if __name__ == "__main__":

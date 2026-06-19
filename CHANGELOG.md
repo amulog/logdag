@@ -97,6 +97,9 @@ regression test (failing on the old code, passing on the fix).
   (a value with `'` produced a broken/injectable query); use nanosecond time
   bounds instead of truncating to whole seconds (`int(ut)` + `"s"`); `get_count`
   reads the aliased field name rather than a hard-coded `"val"`
+- **TimeSeriesDB backend consistency**: the backends disagreed on empty-range
+  results; unified the contract — `get_count` returns `0` (was `None` in influx)
+  and `get_df(func=None)` returns `None` (was an empty DataFrame in sqlts)
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
@@ -114,3 +117,7 @@ regression test (failing on the old code, passing on the fix).
   `docker-compose.yml`) exercising `source.influx` against a real InfluxDB 1.8;
   run in CI via a service container and skipped locally when no server/client is
   present
+- **TimeSeriesDB contract (conformance) tests** (`tests/contract/`): one
+  behavioural suite parametrized over the storage backends (sqlts always;
+  influx_v1 when a server is reachable) — a shared safety net as backends are
+  added (the v1 -> v3 migration)

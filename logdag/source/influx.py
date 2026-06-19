@@ -175,7 +175,9 @@ class InfluxDBv1(TimeSeriesDB):
             fields = self.list_fields(measure)
         rs = self._get(measure, d_tags, fields, dt_range, func="count")
         if len(rs) == 0:
-            return None
+            # contract: an empty range counts as 0, not None (see
+            # tests/contract/test_tsdb_contract.py)
+            return 0
         # the count query aliases each field as its own name ("count(f) as f"),
         # so read the field name, not a hard-coded "val"
         return rs.get_points().__next__()[fields[0]]
