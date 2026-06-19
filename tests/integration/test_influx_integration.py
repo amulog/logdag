@@ -35,7 +35,7 @@ except ImportError:  # client not installed
 
 _HOST = os.environ.get("INFLUXDB_HOST", "localhost")
 _PORT = int(os.environ.get("INFLUXDB_PORT", "8086"))
-_DBNAME = "logdag_itest"
+_DBNAME = "logdag_influxdb_v1_test"
 _UTC = tz.tzutc()
 
 

@@ -30,7 +30,7 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     services:
-      influxdb:
+      influxdb-v1:
         image: influxdb:1.8
         ports:
           - 8086:8086

@@ -1,18 +1,28 @@
-# Optional local InfluxDB 1.8 for the opt-in integration tests in
-# tests/integration/. Not required for the normal (unit) test run.
+# Optional local InfluxDB for the opt-in integration tests in tests/integration/.
+# Not required for the normal (unit) test run.
 #
-#   docker compose up -d        # start InfluxDB 1.8 on localhost:8086
+#   docker compose up -d        # start InfluxDB v1.8 on localhost:8086
 #   pip install influxdb        # client (not a runtime dependency of logdag)
 #   pytest tests/integration    # run the integration tests
 #   docker compose down         # stop and remove
 #
-# The same image is used by the `integration` job in
-# .github/workflows/test.yml as a service container.
+# The same images are used by the `integration` job in
+# .github/workflows/test.yml as service containers. Services are named per
+# InfluxDB major version so multiple versions can run side by side as the
+# project migrates (v1 -> v3); each uses its own host port.
 
 services:
-  influxdb:
+  influxdb-v1:
     image: influxdb:1.8
+    container_name: logdag-influxdb-v1-test
     ports:
       - "8086:8086"
     environment:
       INFLUXDB_HTTP_AUTH_ENABLED: "false"
+
+  # When InfluxDB v3 is introduced, add it alongside on a different port:
+  # influxdb-v3:
+  #   image: influxdb:3-core
+  #   container_name: logdag-influxdb-v3-test
+  #   ports:
+  #     - "8087:8086"
