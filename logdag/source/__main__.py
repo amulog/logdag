@@ -26,7 +26,7 @@ def _whole_term(conf):
 
 def make_evdb_log_all(ns):
     conf = open_logdag_config(ns)
-    dump_org = ns.org
+    dump_org = ns.org or conf.getboolean("general", "dump_org")
     dry = ns.dry
 
     timer = common.Timer("make-evdb-log task", output=_logger)
@@ -45,7 +45,7 @@ def make_evdb_log_all(ns):
 
 def make_evdb_snmp_all(ns):
     conf = open_logdag_config(ns)
-    dump_org = ns.org
+    dump_org = ns.org or conf.getboolean("general", "dump_org")
     dry = ns.dry
     parallel = ns.parallel
 
@@ -61,7 +61,7 @@ def make_evdb_snmp_all(ns):
 
 def make_evdb_snmp(ns):
     conf = open_logdag_config(ns)
-    dump_org = ns.org
+    dump_org = ns.org or conf.getboolean("general", "dump_org")
     dry = ns.dry
     parallel = ns.parallel
     feature_name = ns.feature_name
@@ -78,7 +78,7 @@ def make_evdb_snmp(ns):
 
 def make_evdb_snmp_org(ns):
     conf = open_logdag_config(ns)
-    dump_vsource_org = ns.org
+    dump_vsource_org = ns.org or conf.getboolean("general", "dump_org")
     dry = ns.dry
     parallel = ns.parallel
 
@@ -94,7 +94,7 @@ def make_evdb_snmp_org(ns):
 
 def make_evdb_snmp_test(ns):
     conf = open_logdag_config(ns)
-    dump_vsource_org = ns.org
+    dump_vsource_org = ns.org or conf.getboolean("general", "dump_org")
     dry = ns.dry
     parallel = ns.parallel
     feature_name = ns.feature_name

@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Bug fixes from a code review, each verified against the source and covered by a
 regression test (failing on the old code, passing on the fix).
 
+### Changed
+- **Keep the pre-filter (raw) series by default**: new `[general] dump_org`
+  option (default true) stores `log_org` (raw) alongside `log_feature`
+  (filtered) in the same evdb, as separate measures/tables; the `--org` CLI flag
+  still forces it on for a single run
+- **evgen_log write**: commit the evdb once per read window instead of once per
+  series (was ~2N fsyncs with org + feature) — preprocessing I/O speedup
+
 ### Fixed
 
 #### critical

@@ -4,6 +4,11 @@
 
 use_evdb = true
 
+# Store the pre-filter (raw) time-series alongside the filtered features
+# (measures log_org / log_feature in the same evdb). The --org CLI flag also
+# forces this on for a single run.
+dump_org = true
+
 # Fetching term of RRD data for DB
 evdb_whole_term = 2112-09-01 00:00:00, 2112-10-01 00:00:00
 

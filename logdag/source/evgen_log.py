@@ -150,6 +150,10 @@ class LogEventLoader(evgen_common.EventLoader, LogEventLoaderBase):
                 _logger.info("added feature {0} size {1}".format(
                     (host, gid), len(feature_dt)))
 
+        # commit once per window, not per series (one fsync, not ~2N)
+        if not self.dry:
+            self.evdb.commit()
+
     def dump(self, measure, host, gid, l_dt):
         if self.dry:
             return
@@ -159,7 +163,6 @@ class LogEventLoader(evgen_common.EventLoader, LogEventLoaderBase):
             t = pd.to_datetime(dt)
             data[t] = [cnt, ]
         self.evdb.add(measure, d_tags, data, self.fields)
-        self.evdb.commit()
 
     def all_feature(self):
         return [FEATURE_MEASUREMENT, ]
