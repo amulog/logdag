@@ -52,5 +52,36 @@ class TestDiscretizeSequential(unittest.TestCase):
         self.assertEqual(list(a), [0, 0, 0])
 
 
+class TestDiscretizeSlideRadius(unittest.TestCase):
+    """slide/radius produce OVERLAPPING bins: a point in an overlap region is
+    counted in every covering bin. (Pins the densify behaviour before it is
+    moved to a shared layer.)"""
+
+    def _range(self, nbins):
+        return (_T0, _T0 + nbins * _H)
+
+    def _min(self, m):
+        return _T0 + datetime.timedelta(minutes=m)
+
+    def test_slide_overlap_counts_each_window(self):
+        # binsize=2h, slide=1h over 3h -> windows [0,2) [1,3) [2,4)
+        # a point at 1.5h falls in [0,2) and [1,3)
+        a = dtutil.discretize_slide([self._min(90)], self._range(3), _H, 2 * _H,
+                                    binarize=False)
+        self.assertEqual(list(a), [1, 1, 0])
+
+    def test_slide_two_points(self):
+        a = dtutil.discretize_slide([self._min(30), self._min(150)],
+                                    self._range(3), _H, 2 * _H, binarize=False)
+        self.assertEqual(list(a), [1, 1, 1])
+
+    def test_radius_overlap(self):
+        # slide=1h, radius=1h -> labels 0.5/1.5/2.5h, terms [-.5,1.5) [.5,2.5) [1.5,3.5)
+        # a point at 1.5h falls in [.5,2.5) and [1.5,3.5)
+        a = dtutil.discretize_radius([self._min(90)], self._range(3), _H, _H,
+                                     binarize=False)
+        self.assertEqual(list(a), [0, 1, 1])
+
+
 if __name__ == "__main__":
     unittest.main()
