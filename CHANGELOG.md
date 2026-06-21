@@ -136,7 +136,9 @@ regression test (failing on the old code, passing on the fix).
 - **Optional InfluxDB integration tests** (`tests/integration/`,
   `docker-compose.yml`) exercising `source.influx` against a real InfluxDB 1.8;
   run in CI via a service container and skipped locally when no server/client is
-  present
+  present. `docker-compose.yml` also provides an InfluxDB 3 Core container
+  (port 8181, ephemeral memory store, dev-only `--without-auth`) for developing
+  the future v3 backend
 - **TimeSeriesDB contract (conformance) tests** (`tests/contract/`): one
   behavioural suite parametrized over the storage backends (sqlts always;
   influx_v1 when a server is reachable) — a shared safety net as backends are

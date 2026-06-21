@@ -20,14 +20,17 @@ services:
     environment:
       INFLUXDB_HTTP_AUTH_ENABLED: "false"
 
-  # InfluxDB v3 (Core) -- prepared for the future v3 backend; runs alongside v1
-  # on its own port. Uncomment and VERIFY against the current InfluxDB 3 Core
-  # docs when implementing the backend: v3 differs from v1 (SQL / FlightSQL
-  # instead of InfluxQL, a separate client, an object store, default port 8181,
-  # and token auth), so the command/auth below may need adjusting.
-  # influxdb-v3:
-  #   image: influxdb:3-core
-  #   container_name: logdag-influxdb-v3-test
-  #   command: influxdb3 serve --node-id node0 --object-store memory
-  #   ports:
-  #     - "8181:8181"
+  # InfluxDB v3 (Core) for the future v3 backend; runs alongside v1 on its own port.
+  # Verified working dev startup (heinzel, 2026-06-19, image influxdb:3-core):
+  #   `serve --node-id node0 --object-store memory --without-auth` -> /health 200 in ~3s;
+  #   write POST /api/v3/write_lp?db=<db> (204), query GET /api/v3/query_sql?db=<db>&q=<SQL>&format=csv (200).
+  #   v3 also supports InfluxQL natively (/api/v3/query_influxql). SQL is the primary query API.
+  # `--object-store memory` = ephemeral (fresh DB each start, ideal for per-round test isolation);
+  # `--without-auth` = no token, DEV ONLY. No in-container healthcheck (curl may be absent in the image);
+  # callers wait on the host: `until curl -sf http://localhost:8181/health; do sleep 1; done`.
+  influxdb-v3:
+    image: influxdb:3-core
+    container_name: logdag-influxdb-v3-test
+    command: influxdb3 serve --node-id node0 --object-store memory --without-auth
+    ports:
+      - "8181:8181"
