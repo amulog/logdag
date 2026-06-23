@@ -215,8 +215,10 @@ class EventDefinitionMap(object):
             with open(fp, "rb") as f:
                 obj = pickle.load(f)
             self._emap, self._ermap = obj
-        except:
-            # compatibility
+        except Exception:
+            # compatibility: fall back to the old evdef path on any load
+            # failure (missing / unreadable / old-format pickle). Narrowed
+            # from a bare ``except`` so KeyboardInterrupt / SystemExit propagate.
             fp = arguments.ArgumentManager.evdef_path_old(args)
             with open(fp, "rb") as f:
                 obj = pickle.load(f)

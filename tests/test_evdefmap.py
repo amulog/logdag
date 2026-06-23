@@ -89,6 +89,21 @@ class TestEventDefinitionMap(unittest.TestCase):
         self.assertEqual(loaded.evdef(0).identifier, self.a.identifier)
         self.assertEqual(loaded.get_eid(self.b), self.eid_b)
 
+    def test_load_does_not_swallow_keyboardinterrupt(self):
+        # load() falls back to the old path on a load failure, but its except
+        # must not swallow KeyboardInterrupt (was a bare `except:`).
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "evdef.pickle")
+            with open(path, "wb") as f:
+                f.write(b"x")  # exists so the first open() succeeds
+            with mock.patch.object(log2event.arguments.ArgumentManager,
+                                   "evdef_path",
+                                   staticmethod(lambda args: path)):
+                with mock.patch("logdag.log2event.pickle.load",
+                                side_effect=KeyboardInterrupt):
+                    with self.assertRaises(KeyboardInterrupt):
+                        log2event.EventDefinitionMap().load(args=None)
+
 
 if __name__ == "__main__":
     unittest.main()
