@@ -191,6 +191,12 @@ regression test (failing on the old code, passing on the fix).
   `dtutil.discretize_sequential` (identical to the sqlts backend — verified by
   a contract parity test), so v3 works in the default `ci_bin_method=sequential`
   pipeline, not just sparse reads
+- **InfluxDB v2 compatibility (no new code)**: the v1 backend
+  (`general.evdb = influx`) works against an InfluxDB v2 server through its v1
+  compatibility API — create a DBRP mapping and a v1 auth on the v2 side (now
+  documented in the `[database_influx]` config comment). Verified (add /
+  get_count / get_df incl. `func="sum"`) against InfluxDB 2.7, so no dedicated
+  v2 backend is needed; logdag covers v1 / v2 / v3 with two implementations
 - **Contract-suite required mode**: `INFLUXDB_V1_REQUIRED` /
   `INFLUXDB_V3_REQUIRED` (or `INFLUXDB_REQUIRED`) turn an unreachable influx
   backend from a skip into a hard failure, so an intended influx run that is

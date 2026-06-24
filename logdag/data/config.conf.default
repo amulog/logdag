@@ -62,6 +62,12 @@ binsize = 60
 
 
 [database_influx]
+# This v1 backend also works against an InfluxDB v2 server via its v1
+# compatibility API. On the v2 side, create a DBRP mapping and a v1 auth:
+#   influx v1 dbrp create --db log --rp autogen --bucket-id <id> --default
+#   influx v1 auth create --username <u> --password <pw> --read-bucket <id> --write-bucket <id>
+# then set host/port and username/password below (a separate v2 backend is not
+# needed; verified add / get_count / get_df incl. func="sum" against v2.7).
 
 host = localhost
 port = 8086
