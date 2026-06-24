@@ -32,17 +32,9 @@ def estimate(data, skel_th=0.01, skel_method="stable", pc_depth=None,
     #     pc_data_matrix = data.apply(
     #         lambda s: s.map(lambda x: 1 if x >= 1 else 0)).values
 
-    pc_args = {
-        "indep_test_func": ci_test_bin,
-        "data_matrix": pc_data_matrix,
-        "alpha": skel_th,
-        "method": skel_method,
-        "verbose": skel_verbose,
-    }
-    if pc_depth is not None and pc_depth >= 0:
-        pc_args["max_reach"] = pc_depth
-    if init_graph is not None:
-        pc_args["init_graph"] = init_graph
+    pc_args = pc_input._build_skeleton_args(
+        pc_data_matrix, skel_th, ci_test_bin, skel_method, pc_depth,
+        skel_verbose, init_graph)
 
     (graph, sep_set) = pcalg.estimate_skeleton(**pc_args)
     graph_final = estimate_direction(data, graph)

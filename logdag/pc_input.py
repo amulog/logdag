@@ -50,11 +50,12 @@ def binarize_input(data):
     return data.apply(lambda s: s.map(lambda x: 1 if x >= 1 else 0))
 
 
-def estimate_skeleton(data, threshold, func, skel_method="stable",
-                      pc_depth=None, verbose=False, init_graph=None):
-    import pcalg
+def _build_skeleton_args(data_matrix, threshold, func, skel_method,
+                         pc_depth, verbose, init_graph):
+    """kwargs for pcalg.estimate_skeleton, shared by estimate_skeleton /
+    estimate_dag and mixedlingam_input.estimate (the dict was triplicated)."""
     args = {"indep_test_func": func,
-            "data_matrix": data.values,
+            "data_matrix": data_matrix,
             "alpha": threshold,
             "method": skel_method,
             "verbose": verbose}
@@ -62,6 +63,14 @@ def estimate_skeleton(data, threshold, func, skel_method="stable",
         args["max_reach"] = pc_depth
     if init_graph is not None:
         args["init_graph"] = init_graph
+    return args
+
+
+def estimate_skeleton(data, threshold, func, skel_method="stable",
+                      pc_depth=None, verbose=False, init_graph=None):
+    import pcalg
+    args = _build_skeleton_args(data.values, threshold, func, skel_method,
+                                pc_depth, verbose, init_graph)
     g, _ = pcalg.estimate_skeleton(**args)
     return g.to_directed()
 
@@ -70,15 +79,8 @@ def estimate_dag(data, threshold, func, skel_method="stable",
                  pc_depth=None, verbose=False, init_graph=None):
 
     import pcalg
-    args = {"indep_test_func": func,
-            "data_matrix": data.values,
-            "alpha": threshold,
-            "method": skel_method,
-            "verbose": verbose}
-    if pc_depth is not None and pc_depth >= 0:
-        args["max_reach"] = pc_depth
-    if init_graph is not None:
-        args["init_graph"] = init_graph
+    args = _build_skeleton_args(data.values, threshold, func, skel_method,
+                                pc_depth, verbose, init_graph)
     g, sep_set = pcalg.estimate_skeleton(**args)
     g = pcalg.estimate_cpdag(skel_graph=g, sep_set=sep_set)
     return g
