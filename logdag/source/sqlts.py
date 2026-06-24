@@ -2,53 +2,28 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
-from dateutil import tz
 
 from amulog import config
 from amulog import db_common
 from .. import dtutil
+from . import convert
 
 
 class TimeSeriesDB(ABC):
 
+    # timezone conversion lives in source.convert (single source of truth);
+    # kept as static methods so subclasses (incl. influx) inherit them
     @staticmethod
     def pdtimestamp_naive(input_dt):
-        if isinstance(input_dt, pd.Timestamp):
-            dt = input_dt
-        else:
-            dt = pd.Timestamp(input_dt)
-
-        # If input_dt is timezone-aware,
-        # convert it into naive(utc) for database input
-        if dt.tz is not None:
-            dt = dt.tz_convert(None)
-            dt = dt.tz_localize(None)
-        return dt
+        return convert.pdtimestamp_naive(input_dt)
 
     @staticmethod
     def pdtimestamp(input_dt):
-        if isinstance(input_dt, pd.Timestamp):
-            dt = input_dt
-        else:
-            dt = pd.Timestamp(input_dt)
-
-        # If input_dt is timezone-naive,
-        # convert it into timezone-aware(local) for logdag use
-        if dt.tz is None:
-            dt = dt.tz_localize(tz.tzutc())
-            dt = dt.tz_convert(tz.tzlocal())
-        return dt
+        return convert.pdtimestamp(input_dt)
 
     @staticmethod
     def pdtimestamps(input_dts):
-        dtindex = pd.to_datetime(input_dts)
-
-        # If input_dt is timezone-naive,
-        # convert it into timezone-aware(local) for logdag use
-        if dtindex.tz is None:
-            dtindex = dtindex.tz_localize(tz.tzutc())
-            dtindex = dtindex.tz_convert(tz.tzlocal())
-        return dtindex
+        return convert.pdtimestamps(input_dts)
 
     @abstractmethod
     def list_measurements(self):

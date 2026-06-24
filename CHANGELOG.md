@@ -11,6 +11,11 @@ Bug fixes from a code review, each verified against the source and covered by a
 regression test (failing on the old code, passing on the fix).
 
 ### Changed
+- **`pdtimestamp*` tz helpers (internal refactor)**: the timezone-conversion
+  helpers were defined identically in `source.convert` and as static methods on
+  `sqlts.TimeSeriesDB`; the static methods now delegate to `source.convert` so
+  the tz convention has a single source of truth (subclasses, incl. influx,
+  keep inheriting them)
 - **pcalg skeleton args (internal refactor)**: the `pcalg.estimate_skeleton`
   kwargs were built identically in three places (`pc_input.estimate_skeleton` /
   `estimate_dag` and `mixedlingam_input.estimate`); extracted into
