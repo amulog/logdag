@@ -37,6 +37,9 @@ from dateutil import tz
 _UTC = tz.tzutc()
 _INFLUX_HOST = os.environ.get("INFLUXDB_HOST", "localhost")
 _INFLUX_PORT = int(os.environ.get("INFLUXDB_PORT", "8086"))
+# v3 dev server (docker-compose `influxdb-v3`, image influxdb:3-core, port 8181)
+_INFLUX_V3_URL = os.environ.get("INFLUXDB_V3_URL", "http://localhost:8181")
+_INFLUX_V3_TOKEN = os.environ.get("INFLUXDB_V3_TOKEN", "")
 
 
 def _ts(ut):
@@ -48,6 +51,19 @@ def _dt(ut):
 
 
 # --- backend factories: each returns (db, teardown) or skips -----------------
+
+def _skip_or_fail(env_name, msg):
+    """Skip an unreachable influx backend -- unless it was declared REQUIRED, in
+    which case fail loudly. An intended influx run (container expected up) that
+    is actually blocked -- container stopped, or a sandbox cutting off localhost
+    -- must not masquerade as a harmless skip. Gate per backend with
+    INFLUXDB_V1_REQUIRED / INFLUXDB_V3_REQUIRED, or all at once with
+    INFLUXDB_REQUIRED."""
+    if os.environ.get(env_name) or os.environ.get("INFLUXDB_REQUIRED"):
+        flag = env_name if os.environ.get(env_name) else "INFLUXDB_REQUIRED"
+        pytest.fail("{0} [{1} set: expected a live server]".format(msg, flag))
+    pytest.skip(msg)
+
 
 def _make_sqlts():
     from amulog import db_sqlite
@@ -80,9 +96,10 @@ def _influx_available():
 
 def _make_influx_v1():
     if not _influx_available():
-        pytest.skip("InfluxDB v1 not reachable at {0}:{1} "
-                    "(start it with `docker compose up -d`)".format(
-                        _INFLUX_HOST, _INFLUX_PORT))
+        _skip_or_fail("INFLUXDB_V1_REQUIRED",
+                      "InfluxDB v1 not reachable at {0}:{1} "
+                      "(start it with `docker compose up -d`)".format(
+                          _INFLUX_HOST, _INFLUX_PORT))
     import influxdb
     from logdag.source import influx
 
@@ -97,16 +114,52 @@ def _make_influx_v1():
     return db, teardown
 
 
+def _influx_v3_available():
+    # stdlib-only probe; the v3 backend itself uses urllib (no influxdb3-python
+    # dependency required for the contract run).
+    import urllib.request
+    import urllib.error
+    try:
+        req = urllib.request.Request(_INFLUX_V3_URL + "/health", method="GET")
+        if _INFLUX_V3_TOKEN:
+            req.add_header("Authorization", "Bearer " + _INFLUX_V3_TOKEN)
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return 200 <= resp.status < 300
+    except urllib.error.HTTPError as e:
+        # any HTTP response means the server is up (e.g. 401 without token)
+        return True
+    except Exception:
+        return False
+
+
 def _make_influx_v3():
-    # Slot prepared for the future InfluxDB v3 backend. When it is implemented,
-    # complete this factory and it inherits the whole contract suite:
-    #   1. construct the v3 backend (it uses a different client / API and port
-    #      than v1 -- SQL/FlightSQL, not InfluxQL);
-    #   2. skip (pytest.skip) when the v3 client or server is unavailable, the
-    #      same way _make_influx_v1 does;
-    #   3. create/drop a temp database and return (db, teardown).
-    # See the (commented) influxdb-v3 service in docker-compose.yml.
-    pytest.skip("InfluxDBv3 backend not implemented yet")
+    if not _influx_v3_available():
+        _skip_or_fail("INFLUXDB_V3_REQUIRED",
+                      "InfluxDB v3 not reachable at {0} "
+                      "(start it with `docker compose up -d influxdb-v3`)".format(
+                          _INFLUX_V3_URL))
+    from logdag.source import influx3
+
+    dbname = "logdag_contract_v3_test"
+    # v3 auto-creates a database on first write; construct with
+    # create_if_missing so __init__ does not require a databases listing.
+    db = influx3.InfluxDBv3(dbname, host=_INFLUX_V3_URL,
+                            token=_INFLUX_V3_TOKEN or None,
+                            create_if_missing=True)
+
+    def teardown():
+        # best-effort: drop every table created during the test; the dev server
+        # uses object-store=memory so a missing drop is harmless (fresh per run).
+        try:
+            for m in db.list_measurements():
+                try:
+                    db.drop_measurement(m)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    return db, teardown
 
 
 _BACKENDS = {

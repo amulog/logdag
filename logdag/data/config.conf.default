@@ -30,7 +30,7 @@ logging = auto.log
 log_source = amulog
 snmp_source = rrd
 
-# [influx, sql]
+# [influx, influx3, sql]
 evdb = sql
 
 # amulog host_alias filename
@@ -72,6 +72,22 @@ snmp_dbname = snmp
 snmp_source_dbname = snmp
 batch_size = 1000
 protocol = line
+
+
+[database_influx3]
+# InfluxDB 3 Core backend (general.evdb = influx3). Uses the v3 HTTP API
+# (SQL / Line Protocol) over stdlib urllib -- no extra client package needed.
+# host: base URL of the v3 server (scheme://host:port). If omitted, host+port
+# below are combined (default port 8181).
+host = http://localhost:8181
+# port = 8181
+# token: bearer token. The INFLUXDB_V3_TOKEN env var takes precedence, so the
+# token need not be written here (leave empty for a --without-auth dev server).
+token =
+log_dbname = log
+snmp_dbname = snmp
+snmp_source_dbname = snmp
+batch_size = 1000
 
 
 [database_sql]

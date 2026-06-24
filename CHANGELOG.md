@@ -182,3 +182,14 @@ regression test (failing on the old code, passing on the fix).
   added (the v1 -> v3 migration)
 - **Optional `influx` extra**: `pip install -e .[influx]` installs the InfluxDB
   v1 client needed by the `source.influx` backend and its tests
+- **InfluxDB 3 Core backend** (`source.influx3`, selected with
+  `general.evdb = influx3`): a TimeSeriesDB backend over the v3 HTTP API
+  (SQL / Line Protocol) using stdlib `urllib` — no extra client package.
+  Configured via a new `[database_influx3]` config section, wired into the
+  `EventLoader` backend factory, and covered by the `influx_v3` arm of the
+  contract suite
+- **Contract-suite required mode**: `INFLUXDB_V1_REQUIRED` /
+  `INFLUXDB_V3_REQUIRED` (or `INFLUXDB_REQUIRED`) turn an unreachable influx
+  backend from a skip into a hard failure, so an intended influx run that is
+  actually blocked (container down, or a sandbox cutting off localhost) fails
+  loudly instead of masquerading as a pass

@@ -24,6 +24,10 @@ class EventLoader(ABC):
             dbname = conf["database_influx"][dbname_key]
             from . import influx
             return influx.init_influx(conf, dbname, df=False)
+        elif db_type == "influx3":
+            dbname = conf["database_influx3"][dbname_key]
+            from . import influx3
+            return influx3.init_influx_v3(conf, dbname)
         elif db_type in ("sql", "sqlite", "mysql"):
             from . import sqlts
             return sqlts.init_sqlts(conf)

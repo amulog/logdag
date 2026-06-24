@@ -49,7 +49,9 @@ setup(name=package_name,
       install_requires=load_requirements(),
       extras_require={
           # optional InfluxDB v1 backend (logdag.source.influx) and the tests
-          # that exercise it; install with `pip install -e .[influx]`
+          # that exercise it; install with `pip install -e .[influx]`.
+          # The v3 backend (logdag.source.influx3) needs no extra package -- it
+          # talks to the v3 HTTP API (SQL / Line Protocol) over stdlib urllib.
           'influx': ['influxdb'],
       },
       package_data={'logdag': ['data/*']},
