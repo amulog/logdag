@@ -148,6 +148,10 @@ regression test (failing on the old code, passing on the fix).
   `reload-area` CLI handler, so it and the dead `reload_area` handler were
   removed. This also retires the `area` NameError, the `-O`-stripped asserts,
   and the worker-connection leak the review flagged inside it
+- **Dead `dtutil` functions** (~357 lines, no live callers): `is_sep` /
+  `adj_sep` / `radj_sep` (retires the `adj_sep` "duration must be < 1 day"
+  footgun), `separate_periodic` / `separate_periodic_dup`, `convert_binsize`,
+  and the `rand_uniform` / `rand_exp` / `rand_next_exp` generators
 - **Travis CI** configuration (`.travis.yml`)
 
 ### Added
