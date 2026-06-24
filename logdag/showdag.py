@@ -528,8 +528,13 @@ def apply_filter(ldag, l_filtername, th=None, graph=None):
         filters.append(("no_isolated", {}))
 
     for funcname, kwargs in filters:
-        assert funcname in showdag_filter.FUNCTIONS
-        g = eval("showdag_filter." + funcname)(graph=g, ldag=ldag, **kwargs)
+        # explicit check (assert is stripped under -O) + getattr instead of
+        # eval(): funcname comes from the filter list (CLI / config)
+        # explicit check (assert is stripped under -O) + getattr instead of
+        # eval(): funcname comes from the filter list (CLI / config)
+        if funcname not in showdag_filter.FUNCTIONS:
+            raise ValueError("unknown filter function: {0}".format(funcname))
+        g = getattr(showdag_filter, funcname)(graph=g, ldag=ldag, **kwargs)
     return g
 
 

@@ -42,6 +42,14 @@ class TestApplyFilterNoMutation(unittest.TestCase):
             showdag.apply_filter(ldag=object(), l_filtername=shared, graph=g)
         self.assertEqual(shared, ["to_undirected"])
 
+    def test_unknown_filter_raises_valueerror(self):
+        # an unknown filter name must raise ValueError, not slip into eval()
+        # (the check was `assert ... in FUNCTIONS`, stripped under -O)
+        g = nx.DiGraph()
+        with self.assertRaises(ValueError):
+            showdag.apply_filter(ldag=object(),
+                                 l_filtername=["bogus_filter"], graph=g)
+
 
 if __name__ == "__main__":
     unittest.main()

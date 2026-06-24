@@ -103,6 +103,12 @@ regression test (failing on the old code, passing on the fix).
 - **evgen_snmp._search_feature_source**: replaced `assert len(ret) == 1`
   (stripped under `-O`, an `IndexError` on zero matches, and a misleading
   "duplicated" message) with explicit not-found / duplicated `ValueError`s
+- **showdag.apply_filter**: validated the filter name with `assert` (stripped
+  under `-O`) and then dispatched via `eval("showdag_filter." + name)`; now an
+  explicit `ValueError` on an unknown name plus `getattr` instead of `eval`
+- **__main__._parse_opt_range**: the `--range` length `assert` is now an
+  explicit `ValueError` (argparse `nargs=2` already covers the CLI; this guards
+  non-CLI callers under `-O`)
 - **eval.add_lids_stdin**: parsed each character of a single input line
   (`[int(v) for v in input()]`); now reads whitespace-separated ids from all of
   stdin

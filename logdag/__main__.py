@@ -398,7 +398,12 @@ def _parse_opt_range(ns):
     if date_range_str is None:
         return None
     else:
-        assert len(date_range_str) == 2
+        # argparse enforces nargs=2, but keep an explicit check (assert is
+        # stripped under -O) for any non-CLI caller
+        # argparse enforces nargs=2, but keep an explicit check (assert is
+        # stripped under -O) for any non-CLI caller
+        if len(date_range_str) != 2:
+            raise ValueError("range needs exactly 2 dates (start end)")
         import datetime
         return [datetime.datetime.strptime(s, "%Y-%m-%d") for s in date_range_str]
 
