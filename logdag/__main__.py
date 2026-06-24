@@ -27,12 +27,6 @@ def test_makedag(ns):
     makedag.makedag_main(am[0])
 
 
-def reload_area(ns):
-    from . import tsdb
-    conf = open_logdag_config(ns)
-    tsdb.reload_area(conf)
-
-
 def make_args(ns):
     conf = open_logdag_config(ns)
 
@@ -538,9 +532,6 @@ DICT_ARGSET = {
     "dump-events": ["Output event node definition in readable format",
                     [OPT_CONFIG, OPT_DEBUG, ARG_ARGNAME],
                     dump_events],
-    #    "reload-area": ["Reload area definition for time-series DB",
-    #                    [OPT_CONFIG, OPT_DEBUG],
-    #                    reload_area],
     "show-args": ["Show arguments recorded in argument file",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_args],

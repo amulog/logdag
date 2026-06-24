@@ -143,6 +143,11 @@ regression test (failing on the old code, passing on the fix).
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
   `source/_common.py` stub
+- **Legacy `tsdb.py`** (696-line `TimeSeriesDB`, superseded by the `source`
+  backends `sqlts` / `influx`): it was reachable only through the unregistered
+  `reload-area` CLI handler, so it and the dead `reload_area` handler were
+  removed. This also retires the `area` NameError, the `-O`-stripped asserts,
+  and the worker-connection leak the review flagged inside it
 - **Travis CI** configuration (`.travis.yml`)
 
 ### Added
