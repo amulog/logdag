@@ -54,7 +54,7 @@ def make_evdb_snmp_all(ns):
     try:
         el.store_all(_whole_term(conf), dump_org=dump_org)
     except KeyboardInterrupt:
-        pass
+        _logger.warning("interrupted by user; partial data may have been stored")
     finally:
         el.terminate()
 
@@ -71,7 +71,7 @@ def make_evdb_snmp(ns):
     try:
         el.store_feature(feature_name, _whole_term(conf), dump_org=dump_org)
     except KeyboardInterrupt:
-        pass
+        _logger.warning("interrupted by user; partial data may have been stored")
     finally:
         el.terminate()
 
@@ -87,7 +87,7 @@ def make_evdb_snmp_org(ns):
     try:
         el.store_all_source(_whole_term(conf), dump_vsource_org)
     except KeyboardInterrupt:
-        pass
+        _logger.warning("interrupted by user; partial data may have been stored")
     finally:
         el.terminate()
 
@@ -107,7 +107,7 @@ def make_evdb_snmp_test(ns):
         el.test_store_feature(feature_name, tags,
                               _whole_term(conf), dump_vsource_org)
     except KeyboardInterrupt:
-        pass
+        _logger.warning("interrupted by user; partial data may have been stored")
     finally:
         el.terminate()
 

@@ -53,6 +53,9 @@ regression test (failing on the old code, passing on the fix).
   caught everything (incl. KeyboardInterrupt / SystemExit); narrowed to
   `except Exception:` so an interrupt during load propagates instead of silently
   falling through to the legacy path
+- **make-evdb-snmp KeyboardInterrupt handling**: the snmp store handlers caught
+  Ctrl-C with a bare `pass`, so an interrupted run looked like a clean success;
+  they now log a warning (cleanup via `finally: el.terminate()` is unchanged)
 - **pknowledge `_update_edge_prune_force`**: had no prune logic (identical to
   `_update_edge_force`); now does both prune and force. `allow_reverse` is passed
   by keyword to `has_edge` (its 3rd positional arg is `original`, so it was
