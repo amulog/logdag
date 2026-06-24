@@ -56,16 +56,16 @@ def _sep_across_host(graph, ldag=None, **_):
         raise ValueError("LogDAG object is needed for sep_across_host")
     g_same = nx.DiGraph()
     g_diff = nx.DiGraph()
-    try:
-        for edge in graph.edges(data=True):
-            src_evdef, dst_evdef = ldag.edge_evdef(edge)
-            if src_evdef.host == dst_evdef.host:
-                g_same.add_edges_from([edge])
-            else:
-                g_diff.add_edges_from([edge])
-        return g_same, g_diff
-    except AttributeError:
-        return None, None
+    for edge in graph.edges(data=True):
+        src_evdef, dst_evdef = ldag.edge_evdef(edge)
+        # all_attr("host") handles MultipleEventDefinition (no single .host
+        # attribute -> the old `.host` raised AttributeError, which the broad
+        # `except` swallowed, making the whole filter return (None, None))
+        if src_evdef.all_attr("host") == dst_evdef.all_attr("host"):
+            g_same.add_edges_from([edge])
+        else:
+            g_diff.add_edges_from([edge])
+    return g_same, g_diff
 
 
 def across_host(graph, **kwargs):

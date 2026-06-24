@@ -90,6 +90,12 @@ regression test (failing on the old code, passing on the fix).
   the across-host stats
 - **showdag_filter `directed` / `undirected`**: the directed graph dropped edge
   attributes (e.g. `weight`), breaking a downstream `ate_prune`
+- **showdag_filter._sep_across_host**: compared `src_evdef.host ==
+  dst_evdef.host`; a MultipleEventDefinition has no single `.host`, so `.host`
+  raised AttributeError which a broad `except AttributeError` swallowed, making
+  the across-host / within-host filter return `(None, None)` silently. Now
+  compares `all_attr("host")` (defined for both single and multiple) and drops
+  the masking except
 - **arguments.jobname2args**: split the jobname on the first `_`, breaking the
   round-trip when the area name contained `_` (e.g. `host_xxx`); now matches the
   datetime suffix
