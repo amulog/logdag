@@ -67,7 +67,11 @@ class AmulogLoader(object):
 
     def iter_dt(self, ev, dt_range=None):
         for lm in self._iter_lines(ev, dt_range):
-            dt = lm.dt.replace(tzinfo=tzlocal())
+            # amulog returns tz-aware datetimes (in its configured timezone,
+            # default local); honor that instead of forcing local. Fall back to
+            # local only for a naive dt (older amulog).
+            dt = lm.dt if lm.dt.tzinfo is not None \
+                else lm.dt.replace(tzinfo=tzlocal())
             yield dt
 
     @staticmethod
@@ -97,7 +101,8 @@ class AmulogLoader(object):
     def load_org(self, ev, dt_range):
         # restored_ev = (self.restore_host(ev[0]), ev[1])
         for lm in self._iter_lines(ev, dt_range):
-            lm.dt = lm.dt.replace(tzinfo=tzlocal())
+            if lm.dt.tzinfo is None:
+                lm.dt = lm.dt.replace(tzinfo=tzlocal())
             yield lm
 
     def gid_instruction(self, gid):
