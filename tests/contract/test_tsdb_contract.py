@@ -225,3 +225,20 @@ class TestTimeSeriesDBContract:
         df = tsdb.get_df("m", {"host": "h1"}, ["val"],
                          (_dt(_BASE + 3600), _dt(_BASE + 7200)))
         assert df is None
+
+    def test_get_df_sum_densify(self, tsdb):
+        # func="sum" bins the sparse points into str_bin windows and sums them.
+        # The base is aligned to 60s so the DB-side bins (InfluxQL GROUP BY
+        # time(), epoch-aligned) and the Python-side bins (dtutil, aligned to
+        # dt_range[0]) agree -- the realistic case (unit terms are aligned).
+        base = 1600000020  # 1600000020 % 60 == 0
+        d_input = {_ts(base + 10): [1.0], _ts(base + 50): [2.0],
+                   _ts(base + 70): [3.0], _ts(base + 130): [4.0]}
+        tsdb.add("m", {"host": "h1"}, d_input, ["val"])
+        tsdb.commit()
+        df = tsdb.get_df("m", {"host": "h1"}, ["val"],
+                         (_dt(base), _dt(base + 180)),
+                         str_bin="1m", func="sum", fill=0)
+        assert df is not None
+        # bin0 = 1+2, bin1 = 3, bin2 = 4
+        assert df["val"].tolist() == [3.0, 3.0, 4.0]

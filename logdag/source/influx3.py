@@ -47,6 +47,8 @@ import numpy as np
 import pandas as pd
 from dateutil import tz
 
+from amulog import config
+from .. import dtutil
 from .sqlts import TimeSeriesDB
 
 _logger = logging.getLogger(__package__)
@@ -376,20 +378,43 @@ class InfluxDBv3(TimeSeriesDB):
                str_bin=None, func=None, fill=None, limit=None):
         if fields is None:
             fields = self.list_fields(measure)
-        # Densify (func/fill/str_bin) is delegated to the shared layer per
-        # docs section 4-4; the backend only serves sparse reads (func=None).
-        if func is not None:
-            raise NotImplementedError(
-                "InfluxDBv3 serves sparse reads only; densify (func/fill) is "
-                "handled by the feature/analysis layer (docs 4-4).")
         rows, fields = self._select(measure, d_tags, fields, dt_range,
                                     limit=limit)
-        if len(rows) == 0:
-            # contract: no rows -> None (the "no data" sentinel)
-            return None
-        dtindex = pd.DatetimeIndex([self._parse_time(r["time"]) for r in rows])
-        l_array = [np.array([float(r[f]) for f in fields]) for r in rows]
-        return pd.DataFrame(l_array, index=dtindex, columns=fields)
+        l_dt = [self._parse_time(r["time"]) for r in rows]
+        l_values = []
+        for r in rows:
+            vals = np.array([float(r[f]) for f in fields])
+            if fill is not None:
+                vals = np.nan_to_num(vals, nan=fill)
+            l_values.append(vals)
+
+        if func is None:
+            if len(l_dt) == 0:
+                # contract: no rows -> None (the "no data" sentinel)
+                return None
+            dtindex = pd.DatetimeIndex(l_dt)
+            return pd.DataFrame(l_values, index=dtindex, columns=fields)
+        elif func == "sum":
+            # densify in the shared dtutil layer, identical to sqlts.get_df so
+            # the binned result matches across backends (the rows are already
+            # time-ordered by _select)
+            assert str_bin is not None
+            binsize = config.str2dur(str_bin)
+            dtindex = self.pdtimestamps(
+                dtutil.range_dt(dt_range[0], dt_range[1], binsize))
+            d_values = {}
+            if len(l_dt) == 0:
+                for field in fields:
+                    d_values[field] = [float(0)] * len(dtindex)
+            else:
+                for fid, series in enumerate(zip(*l_values)):
+                    a_cnt = dtutil.discretize_sequential(
+                        l_dt, dt_range, binsize, l_dt_values=series)
+                    d_values[fields[fid]] = a_cnt
+            return pd.DataFrame(d_values, index=dtindex)
+        else:
+            raise NotImplementedError(
+                "InfluxDBv3.get_df supports func in (None, 'sum')")
 
     def get_count(self, measure, d_tags, fields, dt_range):
         if fields is None:

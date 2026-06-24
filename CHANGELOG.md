@@ -187,7 +187,10 @@ regression test (failing on the old code, passing on the fix).
   (SQL / Line Protocol) using stdlib `urllib` — no extra client package.
   Configured via a new `[database_influx3]` config section, wired into the
   `EventLoader` backend factory, and covered by the `influx_v3` arm of the
-  contract suite
+  contract suite. `get_df(func="sum")` densifies via the shared
+  `dtutil.discretize_sequential` (identical to the sqlts backend — verified by
+  a contract parity test), so v3 works in the default `ci_bin_method=sequential`
+  pipeline, not just sparse reads
 - **Contract-suite required mode**: `INFLUXDB_V1_REQUIRED` /
   `INFLUXDB_V3_REQUIRED` (or `INFLUXDB_REQUIRED`) turn an unreachable influx
   backend from a skip into a hard failure, so an intended influx run that is
