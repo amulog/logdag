@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-26
+
 Bug fixes from a code review, each verified against the source and covered by a
-regression test (failing on the old code, passing on the fix).
+regression test (failing on the old code, passing on the fix). Also adds the
+InfluxDB 3 Core backend, GitHub Actions CI, and fixes the packaging so a
+non-editable `pip install` works. Requires `amulog>=0.4.0`.
 
 ### Changed
 - **`pdtimestamp*` tz helpers (internal refactor)**: the timezone-conversion
