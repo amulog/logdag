@@ -53,6 +53,10 @@ setup(name=package_name,
           # The v3 backend (logdag.source.influx3) needs no extra package -- it
           # talks to the v3 HTTP API (SQL / Line Protocol) over stdlib urllib.
           'influx': ['influxdb'],
+          # vendored logdag.causaltestdata: only HawkesEventVariable needs the
+          # Hawkes package (imported lazily). The other variable types rely on
+          # numpy/scipy/pandas/networkx, which are already core requirements.
+          'testdata': ['Hawkes'],
       },
       package_data={'logdag': ['data/*']},
       entry_points={

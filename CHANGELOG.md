@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Vendored `logdag.causaltestdata`**: merged the standalone `causaltestdata`
+  package (BSD-3-Clause, same author) into the source tree as a sub-package.
+  It generates synthetic time-series from a known causal DAG, used for
+  test/evaluation data with ground-truth structure. Includes a new
+  `PeriodicEventVariable` (`type = "periodic"`) producing regular-interval event
+  series -- the kind the default preprocessing filters (`filter_periodic` /
+  `remove_linear`) remove, so a synthetic model can mix periodic (dropped) and
+  causal Poisson (kept) events. Its only non-core dependency, `Hawkes` (needed
+  solely by `HawkesEventVariable`), is imported lazily and declared as the
+  `testdata` extra. The package is for tests / evaluation / downstream consumers
+  (e.g. logdagviz) only; logdag's core does not import it.
+
 ## [0.2.0] - 2026-06-26
 
 Bug fixes from a code review, each verified against the source and covered by a
