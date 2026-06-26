@@ -279,7 +279,12 @@ class SQLTimeSeries(TimeSeriesDB):
         return sum(1 for _ in cursor)
 
     def drop_measurement(self, measure):
-        sql = self._db.drop_sql(measure)
+        # amulog's DB helper exposes drop_table_sql (not drop_sql); a measure
+        # maps 1:1 to a table. Skip silently if it was never created (e.g. all
+        # series filtered out), so drop_features() over all_feature() is safe.
+        if measure not in self._db.get_table_names():
+            return
+        sql = self._db.drop_table_sql(measure)
         self._db.execute(sql)
 
 

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`sqlts.SQLTimeSeries.drop_measurement`**: called a non-existent `drop_sql`
+  on amulog's DB helper (`AttributeError`); now uses `drop_table_sql` and skips
+  a measure whose table was never created, so `drop_features()` works.
+
 ### Added
 - **Vendored `logdag.causaltestdata`**: merged the standalone `causaltestdata`
   package (BSD-3-Clause, same author) into the source tree as a sub-package.
