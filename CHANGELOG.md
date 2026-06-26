@@ -151,7 +151,9 @@ non-editable `pip install` works. Requires `amulog>=0.4.0`.
   the `source` / `visual` / `eval` subpackages (`visual` and `eval` had no
   `__init__.py`) and the `data/` files (incl. the default config) were omitted,
   so a non-editable `pip install` was broken. Now uses `find_packages()` and
-  ships `logdag/data/*`
+  ships `logdag/data/*`. `MANIFEST.in` also ships `requirements.txt` (read by
+  `setup.py` at build time — without it the wheel build from the sdist failed
+  with `FileNotFoundError`) and references the actual `README.rst`
 
 ### Removed
 - **Dead `source/evdb.py`** (a broken "OLD FILE", unused) and the empty
