@@ -339,7 +339,13 @@ def init_variable(node_id, node_data, variable_index, defaults):
         raise ValueError
 
 
-def generate_all(g, defaults):
+def generate_variables(g, defaults):
+    """Build and generate all variables of a causal DAG in causal order.
+
+    Returns the (possibly augmented) defaults and a dict mapping node_id to
+    its generated Variable instance. Event-type variables additionally expose
+    their event timestamps via ``.ts`` (used by amulog_export).
+    """
     if not nx.is_directed_acyclic_graph(g):
         raise ValueError("input graph must be a DAG")
 
@@ -363,6 +369,12 @@ def generate_all(g, defaults):
 
         # print("determine {0} with parents {1}".format(node_id, parent_ids))
         variables[node_id].generate(effects)
+
+    return defaults, variables
+
+
+def generate_all(g, defaults):
+    _, variables = generate_variables(g, defaults)
 
     # generate dataframe
     l_tmp_df = []

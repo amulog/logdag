@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   solely by `HawkesEventVariable`), is imported lazily and declared as the
   `testdata` extra. The package is for tests / evaluation / downstream consumers
   (e.g. logdagviz) only; logdag's core does not import it.
+- **`logdag.causaltestdata.amulog_export`**: bridge that turns a synthetic DAG's
+  event series into amulog-style log lines
+  (`"YYYY-MM-DD HH:MM:SS host message"`), so a known causal structure can drive
+  the amulog -> evdb pipeline. Backed by a new `variable.generate_variables`
+  (the variable-building half of `generate_all`, factored out so callers can
+  reach each node's `.ts`). Adds an end-to-end test
+  (`tests/test_causaltestdata_pipeline.py`) that builds an amulog DB from a
+  known DAG and checks the default filters drop the periodic series while a
+  sparse Poisson series survives -- the first step of consolidating logdag's
+  test fixtures onto ground-truth-structure data.
 
 ## [0.2.0] - 2026-06-26
 
