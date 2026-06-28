@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rebuild. Empty `host_tier` (the default) keeps the legacy per-host behaviour
   unchanged. Requires amulog with `host_group` (the tier must be defined in the
   amulog `[manager] host_group_filename`).
+  A full E2E test (`tests/test_hostgroup_pipeline.py`) drives a known DAG over
+  synthetic multi-layer (BGL-style) hosts through amulog and make-dag, checking
+  that `host_tier=midplane` merges chip-host series and still recovers the
+  cause->effect edge between aggregated nodes (synthetic hosts only, no loghub
+  data).
 
 ### Fixed
 - **`sqlts.SQLTimeSeries.drop_measurement`**: called a non-existent `drop_sql`
