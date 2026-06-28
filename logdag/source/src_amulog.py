@@ -194,9 +194,14 @@ class AmulogLoader(object):
 
 
 def init_amulogloader(conf, dt_range):
-    args = [dt_range,
-            conf["database_amulog"]["source_conf"],
+    from amulog import config
+    # source_conf is a path to the amulog config; open it (mirrors how
+    # evgen_log.LogEventLoaderBase builds the loader). The previous code passed
+    # the path string and dt_range in the wrong positions.
+    amulog_conf = config.open_config(conf["database_amulog"]["source_conf"])
+    args = [amulog_conf,
+            dt_range,
             conf["database_amulog"]["event_gid"],
-            conf.getboolean("database_amulog",
-                            "use_anonymize_mapping")]
-    return AmulogLoader(*args)
+            conf.getboolean("database_amulog", "use_anonymize_mapping")]
+    host_tier = conf.get("database_amulog", "host_tier", fallback="")
+    return AmulogLoader(*args, host_tier=host_tier)

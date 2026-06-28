@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`sqlts.SQLTimeSeries.drop_measurement`**: called a non-existent `drop_sql`
   on amulog's DB helper (`AttributeError`); now uses `drop_table_sql` and skips
   a measure whose table was never created, so `drop_features()` works.
+- **`src_amulog.init_amulogloader`**: passed the `source_conf` path and
+  `dt_range` in the wrong constructor positions (so `conf` received `dt_range`
+  and the loader read by `eval/match_edge.py` was misconfigured); now opens the
+  amulog config via `config.open_config` and wires arguments correctly (also
+  forwarding `host_tier`).
 
 ### Added
 - **Vendored `logdag.causaltestdata`**: merged the standalone `causaltestdata`
