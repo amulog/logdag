@@ -72,7 +72,8 @@ class LogEventLoaderBase(object):
                 conf.getboolean("database_amulog",
                                 "use_anonymize_mapping")
             ]
-            self.source = src_amulog.AmulogLoader(*args)
+            host_tier = conf.get("database_amulog", "host_tier", fallback="")
+            self.source = src_amulog.AmulogLoader(*args, host_tier=host_tier)
         else:
             raise NotImplementedError
 

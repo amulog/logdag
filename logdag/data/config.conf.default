@@ -44,6 +44,12 @@ source_conf = amulog.conf
 # one of [ltgid, ltid]
 event_gid = ltgid
 
+# host stratification tier (amulog host_group). Empty = no aggregation: use the
+# original host (legacy behaviour). A non-empty tier must be defined in the
+# amulog host_group file ([manager] host_group_filename in the amulog config);
+# events are then aggregated by host group id at that tier.
+host_tier =
+
 use_anonymize_mapping = false
 
 # "anonymized" if amulog db specified in database_amulog.source_conf is anonymized

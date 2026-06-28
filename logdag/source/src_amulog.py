@@ -9,7 +9,8 @@ from amulog import log_db
 
 class AmulogLoader(object):
 
-    def __init__(self, conf, dt_range=None, gid_name="ltid", use_mapping=False, ld=None):
+    def __init__(self, conf, dt_range=None, gid_name="ltid", use_mapping=False,
+                 ld=None, host_tier=None):
         self.conf = conf
         if ld is not None:
             self._ld = ld
@@ -24,6 +25,23 @@ class AmulogLoader(object):
             from amulog import anonymize
             self._mapper = anonymize.AnonymizeMapper(self.conf)
             self._mapper.load()
+
+        # Optional host stratification (amulog host_group). When host_tier is
+        # empty, self._hg stays None and every method below takes the original
+        # (pre-stratification) code path -- i.e. behaviour is unchanged.
+        self._host_tier = host_tier if host_tier else None
+        self._hg = None
+        self._host2hgid = None      # memoized host -> hgid (resolve cache)
+        self._hgid_hosts = None     # hgid -> set(original hosts), built once
+        if self._host_tier is not None:
+            from amulog import host_group
+            self._hg = host_group.init_hostgroup(self.conf)
+            if self._host_tier not in self._hg.tiers():
+                raise ValueError(
+                    "host_tier {0!r} is not a defined amulog host_group tier "
+                    "(available: {1}). Set [manager] host_group_filename in "
+                    "the amulog config.".format(self._host_tier,
+                                                self._hg.tiers()))
 
     @classmethod
     def from_ld(cls, ld):
@@ -41,15 +59,54 @@ class AmulogLoader(object):
         else:
             return ltobj
 
+    def _whole_host_pairs(self, dt_range):
+        if self._gid_name == "ltid":
+            return self._ld.whole_host_lt(dts=dt_range[0], dte=dt_range[1])
+        elif self._gid_name == "ltgid":
+            return self._ld.whole_host_ltg(dts=dt_range[0], dte=dt_range[1])
+
+    def _ensure_hg_map(self, dt_range):
+        """Build hgid <-> host maps once (resolve depends only on host text,
+        so the maps are dt_range-independent and computed over distinct hosts)."""
+        if self._hgid_hosts is not None:
+            return
+        rng = self.dt_range if self.dt_range is not None else dt_range
+        host2hgid = {}
+        hgid_hosts = defaultdict(set)
+        for host, _gid in self._whole_host_pairs(rng):
+            if host in host2hgid:
+                continue
+            hgid = self._hg.resolve(host, self._host_tier)
+            host2hgid[host] = hgid
+            if hgid is not None:
+                hgid_hosts[hgid].add(host)
+        self._host2hgid = host2hgid
+        self._hgid_hosts = hgid_hosts
+
+    def _resolve_host(self, host):
+        # memoized; covers hosts not seen during the initial map build
+        if host not in self._host2hgid:
+            self._host2hgid[host] = self._hg.resolve(host, self._host_tier)
+        return self._host2hgid[host]
+
     def iter_event(self, dt_range=None):
         if dt_range is None:
             dt_range = self.dt_range
-        if self._gid_name == "ltid":
-            return self._ld.whole_host_lt(dts=dt_range[0],
-                                          dte=dt_range[1])
-        elif self._gid_name == "ltgid":
-            return self._ld.whole_host_ltg(dts=dt_range[0],
-                                           dte=dt_range[1])
+        pairs = self._whole_host_pairs(dt_range)
+        if self._hg is None:
+            yield from pairs
+            return
+        # stratified: map each host to its hgid and deduplicate (hgid, gid)
+        self._ensure_hg_map(dt_range)
+        seen = set()
+        for host, gid in pairs:
+            hgid = self._resolve_host(host)
+            if hgid is None:
+                continue
+            ev = (hgid, gid)
+            if ev not in seen:
+                seen.add(ev)
+                yield ev
 
     def _get_tags(self, gid):
         kwargs = {self._gid_name: gid}
@@ -59,11 +116,22 @@ class AmulogLoader(object):
         if dt_range is None:
             dt_range = self.dt_range
         host, gid = ev
-        d = {"dts": dt_range[0],
-             "dte": dt_range[1],
-             self._gid_name: gid,
-             "host": host}
-        return self._ld.iter_lines(**d)
+        if self._hg is None:
+            d = {"dts": dt_range[0],
+                 "dte": dt_range[1],
+                 self._gid_name: gid,
+                 "host": host}
+            yield from self._ld.iter_lines(**d)
+            return
+        # stratified: ev[0] is an hgid; union the lines of its original hosts
+        # (amulog's log table keeps the original host, so no DB rebuild needed)
+        self._ensure_hg_map(dt_range)
+        for original_host in sorted(self._hgid_hosts.get(host, ())):
+            d = {"dts": dt_range[0],
+                 "dte": dt_range[1],
+                 self._gid_name: gid,
+                 "host": original_host}
+            yield from self._ld.iter_lines(**d)
 
     def iter_dt(self, ev, dt_range=None):
         for lm in self._iter_lines(ev, dt_range):

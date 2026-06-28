@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Host stratification (amulog host_group) consumption**: new
+  `[database_amulog] host_tier` option. When non-empty, `src_amulog.AmulogLoader`
+  resolves each original host to a host group id at that tier (via amulog's
+  `host_group` resolver), aggregating events by host group -- e.g. BGL chip
+  hosts `R02-M1-N0-C:...` collapse to midplane `R02-M1`. The amulog log table is
+  untouched (host stays original); aggregation is done on the fly, so no DB
+  rebuild. Empty `host_tier` (the default) keeps the legacy per-host behaviour
+  unchanged. Requires amulog with `host_group` (the tier must be defined in the
+  amulog `[manager] host_group_filename`).
+
 ### Fixed
 - **`sqlts.SQLTimeSeries.drop_measurement`**: called a non-existent `drop_sql`
   on amulog's DB helper (`AttributeError`); now uses `drop_table_sql` and skips
