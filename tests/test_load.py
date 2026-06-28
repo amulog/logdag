@@ -82,6 +82,8 @@ class TestLoader(unittest.TestCase):
         edge_cnt = 0
         for args in am:
             ldag = makedag.makedag_main(args, do_dump=False)
+            if ldag is None:  # window with no event data
+                continue
             edge_cnt += ldag.number_of_edges()
         assert edge_cnt > 0
 
@@ -108,6 +110,8 @@ class TestLoader(unittest.TestCase):
         edge_cnt = 0
         for args in am:
             ldag = makedag.makedag_main(args, do_dump=False)
+            if ldag is None:  # window with no event data
+                continue
             edge_cnt += ldag.number_of_edges()
         assert edge_cnt > 0
 
@@ -137,5 +141,7 @@ class TestLoader(unittest.TestCase):
         edge_cnt = 0
         for args in am:
             ldag = makedag.makedag_main(args, do_dump=False)
+            if ldag is None:  # window with no event data
+                continue
             edge_cnt += ldag.number_of_edges()
         assert edge_cnt > 0

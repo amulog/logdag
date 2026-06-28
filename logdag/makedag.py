@@ -18,6 +18,15 @@ def makedag_pool(args):
 
 
 def makedag_main(args, do_dump=False):
+    """Estimate a causal DAG for one (conf, dt_range, area) job.
+
+    Returns a LogDAG, or **None** when the job produces no DAG: an existing
+    dag file is reused (``pass_dag_exists``), the window has no event data, or
+    the estimate is empty. The production path (``__main__``) uses ``do_dump``
+    and ignores the return value, so None is harmless there. Callers that
+    aggregate over many jobs (e.g. every ArgumentManager arg) MUST skip None --
+    with sparse data most windows have no events and return None.
+    """
     jobname = arguments.args2name(args)
     conf, dt_range, area = args
 
