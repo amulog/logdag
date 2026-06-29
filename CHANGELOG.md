@@ -7,7 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-29
+
+Minor release coordinated with amulog 0.5.0 (host grouping). Vendors the
+causaltestdata generator into the tree (`logdag.causaltestdata`), consumes
+amulog's host stratification so events can be aggregated by host-group tier
+(e.g. BGL chip `R02-M1-N0-C:...` -> midplane `R02-M1`), adds Python 3.13/3.14
+support, and fixes two evdb/loader bugs found along the way. Backward
+compatible: host aggregation is off by default (empty `host_tier` keeps the
+original per-host behaviour) and no database rebuild is needed. Requires
+`amulog>=0.5.0`.
+
 ### Added
+- **Python 3.13 / 3.14 support**: the core and all its dependencies
+  (numpy, scipy, pandas, scikit-learn, statsmodels, lingam, pcalg, gsq) install
+  and pass on 3.13/3.14; CI runs 3.8-3.14. The optional `testdata` extra is the
+  one exception -- `Hawkes` ships no 3.13+ wheel, so it is constrained to
+  `python_version < "3.13"` (it is needed only by `HawkesEventVariable`, which
+  the core and tests never use).
+- **Vendored `logdag.causaltestdata`**: merged the standalone `causaltestdata`
+  package (BSD-3-Clause, same author) into the source tree as a sub-package.
+  It generates synthetic time-series from a known causal DAG, used for
+  test/evaluation data with ground-truth structure. Includes a new
+  `PeriodicEventVariable` (`type = "periodic"`) producing regular-interval event
+  series -- the kind the default preprocessing filters (`filter_periodic` /
+  `remove_linear`) remove, so a synthetic model can mix periodic (dropped) and
+  causal Poisson (kept) events. Its only non-core dependency, `Hawkes` (needed
+  solely by `HawkesEventVariable`), is imported lazily and declared as the
+  `testdata` extra. The package is for tests / evaluation / downstream consumers
+  (e.g. logdagviz) only; logdag's core does not import it.
+- **`logdag.causaltestdata.amulog_export`**: bridge that turns a synthetic DAG's
+  event series into amulog-style log lines
+  (`"YYYY-MM-DD HH:MM:SS host message"`), so a known causal structure can drive
+  the amulog -> evdb pipeline. Backed by a new `variable.generate_variables`
+  (the variable-building half of `generate_all`, factored out so callers can
+  reach each node's `.ts`). Adds an end-to-end test
+  (`tests/test_causaltestdata_pipeline.py`) that builds an amulog DB from a
+  known DAG and checks the default filters drop the periodic series while a
+  sparse Poisson series survives -- the first step of consolidating logdag's
+  test fixtures onto ground-truth-structure data.
 - **Host stratification (amulog host_group) consumption**: new
   `[database_amulog] host_tier` option. When non-empty, `src_amulog.AmulogLoader`
   resolves each original host to a host group id at that tier (via amulog's
@@ -32,29 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the loader read by `eval/match_edge.py` was misconfigured); now opens the
   amulog config via `config.open_config` and wires arguments correctly (also
   forwarding `host_tier`).
-
-### Added
-- **Vendored `logdag.causaltestdata`**: merged the standalone `causaltestdata`
-  package (BSD-3-Clause, same author) into the source tree as a sub-package.
-  It generates synthetic time-series from a known causal DAG, used for
-  test/evaluation data with ground-truth structure. Includes a new
-  `PeriodicEventVariable` (`type = "periodic"`) producing regular-interval event
-  series -- the kind the default preprocessing filters (`filter_periodic` /
-  `remove_linear`) remove, so a synthetic model can mix periodic (dropped) and
-  causal Poisson (kept) events. Its only non-core dependency, `Hawkes` (needed
-  solely by `HawkesEventVariable`), is imported lazily and declared as the
-  `testdata` extra. The package is for tests / evaluation / downstream consumers
-  (e.g. logdagviz) only; logdag's core does not import it.
-- **`logdag.causaltestdata.amulog_export`**: bridge that turns a synthetic DAG's
-  event series into amulog-style log lines
-  (`"YYYY-MM-DD HH:MM:SS host message"`), so a known causal structure can drive
-  the amulog -> evdb pipeline. Backed by a new `variable.generate_variables`
-  (the variable-building half of `generate_all`, factored out so callers can
-  reach each node's `.ts`). Adds an end-to-end test
-  (`tests/test_causaltestdata_pipeline.py`) that builds an amulog DB from a
-  known DAG and checks the default filters drop the periodic series while a
-  sparse Poisson series survives -- the first step of consolidating logdag's
-  test fixtures onto ground-truth-structure data.
 
 ## [0.2.0] - 2026-06-26
 
