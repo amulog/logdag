@@ -41,6 +41,12 @@ setup(name=package_name,
           'License :: OSI Approved :: BSD License',
           "Operating System :: OS Independent",
           'Programming Language :: Python :: 3.8',
+          'Programming Language :: Python :: 3.9',
+          'Programming Language :: Python :: 3.10',
+          'Programming Language :: Python :: 3.11',
+          'Programming Language :: Python :: 3.12',
+          'Programming Language :: Python :: 3.13',
+          'Programming Language :: Python :: 3.14',
           'Topic :: Scientific/Engineering :: Information Analysis',
           'Topic :: Software Development :: Libraries :: Python Modules'],
       license='The 3-Clause BSD License',
@@ -56,7 +62,9 @@ setup(name=package_name,
           # vendored logdag.causaltestdata: only HawkesEventVariable needs the
           # Hawkes package (imported lazily). The other variable types rely on
           # numpy/scipy/pandas/networkx, which are already core requirements.
-          'testdata': ['Hawkes'],
+          # Hawkes ships no wheel for Python >= 3.13 (C++ extension), so it is
+          # constrained to <3.13; the rest of the package supports 3.13/3.14.
+          'testdata': ['Hawkes; python_version < "3.13"'],
       },
       package_data={'logdag': ['data/*']},
       entry_points={

@@ -4,19 +4,17 @@
 """Reference test: PC recovers a known causal structure.
 
 Generates event-count time series from a known DAG (0 -> 1 -> 2 chain) with the
-causaltestdata toolkit and checks that `makedag.estimate_dag` (cause_algorithm
-= pc, ci_func = gsq) recovers the skeleton {0-1, 1-2} without a spurious 0-2
-edge (0 _||_ 2 | 1). This anchors the inference-input behaviour so the pc /
-lingam / mixedlingam modules can be refactored (common abstraction) safely.
+vendored logdag.causaltestdata toolkit and checks that `makedag.estimate_dag`
+(cause_algorithm = pc, ci_func = gsq) recovers the skeleton {0-1, 1-2} without a
+spurious 0-2 edge (0 _||_ 2 | 1). This anchors the inference-input behaviour so
+the pc / lingam / mixedlingam modules can be refactored (common abstraction)
+safely.
 
-causaltestdata is an optional sibling repo (`pip install -e ../causaltestdata`);
-the test skips when it is absent. Its `variable` module imports `Hawkes` at
-import time, which we stub (only the Poisson TimeSeriesEventVariable is used).
+Only the Poisson TimeSeriesEventVariable is used; Hawkes (needed solely by the
+optional HawkesEventVariable) is imported lazily, so it is never loaded here.
 """
 
 import datetime
-import sys
-import types
 import unittest
 
 import networkx as nx
@@ -24,13 +22,7 @@ import numpy as np
 from amulog import config
 
 from logdag import arguments, makedag
-
-# causaltestdata.variable does `import Hawkes` at top; stub it (unused here)
-sys.modules.setdefault("Hawkes", types.ModuleType("Hawkes"))
-try:
-    from causaltestdata import variable as ctd_variable
-except ImportError:
-    ctd_variable = None
+from logdag.causaltestdata import variable as ctd_variable
 
 
 def _chain_event_df(seed, weight=0.9, days=7, lambd=80):
@@ -57,7 +49,6 @@ def _pc_conf():
     return conf
 
 
-@unittest.skipUnless(ctd_variable is not None, "causaltestdata not installed")
 class TestPcRecovery(unittest.TestCase):
 
     def test_recovers_chain_skeleton(self):
