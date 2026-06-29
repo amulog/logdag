@@ -31,7 +31,7 @@ setup(name=package_name,
       long_description=load_readme(),
       author='Satoru Kobayashi',
       author_email='sat@3at.work',
-      url='https://github.com/cpflat/logdag/',
+      url='https://github.com/amulog/logdag/',
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: Console',
