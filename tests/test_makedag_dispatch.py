@@ -8,8 +8,9 @@ plus the input-too-small and invalid-algorithm guards. The estimators are
 mocked, so no inference library is exercised — this is the seam that lets the
 big if/elif be refactored into a registry safely.
 
-(``mixedlingam`` is not covered: ``mixedlingam_input`` imports a vendored
-``bcause`` that is absent here, so its dispatch branch cannot be reached.)
+Non-built-in algorithms (e.g. ``mixedlingam``, now shipped out-of-tree as a
+private plugin) route through the ``logdag.cause_algorithm`` entry-point lookup;
+that seam is covered by mocking the loader (see the plugin test below).
 """
 
 import unittest
@@ -68,7 +69,20 @@ class TestEstimateDagDispatch(unittest.TestCase):
         m.assert_not_called()                 # early return, no inference
         self.assertEqual(r.number_of_edges(), 0)
 
+    def test_plugin_algorithm_routes_to_entry_point(self):
+        # an unknown algorithm is resolved via the plugin loader and called
+        # with (conf, input_df, prior_knowledge)
+        plugin = mock.Mock(return_value="PLUGIN")
+        conf = _conf("mixedlingam")
+        with mock.patch.object(makedag, "_load_algorithm_plugin",
+                               return_value=plugin) as loader:
+            r = makedag.estimate_dag(conf, _DF, prior_knowledge="PK")
+        self.assertEqual(r, "PLUGIN")
+        loader.assert_called_once_with("mixedlingam")
+        plugin.assert_called_once_with(conf, _DF, "PK")
+
     def test_invalid_algorithm_raises(self):
+        # no built-in branch and no plugin registered -> ValueError
         with self.assertRaises(ValueError):
             makedag.estimate_dag(_conf("nonexistent"), _DF)
 

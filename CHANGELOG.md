@@ -5,7 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.1] - unreleased
+
+Planned patch release. Removes the non-functional built-in `mixedlingam`
+(it required the non-public `bcause` package) and adds an out-of-tree plugin
+seam so such methods can be provided privately.
+
+### Added
+- **Out-of-tree algorithm plugins**: `makedag.estimate_dag` resolves an unknown
+  `[dag] cause_algorithm` through the `logdag.cause_algorithm` entry-point group,
+  calling a plugin's `estimate(conf, input_df, prior_knowledge=None) -> DiGraph`.
+  This lets methods that cannot ship publicly (e.g. wrappers around a private
+  library) be installed and selected without their code or name living in the
+  public tree.
+
+### Removed
+- **Built-in `mixedlingam` support**: dropped `mixedlingam_input.py` and its
+  `cause_algorithm` branch. Its MixedLiNGAM implementation depends on the
+  non-public `bcause` package, so `mixedlingam` now lives out-of-tree and is
+  provided through the `logdag.cause_algorithm` plugin mechanism above (kept
+  private for paper reproducibility; install the plugin to use
+  `cause_algorithm = mixedlingam`).
 
 ## [0.3.0] - 2026-06-29
 

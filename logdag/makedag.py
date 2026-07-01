@@ -79,6 +79,32 @@ def make_input(args):
     return input_df, evmap
 
 
+_CAUSE_ALGORITHM_PLUGIN_GROUP = "logdag.cause_algorithm"
+
+
+def _load_algorithm_plugin(name):
+    """Resolve a non-built-in ``cause_algorithm`` from an installed plugin.
+
+    Algorithms that cannot ship in the public tree (e.g. wrappers around a
+    private library) are provided out-of-tree: a plugin package registers an
+    entry point in the ``logdag.cause_algorithm`` group whose value is a
+    callable ``estimate(conf, input_df, prior_knowledge=None) -> DiGraph``.
+    ``estimate_dag`` falls back to this lookup for any unknown algorithm, so
+    such methods stay usable when their package is installed without their
+    name or code appearing here. Returns the callable, or None if none is
+    registered for ``name``.
+    """
+    from importlib import metadata
+    try:
+        eps = metadata.entry_points(group=_CAUSE_ALGORITHM_PLUGIN_GROUP)
+    except TypeError:  # Python < 3.10: entry_points() takes no group kwarg
+        eps = metadata.entry_points().get(_CAUSE_ALGORITHM_PLUGIN_GROUP, [])
+    for ep in eps:
+        if ep.name == name:
+            return ep.load()
+    return None
+
+
 def estimate_dag(conf, input_df, prior_knowledge=None):
     if input_df.shape[1] < 2:
         _logger.info("input too small({0} nodes), return empty dag".format(
@@ -104,15 +130,6 @@ def estimate_dag(conf, input_df, prior_knowledge=None):
                                      lower_limit=lower_limit,
                                      ica_max_iter=ica_max_iter,
                                      prior_knowledge=prior_knowledge)
-    elif cause_algorithm == "mixedlingam":
-        from . import mixedlingam_input
-        skel_method = conf.get("dag", "skeleton_method")
-        skel_th = conf.getfloat("dag", "skeleton_threshold")
-        skel_depth = conf.getint("dag", "skeleton_depth")
-        skel_verbose = conf.getboolean("dag", "skeleton_verbose")
-        return mixedlingam_input.estimate(input_df, skel_th,
-                                          skel_method, skel_depth,
-                                          skel_verbose, prior_knowledge)
 #    elif cause_algorithm == "cdt":
 #        from . import cdt_input
 #        category = conf.get("cdt", "category")
@@ -140,7 +157,11 @@ def estimate_dag(conf, input_df, prior_knowledge=None):
                                           lower_limit=lower_limit,
                                           prior_knowledge=prior_knowledge)
     else:
-        raise ValueError("invalid dag.cause_algorithm")
+        estimate = _load_algorithm_plugin(cause_algorithm)
+        if estimate is None:
+            raise ValueError(
+                "invalid dag.cause_algorithm: {0}".format(cause_algorithm))
+        return estimate(conf, input_df, prior_knowledge)
 
 
 def _complete_graph(node_ids):
