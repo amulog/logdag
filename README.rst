@@ -2,6 +2,27 @@
 logdag
 ######
 
+.. image:: https://img.shields.io/pypi/v/logdag
+   :alt: PyPI release
+   :target: https://pypi.org/project/logdag/
+
+.. image:: https://img.shields.io/pypi/pyversions/logdag
+   :alt: Python support
+   :target: https://pypi.org/project/logdag/
+
+.. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
+   :alt: BSD 3-Clause License
+   :target: https://opensource.org/licenses/BSD-3-Clause
+
+.. image:: https://github.com/amulog/logdag/actions/workflows/test.yml/badge.svg?branch=master
+   :alt: Test
+   :target: https://github.com/amulog/logdag/actions/workflows/test.yml
+
+.. image:: https://img.shields.io/badge/docs-wiki-blue.svg
+   :alt: Documentation
+   :target: https://github.com/amulog/logdag/wiki
+
+
 Overview
 ========
 
@@ -27,7 +48,9 @@ short usage:
 4. Generate DAGs by subcommand :code:`makedag`
 5. See results by commands such as :code:`show-subgraphs`
 
-See tutorial directory for more information.
+See the `wiki <https://github.com/amulog/logdag/wiki>`_ for full documentation
+(installation, quick start, configuration, causal-discovery methods, and CLI
+reference), and the :code:`tutorial` directory for a runnable sample.
 
 Reference
 =========
