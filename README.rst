@@ -32,7 +32,7 @@ The input log data is loaded with AMULOG (https://github.com/amulog/amulog).
 The output DAG is recorded in the format of NetworkX DiGraph.
 
 This project was partially forked from repository LogCausalAnalysis.
-(https://github.com/amulog/LogCausalAnalysis)
+(https://github.com/cpflat/LogCausalAnalysis)
 
 
 Usage
