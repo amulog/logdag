@@ -6,3 +6,6 @@ __pycache__/
 build/
 dist/
 .pytest_cache/
+
+# Symlinks to the private dev repo (logdag-dev); create manually per environment
+.serena
