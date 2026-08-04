@@ -584,7 +584,7 @@ DICT_ARGSET = {
     "show-full-config": ["Show virtual configuration considering defaults",
                          [OPT_CONFIG, OPT_DEBUG],
                          show_full_config],
-    "show-deafult-config": ["Show configuration defaults",
+    "show-default-config": ["Show configuration defaults",
                             [],
                             show_default_config],
     "plot-dag": ["Generate causal DAG view",
