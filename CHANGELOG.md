@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - unreleased
+## [0.3.2] - 2026-08-04
+
+Bugfix release. Restores installability on Python 3.13/3.14, which lingam's
+dependency pin had broken.
 
 ### Added
 - **`tutorial/ctd_tsevent.ipynb`**: the causaltestdata tutorial notebook, carried
@@ -33,10 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LINGAM_REQUIRED=1` on the versions where `lingam` resolves, so its recovery
   test fails loudly there instead of skipping unnoticed everywhere. Previously no
   job installed either extra.
-
-## [0.3.2] - 2026-08-04
-
-Bugfix release.
 
 ### Fixed
 - **`logdag` subcommand name typo**: the subcommand that prints configuration
