@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0] - unreleased
 
+### Added
+- **`tutorial/ctd_tsevent.ipynb`**: the causaltestdata tutorial notebook, carried
+  over from the standalone `causaltestdata` repository (which is to be archived)
+  when its code was vendored as `logdag.causaltestdata` in 0.3.0. It generates
+  time-series events from a known DAG and recovers the structure with PC and
+  LiNGAM; imports now target the vendored subpackage.
+
 ### Changed
 - **`lingam` moved from the core requirements to an optional extra**: install it
   with `pip install logdag[lingam]` to use `cause_algorithm = lingam` or

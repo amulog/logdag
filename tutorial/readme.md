@@ -3,6 +3,11 @@
 This tutorial demonstrates causal analysis from log data using log2seq, amulog, and logdag.
 The tutorial uses small sample log data (SSH_2k.log) from [loghub](https://github.com/logpai/loghub).
 
+For causal discovery on *synthetic* data with a known ground-truth structure,
+see [ctd_tsevent.ipynb](./ctd_tsevent.ipynb): it generates time-series events
+from a given DAG with `logdag.causaltestdata` and recovers the structure with PC
+and LiNGAM. (LiNGAM needs the optional extra: `pip install logdag[lingam]`.)
+
 ## Prepare log2seq parser
 
 Basically, log message format depends on the dataset.
