@@ -26,8 +26,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install -e .[lingam,testdata]
           pip install pytest
+      # see test.yml: both extras carry a python_version < "3.13" marker, so they
+      # are installed up to 3.12 and their tests must not silently skip there
+      - if: matrix.python-version != '3.13' && matrix.python-version != '3.14'
+        run: echo "LINGAM_REQUIRED=1" >> "$GITHUB_ENV"
       - run: pytest tests/
 
   publish:

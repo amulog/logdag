@@ -201,6 +201,7 @@ ci_func = gsq
 
 # Method to estimate causal DAG
 # pc in default, and lingam (LiNGAM-fast) is also available
+# lingam and lingam-corr need the optional extra: pip install logdag[lingam]
 cause_algorithm = pc
 
 # Method to estimate skeleton in PC algorithm

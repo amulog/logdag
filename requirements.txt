@@ -7,5 +7,4 @@ pandas
 scikit-learn
 python-dateutil
 networkx>=2.1
-lingam
 statsmodels

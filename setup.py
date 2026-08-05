@@ -59,6 +59,19 @@ setup(name=package_name,
           # The v3 backend (logdag.source.influx3) needs no extra package -- it
           # talks to the v3 HTTP API (SQL / Line Protocol) over stdlib urllib.
           'influx': ['influxdb'],
+          # optional LiNGAM methods (cause_algorithm = lingam / lingam-corr);
+          # install with `pip install -e .[lingam]`. Kept out of the core
+          # requirements because lingam depends on semopy, whose polycorr module
+          # calls scipy.stats.mvn.mvnun -- an attribute the scipy shim stopped
+          # exposing in 1.14. lingam therefore pins scipy<=1.13.1, and that scipy
+          # predates Python 3.13, so on 3.13/3.14 pip falls back to the scipy
+          # sdist and the source build fails for want of OpenBLAS. logdag itself
+          # only uses ICALiNGAM / DirectLiNGAM / make_prior_knowledge, none of
+          # which touch the semopy path, so a newer scipy is fine for us -- it is
+          # lingam's own dependency pin that cannot be satisfied there.
+          # The python_version marker mirrors that limit, so asking for the extra
+          # on 3.13/3.14 installs nothing instead of failing the scipy build.
+          'lingam': ['lingam; python_version < "3.13"'],
           # vendored logdag.causaltestdata: only HawkesEventVariable needs the
           # Hawkes package (imported lazily). The other variable types rely on
           # numpy/scipy/pandas/networkx, which are already core requirements.

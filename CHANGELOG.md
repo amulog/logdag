@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - unreleased
+
+### Changed
+- **`lingam` moved from the core requirements to an optional extra**: install it
+  with `pip install logdag[lingam]` to use `cause_algorithm = lingam` or
+  `lingam-corr`. lingam depends on semopy, whose `polycorr` module calls
+  `scipy.stats.mvn.mvnun` -- an attribute the scipy shim stopped exposing in
+  1.14 -- so lingam pins `scipy<=1.13.1`. That scipy predates Python 3.13 and
+  ships no wheel for it, so installing logdag on 3.13/3.14 fell back to building
+  scipy from source and failed for want of OpenBLAS. logdag itself only uses
+  ICALiNGAM, DirectLiNGAM and `make_prior_knowledge`, none of which reach the
+  semopy path, so the pin buys us nothing and the dependency is better declared
+  where users can opt into it. `lingam_input` now raises an `ImportError` that
+  names the extra when the package is missing.
+  The extra carries a `python_version < "3.13"` marker (as `testdata` already
+  did), so requesting it on 3.13/3.14 installs nothing instead of failing a scipy
+  source build.
+- CI installs the `lingam` and `testdata` extras in the unit-test matrix, and sets
+  `LINGAM_REQUIRED=1` on the versions where `lingam` resolves, so its recovery
+  test fails loudly there instead of skipping unnoticed everywhere. Previously no
+  job installed either extra.
+
 ## [0.3.2] - 2026-08-04
 
 Bugfix release.

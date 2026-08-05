@@ -11,6 +11,19 @@ import networkx as nx
 from itertools import combinations
 
 
+def _import_lingam():
+    """Import the optional lingam package with an actionable error message."""
+    try:
+        import lingam
+    except ImportError as e:
+        raise ImportError(
+            "cause_algorithm lingam / lingam-corr needs the optional lingam "
+            "package: pip install logdag[lingam] (note that lingam pins "
+            "scipy<=1.13.1, which has no wheel for Python >= 3.13)"
+        ) from e
+    return lingam
+
+
 def _fit_back(data, cls, kwargs, limit=3):
     cnt = 0
     while True:
@@ -27,7 +40,7 @@ def _fit_back(data, cls, kwargs, limit=3):
 def estimate(data, algorithm="ica", lower_limit=0.01,
              ica_max_iter=1000, prior_knowledge=None):
     """Generate DAG with LiNGAM"""
-    import lingam
+    lingam = _import_lingam()
     if algorithm == "ica":
         if prior_knowledge is not None:
             warnings.warn("ICA-LiNGAM does not use prior knowledge")
@@ -63,7 +76,7 @@ def estimate(data, algorithm="ica", lower_limit=0.01,
 
 def estimate_corr(data, algorithm="ica", lower_limit=0.01, prior_knowledge=None):
     """Generate DAG of pair-wise LiNGAM coefficient"""
-    import lingam
+    lingam = _import_lingam()
 
     def _model(alg, _kwargs):
         if alg == "ica":

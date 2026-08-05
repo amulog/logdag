@@ -16,11 +16,16 @@ Scope: pc, lingam. mixedlingam is intentionally excluded (dropped, unmaintained
 bcause dependency); cdt is disabled. A new method is added by listing it in
 ALGORITHMS once its estimate_dag branch works.
 
+lingam is an optional extra (`pip install logdag[lingam]`), so its subtest skips
+when the package is absent. Set LINGAM_REQUIRED=1 to turn that skip into a hard
+failure, so a run meant to exercise LiNGAM cannot quietly pass without it.
+
 Only the Poisson TimeSeriesEventVariable is used; Hawkes is imported lazily, so
 it is never loaded here.
 """
 
 import datetime
+import os
 import unittest
 
 import networkx as nx
@@ -32,6 +37,22 @@ from logdag.causaltestdata import variable as ctd_variable
 
 # methods expected to run and recover the chain skeleton
 ALGORITHMS = ["pc", "lingam"]
+
+# methods whose library is an optional extra: env flag -> import target
+OPTIONAL_METHODS = {"lingam": ("LINGAM_REQUIRED", "lingam")}
+
+
+def _unavailable_reason(algorithm):
+    """Return why an optional method cannot run, or None if it can."""
+    entry = OPTIONAL_METHODS.get(algorithm)
+    if entry is None:
+        return None
+    _, module = entry
+    try:
+        __import__(module)
+    except ImportError as e:
+        return str(e)
+    return None
 
 
 def _chain_event_df(seed, weight=0.9, days=7, lambd=80):
@@ -66,6 +87,18 @@ class TestMethodRecovery(unittest.TestCase):
         df = _chain_event_df(seed=0)
         for alg in ALGORITHMS:
             with self.subTest(algorithm=alg):
+                reason = _unavailable_reason(alg)
+                if reason is not None:
+                    env_name = OPTIONAL_METHODS[alg][0]
+                    if os.environ.get(env_name):
+                        self.fail(
+                            "%s is declared required (%s is set) but its "
+                            "library is unusable: %s -- install it with "
+                            "`pip install -e .[%s]`"
+                            % (alg, env_name, reason, alg))
+                    self.skipTest(
+                        "optional %s library not installed (%s); set %s=1 to "
+                        "fail instead of skipping" % (alg, reason, env_name))
                 dag = makedag.estimate_dag(_conf(alg), df)
                 # compare at the skeleton level: pc returns undirected pairs,
                 # lingam returns directed edges; both must place 0-1 and 1-2.
