@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **`cause_algorithm = lingam` / `lingam-corr` with `output_dag_format = json`**:
+  `make-dag` failed at the write with `TypeError: Object of type int64 is not
+  JSON serializable`. `lingam_input` took node ids out of the input frame by
+  position, which yields numpy scalars because `log2event.makeinput` concatenates
+  single-column frames into an int64 column Index. networkx reused the equal
+  Python int as the outer adjacency key but kept the numpy scalar as the inner
+  one, so `nodes()` looked clean and only the edge target carried int64; edge
+  weights were numpy float64 for the same reason. Node ids and weights are now
+  cast to Python types as the graph is built. PC was unaffected.
+
 ## [0.3.2] - 2026-08-05
 
 Bugfix release. Restores installability on Python 3.13/3.14, which lingam's

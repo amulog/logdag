@@ -37,6 +37,25 @@ def _fit_back(data, cls, kwargs, limit=3):
                 return None
 
 
+def _add_edges(g, columns, adj, lower_limit):
+    """Add the edges of adjacency matrix ``adj`` to graph ``g``.
+
+    Node ids and edge weights are cast to Python types on purpose. A pandas
+    column label taken by position is a numpy scalar, which json.dumps
+    cannot serialize (output_dag_format = json). networkx keeps such a numpy
+    int as the key of the inner adjacency dict even when an equal Python int
+    is already a node, so an uncast label stays invisible in g.nodes() and
+    only surfaces as the target of an edge.
+    """
+    idx = np.abs(adj) > lower_limit
+    dirs = np.where(idx)
+    for to_idx, from_idx, coef in zip(dirs[0], dirs[1], adj[idx]):
+        to = int(columns[to_idx])
+        from_ = int(columns[from_idx])
+        coef = float(coef)
+        g.add_edge(from_, to, weight=coef, label=str(round(coef, 2)))
+
+
 def estimate(data, algorithm="ica", lower_limit=0.01,
              ica_max_iter=1000, prior_knowledge=None):
     """Generate DAG with LiNGAM"""
@@ -64,12 +83,7 @@ def estimate(data, algorithm="ica", lower_limit=0.01,
     for i in range(adj.shape[0]):
         g.add_node(i)
 
-    idx = np.abs(adj) > lower_limit
-    dirs = np.where(idx)
-    for to_idx, from_idx, coef in zip(dirs[0], dirs[1], adj[idx]):
-        to = data.columns[to_idx]
-        from_ = data.columns[from_idx]
-        g.add_edge(from_, to, weight=coef, label=str(round(coef, 2)))
+    _add_edges(g, data.columns, adj, lower_limit)
 
     return g
 
@@ -100,12 +114,7 @@ def estimate_corr(data, algorithm="ica", lower_limit=0.01, prior_knowledge=None)
         model.fit(tmp_data)
         adj = np.nan_to_num(model.adjacency_matrix_)
 
-        idx = np.abs(adj) > lower_limit
-        dirs = np.where(idx)
-        for to_idx, from_idx, coef in zip(dirs[0], dirs[1], adj[idx]):
-            to = tmp_data.columns[to_idx]
-            from_ = tmp_data.columns[from_idx]
-            g.add_edge(from_, to, weight=coef, label=str(round(coef, 2)))
+        _add_edges(g, tmp_data.columns, adj, lower_limit)
 
     return g
 
