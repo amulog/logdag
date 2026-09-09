@@ -49,7 +49,9 @@ def _assert_json_native(testcase, g):
         testcase.assertIs(type(from_), int)
         testcase.assertIs(type(to), int)
         testcase.assertIs(type(data["weight"]), float)
-    json.dumps(nx.node_link_data(g, edges="links"))
+    # the call showdag.dump makes for output_dag_format = json; no edges kwarg,
+    # which networkx only accepts from 3.4 (requirements allow >= 2.1)
+    json.dumps(nx.node_link_data(g))
 
 
 class TestLingamEstimateOutputTypes(unittest.TestCase):
