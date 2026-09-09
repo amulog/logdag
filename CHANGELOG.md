@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one, so `nodes()` looked clean and only the edge target carried int64; edge
   weights were numpy float64 for the same reason. Node ids and weights are now
   cast to Python types as the graph is built. PC was unaffected.
+- **`lingam` node ids now follow the input columns**: `estimate()` created its
+  nodes from `range(n)` (matrix positions) while its edges used the column
+  labels, so a frame whose labels are not 0..n-1 came out with the nodes and
+  the edge endpoints on two different id spaces. The two coincide for the
+  frames `log2event.makeinput` builds, so this was latent; `lingam-corr` and
+  PC already used the labels.
 
 ## [0.3.2] - 2026-08-05
 

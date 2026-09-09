@@ -32,11 +32,11 @@ ADJACENCY = np.array([[0.0, 0.0, 0.0],
                       [0.0, 0.7, 0.0]])
 
 
-def _input_df(n_columns=3):
+def _input_df(labels=(0, 1, 2)):
     """Mimic log2event.makeinput: concat of single-column frames of int eid."""
-    values = np.arange(12, dtype=float).reshape(4, n_columns)
-    evlist = [pd.DataFrame(values[:, i], columns=[i])
-              for i in range(n_columns)]
+    values = np.arange(4 * len(labels), dtype=float).reshape(4, len(labels))
+    evlist = [pd.DataFrame(values[:, i], columns=[label])
+              for i, label in enumerate(labels)]
     df = pd.concat(evlist, axis=1)
     assert isinstance(df.columns[0], np.integer)  # premise of the regression
     return df
@@ -64,6 +64,26 @@ class TestLingamEstimateOutputTypes(unittest.TestCase):
             g = lingam_input.estimate(_input_df(), algorithm="ica")
 
         self.assertEqual(2, g.number_of_edges())
+        _assert_json_native(self, g)
+
+    def test_estimate_nodes_follow_the_input_columns(self):
+        """Node ids are the column labels, not the positions in the matrix.
+
+        They coincide whenever the labels are 0..n-1, which is what
+        log2event.makeinput yields, so this only shows through a frame whose
+        labels are sparse -- as after a filter drops columns.
+        """
+        fake_lingam = types.ModuleType("lingam")
+        fake_lingam.ICALiNGAM = object
+        model = mock.Mock(adjacency_matrix_=ADJACENCY)
+        with mock.patch.dict(sys.modules, {"lingam": fake_lingam}), \
+                mock.patch.object(lingam_input, "_fit_back",
+                                  return_value=model):
+            g = lingam_input.estimate(_input_df(labels=(3, 5, 9)),
+                                      algorithm="ica")
+
+        self.assertEqual({3, 5, 9}, set(g.nodes()))
+        self.assertEqual({(3, 5), (5, 9)}, set(g.edges()))
         _assert_json_native(self, g)
 
     def test_estimate_corr_graph_is_json_serializable(self):

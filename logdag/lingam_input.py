@@ -37,6 +37,16 @@ def _fit_back(data, cls, kwargs, limit=3):
                 return None
 
 
+def _add_nodes(g, columns):
+    """Add the input columns of ``data`` to graph ``g`` as node ids.
+
+    The node ids of an estimated DAG are the column labels of the input
+    frame, i.e. the event ids of the evmap -- the same convention pc_input
+    follows through its init_graph.
+    """
+    g.add_nodes_from(int(column) for column in columns)
+
+
 def _add_edges(g, columns, adj, lower_limit):
     """Add the edges of adjacency matrix ``adj`` to graph ``g``.
 
@@ -80,9 +90,7 @@ def estimate(data, algorithm="ica", lower_limit=0.01,
 
     adj = np.nan_to_num(model.adjacency_matrix_)
     g = nx.DiGraph()
-    for i in range(adj.shape[0]):
-        g.add_node(i)
-
+    _add_nodes(g, data.columns)
     _add_edges(g, data.columns, adj, lower_limit)
 
     return g
@@ -101,7 +109,7 @@ def estimate_corr(data, algorithm="ica", lower_limit=0.01, prior_knowledge=None)
             raise ValueError("invalid lingam algorithm name")
 
     g = nx.DiGraph()
-    g.add_nodes_from(data.columns)
+    _add_nodes(g, data.columns)
     for i, j in combinations(data.columns, 2):
         if algorithm == "direct" and prior_knowledge:
             pmatrix = prior_knowledge.lingam_prior_knowledge(node_ids=[i, j])
